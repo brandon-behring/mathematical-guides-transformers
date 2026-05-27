@@ -1,0 +1,27 @@
+% Causal self-attention mask — TikZ source. Compiles to a tight standalone PDF
+% (pdflatex figures/attention-pattern.tex), which `book-scaffold build-figures`
+% converts to public/figures/attention-pattern.svg (PDF -> SVG via pdftocairo).
+\documentclass[tikz,border=3pt]{standalone}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}[scale=0.85]
+  \foreach \i in {0,1,2,3} {
+    \foreach \j in {0,1,2,3} {
+      \pgfmathtruncatemacro{\masked}{\j>\i ? 1 : 0}
+      \ifnum\masked=1
+        \fill[black!6] (\j,-\i) rectangle ++(1,-1);
+      \else
+        \fill[blue!25] (\j,-\i) rectangle ++(1,-1);
+      \fi
+      \draw[gray!60] (\j,-\i) rectangle ++(1,-1);
+    }
+  }
+  \foreach \i/\lbl in {0/{$q_1$},1/{$q_2$},2/{$q_3$},3/{$q_4$}}
+    \node[left] at (0,-\i-0.5) {\lbl};
+  \foreach \j/\lbl in {0/{$k_1$},1/{$k_2$},2/{$k_3$},3/{$k_4$}}
+    \node[above] at (\j+0.5,0) {\lbl};
+  \node[below,align=center,text width=6cm] at (2,-4.5)
+    {\small Causal mask: query $q_i$ attends only to keys $k_j$ with $j \le i$
+     (shaded). Each row is a probability distribution.};
+\end{tikzpicture}
+\end{document}

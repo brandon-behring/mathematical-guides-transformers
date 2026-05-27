@@ -1,0 +1,7 @@
+# Cloudflare Pages config — mathematical-guides-transformers.
+# Deploys to <family-domain>/transformers/ (base set in astro.config.mjs).
+#   Framework preset: Astro | Build: npm run build | Output: dist | Node: 22
+
+name = "mathematical-guides-transformers"
+compatibility_date = "2026-05-27"
+pages_build_output_dir = "./dist"
