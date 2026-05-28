@@ -1,0 +1,30 @@
+---
+title: "Appendix: Solutions"
+slug: appendix-solutions
+description: "Solutions to the chapter exercises, deferred here so each exercise stays retrieval practice."
+last_verified: 2026-05-27
+rigor_level: rigorous
+prerequisites: [attention]
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+
+# Appendix: Solutions
+
+Solutions to the exercises in [The Attention Mechanism](../attention/).
+
+<Theorem kind="proof" name="Solution — Exercise 1 (row-stochastic ⇒ convex combination)" id="soln-tf-ex1">
+Fix a query row $i$ and write the logits $\ell_{ij} = \inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k}$. The attention weight $w_{ij} = e^{\ell_{ij}}/\sum_{j'} e^{\ell_{ij'}}$ is **positive** (an exponential over a positive sum) and the row **sums to one** ($\sum_j w_{ij} = \sum_j e^{\ell_{ij}} / \sum_{j'} e^{\ell_{ij'}} = 1$); so the row is a probability vector — row-stochastic. The output row is $\sum_j w_{ij}\,\mathbf v_j$ with $w_{ij}\ge 0$ and $\sum_j w_{ij}=1$, i.e. a **convex combination** of the value rows. $\qquad\blacksquare$
+</Theorem>
+
+<Theorem kind="proof" name="Solution — Exercise 2 (unscaled variance and saturation)" id="soln-tf-ex2">
+By the variance-preservation theorem (unscaled case), $\Var(\inner{\mathbf q}{\mathbf k}) = d_k$. As $d_k\to\infty$ the logit spread grows without bound, so within a softmax row the largest logit dominates and the row concentrates toward a **one-hot** vector. At a near-one-hot $\mathbf p$, the softmax Jacobian $\operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top$ has entries $p_i(1-p_i)\to 0$, so gradients through the softmax **vanish** (gradient saturation). Dividing logits by $\sqrt{d_k}$ holds the variance at $1$ and prevents this. $\qquad\blacksquare$
+</Theorem>
+
+<Theorem kind="proof" name="Solution — Exercise 3 (compute + translation invariance)" id="soln-tf-ex3">
+With $\mathbf z=(2,1,0)$ the unnormalized weights are $(e^2, e^1, e^0) \approx (7.389,\, 2.718,\, 1.000)$, summing to $\approx 11.107$, so
+$$
+\softmax(\mathbf z) \approx (0.665,\; 0.245,\; 0.090).
+$$
+For $\mathbf z + 5\mathbf 1 = (7,6,5)$ every weight is multiplied by $e^5$, which cancels in the normalization, giving the identical vector — exactly Proposition 1. $\qquad\blacksquare$
+</Theorem>

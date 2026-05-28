@@ -1,7 +1,7 @@
 ---
 title: "The Attention Mechanism"
 slug: attention
-description: "Scaled dot-product attention from first principles: softmax and its translation invariance, attention weights as a convex combination, and why the 1/sqrt(d_k) scaling is exactly the factor that restores unit variance."
+description: "Scaled dot-product attention from first principles: softmax and its translation invariance, attention as a learned-kernel regression, and why the 1/sqrt(d_k) scaling is exactly the factor that restores unit variance."
 last_verified: 2026-05-27
 rigor_level: rigorous
 prerequisites: []
@@ -22,18 +22,36 @@ import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 
 # The Attention Mechanism
 
-**Where we are.** Attention is the transformer's one genuinely new operation. The idea is simple — each token should look at every other token and aggregate selectively — but the construction rewards care. We build it from one nonlinearity (softmax), one similarity (the dot product), and one piece of normalization (the $1/\sqrt{d_k}$ scaling), and we prove the property that makes each true.
+**Where we are.** Attention is the transformer's one genuinely new operation: each token aggregates information from every other token, selectively. We build it from one nonlinearity (softmax), one similarity (the dot product), and one piece of normalization (the $1/\sqrt{d_k}$ scaling), and prove the property that makes each true.
 
-**Notation.** Vectors are bold lowercase **row** vectors $\mathbf x \in \R^{d}$; matrices are bold uppercase. $\inner{\mathbf q}{\mathbf k}$ is the Euclidean inner product, $\softmax$ the normalized exponential, and $d_k$ the per-head key dimension.
+## Notation
+
+Vectors are bold lowercase **row** vectors $\mathbf x \in \R^{d}$; matrices are bold uppercase.
+
+| Dimension | Meaning |
+|---|---|
+| $d$ | model / embedding dimension |
+| $n$ | sequence length (number of tokens) |
+| $d_k$ | key/query dimension per head |
+| $d_v$ | value dimension per head |
+
+| Operator | Meaning |
+|---|---|
+| $\defeq$ | "is defined as" |
+| $\softmax(\cdot)$ | normalized exponential (Def. 1) |
+| $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ | scaled dot-product attention (Def. 2) |
+| $\inner{\cdot}{\cdot}$ | Euclidean inner product |
 
 ## Softmax
+
+Softmax turns a vector of scores into a probability distribution: larger scores get exponentially more weight, and the weights sum to one.
 
 <Theorem kind="definition" n="1" name="Softmax">
 For $\mathbf z = (z_1,\dots,z_K)\in\R^K$, the **softmax** $\softmax:\R^K\to\R^K$ is
 $$
 \softmax(\mathbf z)_i \defeq \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}.
 $$
-Each output is positive and the entries sum to $1$, so $\softmax(\mathbf z)$ is a probability distribution over $K$ categories.<Sidenote>This is the standard probabilistic reading of network logits <Cite key="bridle1990probabilistic" />.</Sidenote>
+Each output is positive and the entries sum to $1$, so $\softmax(\mathbf z)$ is a probability distribution over $K$ categories.<Sidenote>The standard probabilistic reading of network logits <Cite key="bridle1990probabilistic" />.</Sidenote>
 </Theorem>
 
 <Theorem kind="proposition" n="1" name="Translation invariance" id="prop-softmax-translation">
@@ -48,10 +66,12 @@ $$
 = \frac{e^{c}e^{z_i}}{e^{c}\sum_j e^{z_j}}
 = \softmax(\mathbf z)_i. \qquad\blacksquare
 $$
-This is why subtracting $\max_j z_j$ before exponentiating is numerically safe — it changes nothing.
+So subtracting $\max_j z_j$ before exponentiating is numerically safe — it changes nothing.
 </Theorem>
 
 ## Scaled dot-product attention
+
+Structurally, attention is **Nadaraya–Watson kernel regression with a learned kernel**: each output is a kernel-weighted average of the value vectors, where the weight value $j$ receives is proportional to $\exp(\inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k})$. The correspondence is exact — *kernel weights* ↦ *a softmax row*, *kernel-regression estimate* ↦ *the attention output* — and it breaks in exactly one place: the kernel is **learned**, so it need not be symmetric or positive-definite, and the classical kernel-smoothing guarantees do not transfer. We make the construction precise.
 
 <Theorem kind="definition" n="2" name="Scaled dot-product attention">
 Given queries $\mathbf Q\in\R^{n\times d_k}$, keys $\mathbf K\in\R^{n\times d_k}$, and values $\mathbf V\in\R^{n\times d_v}$,
@@ -61,9 +81,7 @@ $$
 with softmax applied row-wise to the $n\times n$ logit matrix.
 </Theorem>
 
-<MarginNote variant="note" label="Known-math anchor">
-Because each row of $\softmax(\cdot)$ is non-negative and sums to one, output row $i$ is a **convex combination** of the value rows — i.e. attention is a data-dependent **Nadaraya–Watson kernel-weighted average**, with kernel $\exp(\inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k})$. The map is exact: *kernel weights* ↦ *attention row*, *kernel regression estimate* ↦ *attention output*. Where it breaks: the "kernel" is learned and need not be symmetric or positive-definite, so classical kernel-smoothing guarantees do not transfer.
-</MarginNote>
+Because each softmax row is non-negative and sums to one (Def. 1), output row $i$ is a **convex combination** of the value rows — the kernel-regression reading made literal.
 
 <Figure
   src="/figures/attention-pattern.svg"
@@ -74,14 +92,18 @@ Because each row of $\softmax(\cdot)$ is non-negative and sums to one, output ro
 
 ## Why the $1/\sqrt{d_k}$ scaling
 
-Without scaling, dot-product logits grow with $d_k$ and push softmax into saturation. The scaling is chosen to *exactly* cancel that growth.
+Each logit $\inner{\mathbf q}{\mathbf k}$ sums $d_k$ independent product terms, so its spread grows with $d_k$ and pushes softmax toward saturation. The scaling is chosen to *exactly* cancel that growth.
+
+<MarginNote variant="tip" label="Self-explanation">
+Before reading: $\inner{\mathbf q}{\mathbf k}=\sum_m q_m k_m$ adds $d_k$ independent zero-mean unit-variance terms. What should its variance scale like in $d_k$?
+</MarginNote>
 
 <Theorem kind="theorem" n="1" name="Variance preservation" id="thm-variance-preservation">
 Let $\mathbf q,\mathbf k\in\R^{d_k}$ have independent components with $\E[q_m]=\E[k_m]=0$, $\Var(q_m)=\Var(k_m)=1$, and $q_m \perp k_m$. Then $\E[\inner{\mathbf q}{\mathbf k}]=0$, $\Var(\inner{\mathbf q}{\mathbf k})=d_k$, and $\Var\!\big(\inner{\mathbf q}{\mathbf k}/\sqrt{d_k}\big)=1$.
 </Theorem>
 
 <Theorem kind="proof">
-Three steps; each names the rule it uses.
+Three steps, each naming the rule it uses.
 
 **Mean.** By linearity and independence,
 $$
@@ -89,7 +111,7 @@ $$
 \qquad\text{(linearity; } q_m\perp k_m\text{)}.
 $$
 
-**Variance.** Since the mean is $0$, $\Var(\inner{\mathbf q}{\mathbf k}) = \E[(\sum_m q_m k_m)^2]$. Expanding, the cross terms $\E[q_m k_m q_n k_n]$ with $m\neq n$ factor into a product containing a mean-zero factor and vanish, leaving
+**Variance.** Since the mean is $0$, $\Var(\inner{\mathbf q}{\mathbf k}) = \E[(\sum_m q_m k_m)^2]$. The cross terms $\E[q_m k_m q_n k_n]$ with $m\neq n$ contain a mean-zero factor and vanish, leaving
 $$
 \sum_m \E[q_m^2]\,\E[k_m^2] = \sum_{m=1}^{d_k} 1\cdot 1 = d_k
 \qquad\text{(independence; } \Var=\E[\,\cdot\,^2]\text{ at mean }0).
@@ -101,8 +123,10 @@ $$
 $$
 </Theorem>
 
-So $1/\sqrt{d_k}$ is not a tuning constant — it is the unique scale that holds logit variance at $1$ as $d_k$ grows, which is what keeps softmax gradients alive <Cite key="vaswani2017attention" />.
+So $1/\sqrt{d_k}$ is the unique scale that holds logit variance at $1$ as $d_k$ grows — which is what keeps softmax gradients alive <Cite key="vaswani2017attention" />.
 
----
+## Exercises
 
-*Proof-of-style excerpt ported from the LaTeX `transformer_mathematics` guide under [`style-guide-formal-v0.1`](https://github.com/brandon-behring/mathematical-guides/blob/main/docs/style-guide-formal-v0.1.md): motivated D-T-P, structured proofs read inline, the attention-as-convex-combination known-math anchor (with where-it-breaks), and a TikZ→SVG figure.*
+1. **(Prove)** Each row of $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic; conclude each attention output is a convex combination of the value rows. — [solution](../appendix-solutions/#soln-tf-ex1)
+2. **(Derive)** Without the $1/\sqrt{d_k}$ scaling, give $\Var(\inner{\mathbf q}{\mathbf k})$ and explain what happens to a softmax row as $d_k\to\infty$ (relate it to gradient saturation). — [solution](../appendix-solutions/#soln-tf-ex2)
+3. **(Compute)** For $\mathbf z=(2,1,0)$, compute $\softmax(\mathbf z)$ and verify it is unchanged by $\mathbf z + 5\mathbf 1$. — [solution](../appendix-solutions/#soln-tf-ex3)
