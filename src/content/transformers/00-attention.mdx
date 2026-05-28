@@ -19,6 +19,7 @@ import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/Margin
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
 import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 
 # The Attention Mechanism
 
@@ -127,6 +128,6 @@ So $1/\sqrt{d_k}$ is the unique scale that holds logit variance at $1$ as $d_k$ 
 
 ## Exercises
 
-1. **(Prove)** Each row of $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic; conclude each attention output is a convex combination of the value rows. — [solution](../appendix-solutions/#soln-tf-ex1)
-2. **(Derive)** Without the $1/\sqrt{d_k}$ scaling, give $\Var(\inner{\mathbf q}{\mathbf k})$ and explain what happens to a softmax row as $d_k\to\infty$ (relate it to gradient saturation). — [solution](../appendix-solutions/#soln-tf-ex2)
-3. **(Compute)** For $\mathbf z=(2,1,0)$, compute $\softmax(\mathbf z)$ and verify it is unchanged by $\mathbf z + 5\mathbf 1$. — [solution](../appendix-solutions/#soln-tf-ex3)
+1. **(Prove)** Each row of $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic; conclude each attention output is a convex combination of the value rows. — <XRef id="soln-tf-ex1" />
+2. **(Derive)** Without the $1/\sqrt{d_k}$ scaling, give $\Var(\inner{\mathbf q}{\mathbf k})$ and explain what happens to a softmax row as $d_k\to\infty$ (relate it to gradient saturation). — <XRef id="soln-tf-ex2" />
+3. **(Compute)** For $\mathbf z=(2,1,0)$, compute $\softmax(\mathbf z)$ and verify it is unchanged by $\mathbf z + 5\mathbf 1$. — <XRef id="soln-tf-ex3" />
