@@ -26,6 +26,7 @@ const mathematicalGuidesFamilyStyle = defineStyle({
     '\\norm': '\\left\\lVert #1 \\right\\rVert',
     '\\inner': '\\left\\langle #1, #2 \\right\\rangle',
     '\\defeq': '\\doteq',
+    '\\softmax': '\\operatorname{softmax}',
   },
 });
 

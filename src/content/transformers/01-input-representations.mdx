@@ -1,0 +1,233 @@
+---
+title: "Input Representations"
+slug: input-representations
+description: "How discrete tokens become continuous vectors carrying semantic identity and position: token embeddings, sinusoidal positional encodings, and rotary embeddings (RoPE) with their exact relative-position property."
+last_verified: 2026-06-03
+rigor_level: rigorous
+prerequisites: [notation]
+notation_introduced: ['\mathbf E', '\operatorname{PE}', '\omega_i', '\mathbf R(\theta)', '\mathbf\Theta(t)', '\theta_i']
+theorems: ['def-tf1-token-embedding', 'def-tf1-sinusoidal-pe', 'thm-tf1-pe-rotation', 'thm-tf1-pe-collision', 'def-tf1-rotation-2d', 'def-tf1-rope', 'thm-tf1-rope-relative']
+los:
+  - id: TF-1.1
+    statement: "Define the token embedding map and the positional encoding functions, sinusoidal and rotary."
+  - id: TF-1.2
+    statement: "Derive a guaranteed collision-free window for sinusoidal positional encodings and prove that a positional shift is a fixed linear transformation."
+  - id: TF-1.3
+    statement: "Explain how RoPE encodes relative position through rotations applied to query-key subspaces, and prove the dot product depends only on the offset."
+  - id: TF-1.4
+    statement: "Compute positional encodings for small examples and verify the rotation property numerically."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+
+# Input Representations
+
+**Where we are.** The notation chapter fixed our toolkit — softmax, cross-entropy, and the convex-combination property of row-stochastic matrices. Here we build the *inputs* the transformer consumes. A sequence of discrete tokens must become continuous vectors carrying two things at once: *semantic identity* (which token) and *positional information* (where in the sequence). The second is not optional. Attention, defined in the Attention chapter, is permutation-equivariant — permute the input rows and the output rows permute identically — so without injected position the model cannot tell "dog bites man" from "man bites dog." This chapter constructs identity (token embeddings), then position by two routes: the *additive* sinusoidal encoding and the *multiplicative* rotary encoding (RoPE), proving the relative-position property of each.
+
+## Token embeddings
+
+The first step is the simplest: map each token index to a dense vector by a learned lookup, imposing no structure beyond the dimension $d$.
+
+<Theorem kind="definition" n="1" name="Vocabulary and token sequence" id="def-tf1-vocabulary">
+A **vocabulary** is a finite set $\mathcal V = \{1, 2, \dots, \lvert\mathcal V\rvert\}$ of token indices. A **token sequence** of length $n$ is an ordered tuple $\mathbf x = (x_1, x_2, \dots, x_n) \in \mathcal V^{\,n}$.
+</Theorem>
+
+<Theorem kind="definition" n="2" name="Token embedding" id="def-tf1-token-embedding">
+The **token embedding** is a matrix $\mathbf E \in \R^{\lvert\mathcal V\rvert \times d}$ that maps each token index $x_t \in \mathcal V$ to the dense vector
+$$
+\mathbf e_t \defeq \mathbf E[x_t, :] \in \R^{d},
+$$
+the $x_t$-th row of $\mathbf E$. Equivalently, $\mathbf e_t = \mathbf e_{x_t}^\top \mathbf E$, where $\mathbf e_{x_t}$ is the one-hot vector with a $1$ in position $x_t$. The embedded sequence is the matrix $\hat{\mathbf X} = (\mathbf e_1; \mathbf e_2; \dots; \mathbf e_n) \in \R^{n \times d}$, one row per token.
+</Theorem>
+
+<MarginNote variant="pattern" label="Lookup = matrix product">A one-hot row times $\mathbf E$ selects a row of $\mathbf E$. The embedding is a linear lookup — no nonlinearity is involved.</MarginNote>
+
+The embedding carries identity but no order: a permutation of the tokens permutes the rows of $\hat{\mathbf X}$ and nothing else. Position must be supplied separately, which is the subject of the rest of the chapter.
+
+## Sinusoidal positional encoding
+
+The concept image is a clock. Picture each pair of coordinates as the tip of a hand sweeping a circle at its own fixed rate; the position is the angle, and advancing one step turns every hand by a fixed amount. We add such a vector of angles to the token embedding. The sinusoidal encoding of <Cite key="vaswani2017attention" /> realizes this with no learned parameters and two properties we will prove: a guaranteed collision-free window for nearby positions, and a *relative*-position structure in which a shift is a fixed rotation.
+
+<MarginNote variant="formula" label="Sinusoidal PE">$\operatorname{PE}(t,2i)=\sin(\omega_i t)$, $\operatorname{PE}(t,2i{+}1)=\cos(\omega_i t)$, with $\omega_i = 10000^{-2i/d}$.</MarginNote>
+
+<Theorem kind="definition" n="3" name="Sinusoidal positional encoding" id="def-tf1-sinusoidal-pe">
+For position $t \in \{0,1,2,\dots\}$ and even dimension $d$, define $\operatorname{PE} : \Z_{\ge 0} \to \R^{d}$ by
+$$
+\operatorname{PE}(t, 2i) \defeq \sin(\omega_i\, t),
+\qquad
+\operatorname{PE}(t, 2i+1) \defeq \cos(\omega_i\, t),
+$$
+for $i = 0, 1, \dots, d/2 - 1$, where the **angular frequency** of pair $i$ is
+$$
+\omega_i \defeq \frac{1}{10000^{2i/d}}.
+$$
+The frequencies decrease geometrically from $\omega_0 = 1$ (fastest) to $\omega_{d/2-1} = 10000^{-1 + 2/d}$ (slowest, near $1/10000$ for large $d$).
+</Theorem>
+
+<Theorem kind="definition" n="4" name="Transformer input" id="def-tf1-input">
+The input to the first transformer layer is the entrywise sum of the token embedding and the positional encoding:
+$$
+\mathbf X \defeq \hat{\mathbf X} + \mathbf P,
+\qquad P_{t, j} = \operatorname{PE}(t, j),
+$$
+where $\hat{\mathbf X} \in \R^{n\times d}$ is the embedded sequence (Definition 2) and $\mathbf P \in \R^{n\times d}$ is the positional encoding matrix. The token embedding supplies lexical identity; $\mathbf P$ supplies order, in the same $d$-dimensional space.
+</Theorem>
+
+We now prove the two properties. The first — that a positional shift acts as a fixed linear map — is the structural heart of the construction.
+
+<Theorem kind="theorem" n="1" name="Relative position is a fixed rotation" id="thm-tf1-pe-rotation">
+For any fixed offset $k \in \Z$ there is a block-diagonal matrix $\mathbf M_k \in \R^{d\times d}$, depending on $k$ but not on $t$, such that
+$$
+\operatorname{PE}(t + k) = \operatorname{PE}(t)\,\mathbf M_k^\top \qquad \text{for all } t.
+$$
+Here $\mathbf M_k = \operatorname{diag}\!\big(\mathbf R_0(k), \mathbf R_1(k), \dots, \mathbf R_{d/2-1}(k)\big)$, and each $2\times 2$ block is the rotation
+$$
+\mathbf R_i(k) =
+\begin{pmatrix}
+\cos(\omega_i k) & \sin(\omega_i k) \\
+-\sin(\omega_i k) & \cos(\omega_i k)
+\end{pmatrix}.
+$$
+</Theorem>
+
+<Theorem kind="proof">
+We show the claim on a single pair of dimensions; independence across pairs then assembles the block-diagonal map.
+
+**Reduce to one pair.** By Definition 3, the $i$-th pair of $\operatorname{PE}(t+k)$ is $\big(\sin(\omega_i(t+k)),\, \cos(\omega_i(t+k))\big)$.
+
+**Apply the angle-addition identities.** Expanding $\sin$ and $\cos$ of $\omega_i t + \omega_i k$,
+$$
+\begin{aligned}
+\sin(\omega_i t + \omega_i k) &= \cos(\omega_i k)\sin(\omega_i t) + \sin(\omega_i k)\cos(\omega_i t), \\
+\cos(\omega_i t + \omega_i k) &= -\sin(\omega_i k)\sin(\omega_i t) + \cos(\omega_i k)\cos(\omega_i t).
+\end{aligned}
+$$
+
+**Read it as a matrix.** With the pair written as a column $\big(\operatorname{PE}(t,2i),\, \operatorname{PE}(t,2i{+}1)\big)^\top$, the two lines say
+$$
+\begin{pmatrix} \operatorname{PE}(t+k, 2i) \\ \operatorname{PE}(t+k, 2i+1) \end{pmatrix}
+= \mathbf R_i(k)
+\begin{pmatrix} \operatorname{PE}(t, 2i) \\ \operatorname{PE}(t, 2i+1) \end{pmatrix}.
+$$
+
+**Assemble.** Each pair transforms independently by its own $\mathbf R_i(k)$, so the full vector transforms by the block-diagonal $\mathbf M_k$; transposing converts the column-vector action into the stated row-vector form $\operatorname{PE}(t+k) = \operatorname{PE}(t)\,\mathbf M_k^\top$. As $\mathbf R_i(k)$ involves only $\omega_i k$, the map is independent of $t$. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="pattern" label="Relative, not absolute">$\mathbf M_k$ depends only on the offset $k$, not on $t$ — which is exactly what makes sinusoidal PE encode *relative* position.</MarginNote>
+
+A consequence used by attention: the inner product $\operatorname{PE}(t)\cdot\operatorname{PE}(t+k)$ depends only on $k$, not on $t$. Each pair contributes $\sin(\omega_i t)\sin(\omega_i(t+k)) + \cos(\omega_i t)\cos(\omega_i(t+k)) = \cos(\omega_i k)$ by the same addition identity, so the model can read relative position off a linear function of the encodings, with no explicit subtraction of positions.
+
+<Theorem kind="theorem" n="2" name="Collision-free window" id="thm-tf1-pe-collision">
+For any two distinct positions $t \ne t'$ with
+$$
+\lvert t - t'\rvert < 2\pi \cdot 10000^{\,1 - 2/d},
+$$
+the sinusoidal encoding is injective: $\operatorname{PE}(t) \ne \operatorname{PE}(t')$.
+</Theorem>
+
+<Theorem kind="proof">
+We argue by contraposition, using only the *slowest* pair.
+
+**Suppose a collision.** If $\operatorname{PE}(t) = \operatorname{PE}(t')$, every pair agrees; in particular the slowest pair $i = d/2 - 1$ gives $\sin(\omega_{d/2-1} t) = \sin(\omega_{d/2-1} t')$ and $\cos(\omega_{d/2-1} t) = \cos(\omega_{d/2-1} t')$.
+
+**Equal sine and cosine forces equal angle mod $2\pi$.** A point on the unit circle is determined by its sine and cosine together, so $\omega_{d/2-1}(t - t') \in 2\pi\Z$.
+
+**Bound the gap.** With $t \ne t'$ the smallest nonzero value of $\lvert\omega_{d/2-1}(t-t')\rvert$ is $2\pi$, hence
+$$
+\lvert t - t'\rvert \ge \frac{2\pi}{\omega_{d/2-1}} = 2\pi \cdot 10000^{\,1 - 2/d}.
+$$
+So any gap shorter than this cannot produce a collision; equivalently, $\operatorname{PE}$ is injective on every window narrower than $2\pi \cdot 10000^{1-2/d}$. $\qquad\blacksquare$
+</Theorem>
+
+This is a *guaranteed* lower bound from one pair, not the exact period of the full vector. A genuine full-vector collision needs every frequency pair to realign simultaneously, which generically happens far later; the bound is the conservative window inside which uniqueness is certain. Beyond it, the slowest coordinates begin to wrap, and modern models prefer the rotary scheme below or relative-bias schemes for long-range structure.
+
+## Rotary position embedding (RoPE)
+
+Sinusoidal PE *adds* position to the input. RoPE instead *rotates* the query and key vectors inside attention, so that the query-key dot product — the only place position needs to act — depends exactly on the relative offset. The concept image is again rotating hands, but now the data vectors themselves are the hands: rotate the query by an angle set by its position and the key by an angle set by its, and only the difference of angles survives the inner product. We first fix the rotation we use.
+
+<Theorem kind="definition" n="5" name="2D rotation matrix" id="def-tf1-rotation-2d">
+For angle $\theta \in \R$, the $2\times 2$ rotation matrix is
+$$
+\mathbf R(\theta) \defeq
+\begin{pmatrix}
+\cos\theta & -\sin\theta \\
+\sin\theta & \cos\theta
+\end{pmatrix}.
+$$
+It is orthogonal, with $\mathbf R(\theta)^\top = \mathbf R(-\theta) = \mathbf R(\theta)^{-1}$, and rotations compose additively: $\mathbf R(\alpha)\mathbf R(\beta) = \mathbf R(\alpha + \beta)$.
+</Theorem>
+
+<Theorem kind="definition" n="6" name="Rotary position embedding" id="def-tf1-rope">
+Given a query $\mathbf q \in \R^{d}$ at position $m$ and a key $\mathbf k \in \R^{d}$ at position $n$, RoPE applies a position-dependent rotation to each $2$D subspace before the dot product:
+$$
+f(\mathbf q, m) \defeq \mathbf\Theta(m)\,\mathbf q,
+\qquad
+f(\mathbf k, n) \defeq \mathbf\Theta(n)\,\mathbf k,
+$$
+where
+$$
+\mathbf\Theta(t) = \operatorname{diag}\!\big(\mathbf R(\theta_0 t),\, \mathbf R(\theta_1 t),\, \dots,\, \mathbf R(\theta_{d/2-1} t)\big)
+$$
+is block-diagonal in the $2\times 2$ rotations of Definition 5, and the base angles $\theta_i = 10000^{-2i/d}$ follow the same geometric schedule as the sinusoidal frequencies (Definition 3).
+</Theorem>
+
+<MarginNote variant="pattern" label="Position in the dot product">RoPE writes relative position directly into the query-key inner product — no fixed vector is added and no positions are subtracted.</MarginNote>
+
+<MarginNote variant="tip" label="Self-explanation">Before reading the proof: $\mathbf\Theta(t)$ is built from orthogonal rotations that compose additively. What does $\mathbf\Theta(m)^\top\mathbf\Theta(n)$ have to be?</MarginNote>
+
+<Theorem kind="theorem" n="3" name="RoPE relative-position property" id="thm-tf1-rope-relative">
+The dot product of RoPE-encoded query and key depends only on the relative position $n - m$:
+$$
+f(\mathbf q, m)^\top f(\mathbf k, n) = \mathbf q^\top\, \mathbf\Theta(n - m)\, \mathbf k.
+$$
+</Theorem>
+
+<Theorem kind="proof">
+The high-level step is to collapse the two position rotations into one by orthogonality; the rest is bookkeeping over blocks.
+
+**Expand the dot product.** By Definition 6,
+$$
+f(\mathbf q, m)^\top f(\mathbf k, n)
+= (\mathbf\Theta(m)\mathbf q)^\top (\mathbf\Theta(n)\mathbf k)
+= \mathbf q^\top \mathbf\Theta(m)^\top \mathbf\Theta(n)\, \mathbf k.
+$$
+
+**Transpose is negative rotation (blockwise).** Each diagonal block is orthogonal with $\mathbf R(\theta_i m)^\top = \mathbf R(-\theta_i m)$ (Definition 5), so $\mathbf\Theta(m)^\top = \mathbf\Theta(-m)$.
+
+**Compose additively (blockwise).** For each block, $\mathbf R(-\theta_i m)\mathbf R(\theta_i n) = \mathbf R(\theta_i(n - m))$ by the composition rule of Definition 5; assembling the blocks gives $\mathbf\Theta(-m)\mathbf\Theta(n) = \mathbf\Theta(n - m)$.
+
+**Substitute.** Therefore $f(\mathbf q, m)^\top f(\mathbf k, n) = \mathbf q^\top \mathbf\Theta(n-m)\mathbf k$, a function of $n - m$ alone. $\qquad\blacksquare$
+</Theorem>
+
+<Theorem kind="remark" name="Complex-number viewpoint" id="rem-tf1-rope-complex">
+RoPE is cleanest in $\mathbb C^{\,d/2}$. Pair adjacent coordinates into $z_i = x_{2i} + \mathrm i\, x_{2i+1}$; the rotation $\mathbf R(\theta_i t)$ becomes multiplication by $e^{\mathrm i\theta_i t}$, so $f(\mathbf q, m)_i = q_i\, e^{\mathrm i\theta_i m}$ and $f(\mathbf k, n)_i = k_i\, e^{\mathrm i\theta_i n}$. The (Hermitian) dot product is then $\sum_i \overline{q_i}\,k_i\, e^{\mathrm i\theta_i(n-m)}$, manifestly a function of $n - m$. This is also how RoPE is implemented: an entrywise complex multiply costs $O(d)$, not the $O(d^2)$ of a dense matrix product.
+</Theorem>
+
+<Theorem kind="remark" name="Sinusoidal PE versus RoPE" id="rem-tf1-pe-vs-rope">
+Both schemes use the geometric schedule $\theta_i = 10000^{-2i/d}$, but they inject position differently. Sinusoidal PE *adds* a fixed vector to the input (Definition 4), so its relative-position structure (Theorem 1) survives only approximately once the learned projections $\mathbf W^Q, \mathbf W^K$ act. RoPE *multiplies* inside attention (Definition 6), so the relative-position identity (Theorem 3) holds *exactly* in the dot product. Open decoder-only models such as LLaMA adopt RoPE for this reason.<Sidenote>RoPE was introduced by <Cite key="su2024roformer" />; its use in a large open model is documented in <Cite key="touvron2023llama" />.</Sidenote>
+</Theorem>
+
+## Other positional schemes
+
+Two further schemes recur in practice and contrast usefully with the two above. A **learned positional encoding** is a parameter matrix $\mathbf P \in \R^{n_{\max}\times d}$ trained jointly with the model, giving position $t$ the row $\mathbf P[t, :]$; it is flexible at a fixed context length but, having no closed form, cannot extrapolate beyond $n_{\max}$. **ALiBi** leaves the query and key vectors untouched and instead subtracts a head-specific linear penalty $m_r\,(i - j)$ from each logit before softmax, encoding an explicit monotone preference for nearby tokens that is defined for any distance and so extrapolates naturally. RoPE and ALiBi both encode *relative* position but in different places — RoPE in the geometry of the query-key vectors (Theorem 3), ALiBi in the logits after the dot product.
+
+We summarize the four schemes by where they inject position and how they extrapolate.
+
+| Method | Relative-position mechanism | Extrapolation |
+|---|---|---|
+| Sinusoidal PE | Additive input features; an offset becomes a fixed rotation (Theorem 1), exact only before the $\mathbf W^Q,\mathbf W^K$ projections | Defined for all positions; periodicity weakens very-long-range uniqueness |
+| RoPE | Multiplicative rotations applied directly in the query/key subspaces (Theorem 3) | Relative effect is exact in the dot product; strong long-context behavior |
+| Learned PE | Absolute-position lookup $\mathbf P[t, :]$ | None beyond $n_{\max}$ |
+| ALiBi | Head-specific linear distance bias added to the logits | Natural — the bias is defined for arbitrary distances |
+
+## Exercises
+
+1. **(Compute)** Let $d = 4$, so $\omega_0 = 1$ and $\omega_1 = 10000^{-1/2} = 0.01$. Write out $\operatorname{PE}(0)$ and $\operatorname{PE}(1)$ numerically, and confirm $\operatorname{PE}(0) \ne \operatorname{PE}(1)$. — <XRef id="soln-tf1-ex1" />
+2. **(Compute)** Continuing with $d = 4$, form $\mathbf R_0(1)$ and apply it to the first pair of $\operatorname{PE}(0)$; check that the result equals the first pair of $\operatorname{PE}(1)$, verifying Theorem 1 on one block. — <XRef id="soln-tf1-ex2" />
+3. **(Prove)** Show that the inner product $\operatorname{PE}(t)\cdot\operatorname{PE}(t+k)$ depends only on the offset $k$, not on $t$, and give its closed form as a sum over frequency pairs. — <XRef id="soln-tf1-ex3" />
+4. **(Derive)** A vocabulary lookup table $\mathbf E$ admits no analogue of Theorem 1: prove there is in general no fixed map sending the embedding of token $x$ to that of token $x+1$ for every $x$, and explain in one sentence what structural feature of $\operatorname{PE}$ makes the shift law possible. — <XRef id="soln-tf1-ex4" />
+5. **(Prove)** Using only Definition 5, establish $\mathbf\Theta(s)\mathbf\Theta(t) = \mathbf\Theta(s+t)$ and $\mathbf\Theta(t)^\top = \mathbf\Theta(-t)$ for the block-diagonal RoPE map, and deduce Theorem 3 in one line. — <XRef id="soln-tf1-ex5" />

@@ -1,0 +1,194 @@
+---
+title: "The Transformer Block"
+slug: transformer-block
+description: "The transformer block from its parts: the position-wise feed-forward network, layer normalization and its Jacobian bound, residual connections and the gradient-highway identity, and why pre-norm leaves the skip path naked while post-norm does not."
+last_verified: 2026-06-03
+rigor_level: rigorous
+prerequisites: [notation, attention]
+notation_introduced: ['\operatorname{FFN}', '\operatorname{LN}', 'd_{\text{ff}}', '\gamma', '\beta']
+theorems: ['prop-tf4-ln-jacobian', 'thm-tf4-gradient-highway']
+los:
+  - id: TF-4.1
+    statement: "Define the position-wise feed-forward network, layer normalization, and residual connections."
+  - id: TF-4.2
+    statement: "Prove the gradient-highway identity for residual networks and identify the all-skip term."
+  - id: TF-4.3
+    statement: "Compare pre-norm and post-norm blocks by where layer normalization sits relative to the skip path."
+  - id: TF-4.4
+    statement: "Trace tensor dimensions through a complete pre-norm transformer block."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+
+# The Transformer Block
+
+**Where we are.** Attention mixes information *across* tokens but is, row by row, only a convex average of value vectors (<XRef id="prop-row-stochastic-convex" />) — it cannot reach outside their hull. A transformer block surrounds it with three more ingredients that supply what attention lacks: a position-wise feed-forward network for per-token nonlinear capacity, layer normalization to fix the scale of each token's features, and residual connections that thread a direct identity path through depth. We define each, bound the layer-norm Jacobian, prove the gradient-highway identity that justifies the skip path, and then read the two standard assemblies — post-norm and pre-norm — off the single question of where normalization sits relative to that path.
+
+## The position-wise feed-forward network
+
+After attention has gathered context into each token, the block processes each token *on its own*. The feed-forward network is the only nonlinear per-token transform in the block: it widens each representation, bends it through an activation, and projects it back. It touches no other position.
+
+<Theorem kind="definition" n="1" name="Position-wise feed-forward network" id="def-tf4-ffn">
+The **position-wise feed-forward network** $\operatorname{FFN}:\R^{d}\to\R^{d}$ is a two-layer perceptron applied independently and identically to each token:
+$$
+\operatorname{FFN}(\mathbf x) \defeq \sigma(\mathbf x\mathbf W_1 + \mathbf b_1)\,\mathbf W_2 + \mathbf b_2,
+$$
+with $\mathbf W_1\in\R^{d\times d_{\text{ff}}}$, $\mathbf W_2\in\R^{d_{\text{ff}}\times d}$, biases $\mathbf b_1\in\R^{d_{\text{ff}}}$, $\mathbf b_2\in\R^{d}$, and $\sigma$ an elementwise nonlinearity (ReLU in the original transformer). The hidden width is typically $d_{\text{ff}} = 4d$.
+</Theorem>
+
+Applied to a sequence $\mathbf X\in\R^{n\times d}$, the map acts row-wise: $[\operatorname{FFN}(\mathbf X)]_{i,:} = \operatorname{FFN}(\mathbf X_{i,:})$. There is no cross-position term, so every interaction *between* tokens is the work of attention alone; the feed-forward network contributes nonlinear capacity *within* a token. These are the block's only two computational operations — cross-token mixing and per-token processing — and everything else is infrastructure for stable gradients.
+
+<MarginNote variant="pattern" label="Division of labor">$\operatorname{FFN}$ = per-token nonlinearity; attention = cross-token mixing. The block has no third computational operation.</MarginNote>
+
+The two layers admit a memory reading that makes the structural kinship with attention exact.
+
+<Theorem kind="remark" name="The feed-forward network as fixed key–value memory" id="rem-tf4-kv-memory">
+Write the rows of $\mathbf W_1$ as "keys" and the columns of $\mathbf W_2$ as "values": $\mathbf W_1 = [\mathbf k_1\mid\cdots\mid\mathbf k_{d_{\text{ff}}}]^\top$ and $\mathbf W_2 = [\mathbf v_1\mid\cdots\mid\mathbf v_{d_{\text{ff}}}]$. Ignoring biases,
+$$
+\operatorname{FFN}(\mathbf x) = \sum_{j=1}^{d_{\text{ff}}} \sigma(\inner{\mathbf x}{\mathbf k_j})\,\mathbf v_j.
+$$
+The input is matched against each key, $\sigma$ gates the match, and the output is the gated sum of values — structurally identical to an attention row, except the keys and values are *fixed parameters* rather than functions of the input. Attention routes contextual information; the feed-forward network routes parametric (memorized) information.<Sidenote>The two together form a retrieval system combining context-dependent and context-independent knowledge.</Sidenote>
+</Theorem>
+
+Gated variants refine the activation without changing this picture.
+
+<Theorem kind="remark" name="SwiGLU and gated feed-forward variants" id="rem-tf4-swiglu">
+Modern models replace the activation with a multiplicative gate <Cite key="shazeer2020glu" />: with $\operatorname{Swish}(z) = z\,\sigma_{\mathrm{sig}}(z)$ and a third matrix $\mathbf W_3\in\R^{d\times d_{\text{ff}}}$,
+$$
+\operatorname{SwiGLU}(\mathbf x) \defeq \big(\operatorname{Swish}(\mathbf x\mathbf W_1)\odot \mathbf x\mathbf W_3\big)\,\mathbf W_2,
+$$
+where $\odot$ is the Hadamard product. The gate $\mathbf x\mathbf W_3$ modulates the activation and smooths its gradient at the cost of one extra projection ($3d\,d_{\text{ff}}$ parameters against $2d\,d_{\text{ff}}$ for the vanilla form). The per-token, no-cross-position structure of <XRef id="def-tf4-ffn" /> is unchanged.
+</Theorem>
+
+## Layer normalization
+
+A token's feature vector can drift in scale as it passes through layers, and an optimizer copes badly with coordinates of wildly different magnitude. Layer normalization removes that drift at the source: it recenters and rescales each token *across its own features*, then restores expressive freedom through a learned scale and shift. Unlike batch normalization it uses no statistics from other tokens, so it is identical at training and inference and indifferent to sequence length.
+
+<Theorem kind="definition" n="2" name="Layer normalization" id="def-tf4-ln">
+For a token $\mathbf x\in\R^{d}$ with feature mean $\mu_{\mathbf x} = \tfrac1d\sum_{i=1}^{d} x_i$ and feature variance $\sigma_{\mathbf x}^2 = \tfrac1d\sum_{i=1}^{d}(x_i-\mu_{\mathbf x})^2$, **layer normalization** <Cite key="ba2016layernorm" /> is
+$$
+\operatorname{LN}(\mathbf x) \defeq \boldsymbol\gamma\odot \frac{\mathbf x - \mu_{\mathbf x}\mathbf 1}{\sqrt{\sigma_{\mathbf x}^2 + \epsilon}} + \boldsymbol\beta,
+$$
+where $\epsilon>0$ is a stability constant and $\boldsymbol\gamma,\boldsymbol\beta\in\R^{d}$ are learned scale and shift parameters.
+</Theorem>
+
+<MarginNote variant="formula" label="Per-token statistics">$\mu_{\mathbf x},\sigma_{\mathbf x}^2$ average over the $d$ features of *one* token — never across the batch or the sequence.</MarginNote>
+
+The normalization is what keeps activation scales in check, but it inserts a Jacobian onto whatever path it sits on. The next chapters turn on a single fact about that Jacobian: it is bounded independently of the input's magnitude.
+
+<Theorem kind="proposition" n="1" name="Layer-norm Jacobian bound" id="prop-tf4-ln-jacobian">
+For fixed $\boldsymbol\gamma$ and $\epsilon>0$, the Jacobian of $\operatorname{LN}$ satisfies, for every $\mathbf x\in\R^{d}$,
+$$
+\Big\lVert \frac{\partial\,\operatorname{LN}(\mathbf x)}{\partial\mathbf x}\Big\rVert_2 \;\le\; \frac{2\,\lVert\boldsymbol\gamma\rVert_\infty}{\sqrt{\epsilon}}.
+$$
+The bound is independent of $\lVert\mathbf x\rVert$ but does depend on the learned scale $\boldsymbol\gamma$ and the constant $\epsilon$.
+</Theorem>
+
+<Theorem kind="proof">
+Write the centered-and-scaled vector $\hat{\mathbf x} = (\mathbf x - \mu_{\mathbf x}\mathbf 1)/s$ with $s = \sqrt{\sigma_{\mathbf x}^2 + \epsilon}$, so $\operatorname{LN}(\mathbf x) = \boldsymbol\gamma\odot\hat{\mathbf x} + \boldsymbol\beta$. The argument is three steps, each naming the rule it uses.
+
+**Jacobian of the centering–scaling map.** Differentiating $\hat{\mathbf x}$ in $\mathbf x$ gives
+$$
+\frac{\partial\hat{\mathbf x}}{\partial\mathbf x} = \frac1s\Big(\mathbf I - \tfrac1d\mathbf 1\mathbf 1^\top - \tfrac1d\hat{\mathbf x}\hat{\mathbf x}^\top\Big),
+$$
+the three terms being the derivative of $\mathbf x$, of the mean subtraction, and of the variance scaling (quotient rule).
+
+**Spectral norm of the inner matrix.** The matrix $\mathbf I - \tfrac1d\mathbf 1\mathbf 1^\top$ is the orthogonal projection off $\operatorname{span}\{\mathbf 1\}$, so its spectral norm is $1$. The correction $\tfrac1d\hat{\mathbf x}\hat{\mathbf x}^\top$ is rank one with spectral norm $\lVert\hat{\mathbf x}\rVert^2/d = \sigma_{\mathbf x}^2/(\sigma_{\mathbf x}^2+\epsilon)\le 1$. By the triangle inequality the inner matrix has spectral norm at most $2$, hence
+$$
+\Big\lVert\frac{\partial\hat{\mathbf x}}{\partial\mathbf x}\Big\rVert_2 \le \frac{2}{s} \le \frac{2}{\sqrt{\epsilon}},
+$$
+using $s\ge\sqrt{\epsilon}$.
+
+**Learned scale.** Pre-multiplying by $\operatorname{diag}(\boldsymbol\gamma)$ scales the operator norm by at most $\lVert\boldsymbol\gamma\rVert_\infty$, which gives the stated bound. $\qquad\blacksquare$
+</Theorem>
+
+The projection off $\operatorname{span}\{\mathbf 1\}$ is the same null-space phenomenon as the softmax Jacobian's annihilation of $\mathbf 1$ (<XRef id="prop-softmax-jacobian" />): normalization removes the mean direction, so layer normalization is blind to a uniform shift of a token's features, exactly as softmax is blind to a uniform shift of its logits.
+
+## Residual connections and the gradient highway
+
+Stacking many nonlinear layers makes the loss gradient at an early layer a long product of Jacobians; if those factors are even mildly contractive, the product shrinks geometrically and the early layers stop learning. The residual connection breaks the product apart by adding the input back to each sublayer's output, so that an *identity* sits beside every Jacobian. Reading the input as the default and the sublayer as a learned correction, the layer can represent the identity for free — and, as we now show, so can the backward pass.
+
+<Theorem kind="definition" n="3" name="Residual connection" id="def-tf4-residual">
+A **residual connection** wraps a sublayer $f$ (here $\operatorname{MHA}$ or $\operatorname{FFN}$) by adding its input to its output:
+$$
+\mathbf y \defeq \mathbf x + f(\mathbf x).
+$$
+The identity path $\mathbf x\mapsto\mathbf x$ guarantees the layer can represent the identity map regardless of $f$.
+</Theorem>
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: a residual layer's Jacobian is $\mathbf I + \partial f/\partial\mathbf x$. Multiply $L-\ell$ such factors and expand — which term has no sublayer Jacobian?</MarginNote>
+
+<Theorem kind="theorem" n="1" name="Gradient highway" id="thm-tf4-gradient-highway">
+In a depth-$L$ residual stack $\mathbf x_{\ell+1} = \mathbf x_\ell + f_\ell(\mathbf x_\ell)$, $\ell = 0,\dots,L-1$, the gradient of a loss $\mathcal L$ with respect to the layer-$\ell$ input is, in the row-vector convention,
+$$
+\frac{\partial\mathcal L}{\partial\mathbf x_\ell} = \frac{\partial\mathcal L}{\partial\mathbf x_L}\prod_{i=\ell}^{L-1}\Big(\mathbf I + \frac{\partial f_i}{\partial\mathbf x_i}\Big).
+$$
+Expanding the product yields a sum over all subsets of the layers $\{\ell,\dots,L-1\}$; the empty subset contributes the identity $\mathbf I$ unmultiplied by any sublayer Jacobian. A residual stack therefore always retains this direct, all-skip gradient term, which a plain stack — whose gradient is $\prod_i \partial f_i/\partial\mathbf x_i$ — lacks.
+</Theorem>
+
+<Theorem kind="proof">
+Two steps: the identity, then the reading of its expansion.
+
+**The product identity (chain rule).** Each residual layer has Jacobian
+$$
+\frac{\partial\mathbf x_{i+1}}{\partial\mathbf x_i} = \mathbf I + \frac{\partial f_i}{\partial\mathbf x_i},
+$$
+by differentiating $\mathbf x_{i+1} = \mathbf x_i + f_i(\mathbf x_i)$ (sum rule). The loss depends on $\mathbf x_\ell$ only through the composition $\mathbf x_\ell\mapsto\mathbf x_{\ell+1}\mapsto\cdots\mapsto\mathbf x_L$, so the chain rule multiplies these single-layer Jacobians:
+$$
+\frac{\partial\mathcal L}{\partial\mathbf x_\ell} = \frac{\partial\mathcal L}{\partial\mathbf x_L}\prod_{i=\ell}^{L-1}\frac{\partial\mathbf x_{i+1}}{\partial\mathbf x_i} = \frac{\partial\mathcal L}{\partial\mathbf x_L}\prod_{i=\ell}^{L-1}\Big(\mathbf I + \frac{\partial f_i}{\partial\mathbf x_i}\Big).
+$$
+
+**The all-skip term (distributivity).** Write $\mathbf J_i = \partial f_i/\partial\mathbf x_i$. Expanding $\prod_{i=\ell}^{L-1}(\mathbf I + \mathbf J_i)$ by distributivity gives a sum over subsets $S\subseteq\{\ell,\dots,L-1\}$ of the ordered products $\prod_{i\in S}\mathbf J_i$, where $S=\varnothing$ yields the empty product $\mathbf I$:
+$$
+\prod_{i=\ell}^{L-1}(\mathbf I + \mathbf J_i) = \mathbf I + \sum_{i}\mathbf J_i + \sum_{i<j}\mathbf J_j\mathbf J_i + \cdots + \mathbf J_{L-1}\cdots\mathbf J_\ell.
+$$
+The leading $\mathbf I$ is independent of every $\mathbf J_i$: it is the path that bypasses all sublayers, and it survives even when each $\mathbf J_i$ is contractive. Deleting the skip connections replaces $\mathbf I + \mathbf J_i$ by $\mathbf J_i$ in each factor, so the product collapses to $\prod_i\mathbf J_i$ with no such surviving term. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="formula" label="Gradient highway">$\partial\mathcal L/\partial\mathbf x_\ell$ expands to $\mathbf I + (\text{Jacobian terms})$; the leading $\mathbf I$ is the all-skip path.</MarginNote>
+
+The theorem says only that the identity term is *present*, not that it dominates: the bracket is $\mathbf I$ plus a sum that may be large, so this is no uniform lower bound on the whole gradient.<Sidenote>The sublayer terms can still cause growth or, through correlation, cancellation. The skip path guarantees a route, not a magnitude.</Sidenote> What it does establish is structural: in a plain stack the *only* route from $\mathbf x_L$ to $\mathbf x_\ell$ runs through every Jacobian, and a single contractive layer can throttle it; in a residual stack the all-skip route is immune to any individual $\mathbf J_i$ shrinking <Cite key="he2016deep" />. This is also why the residual makes the block expressive enough to escape the convex hull of <XRef id="prop-row-stochastic-convex" />: attention alone interpolates among values, but $\mathbf x + \operatorname{Attn}(\mathbf x)$ adds the original token back, moving the output off the hull.
+
+## Assembling the block: pre-norm and post-norm
+
+A block uses each of the two sublayers once, each wrapped in a residual connection, with layer normalization somewhere on the path. The only free choice is *where* the normalization goes — after the residual addition, or before the sublayer — and that single choice is what distinguishes the two standard arrangements. We read their gradient behavior straight off the previous theorem.
+
+<Theorem kind="definition" n="4" name="Post-norm block" id="def-tf4-postnorm">
+The **post-norm** arrangement (the original transformer <Cite key="vaswani2017attention" />) normalizes *after* each residual addition:
+$$
+\mathbf y = \operatorname{LN}\big(\mathbf x + \operatorname{MHA}(\mathbf x)\big), \qquad \mathbf z = \operatorname{LN}\big(\mathbf y + \operatorname{FFN}(\mathbf y)\big).
+$$
+</Theorem>
+
+<Theorem kind="definition" n="5" name="Pre-norm block" id="def-tf4-prenorm">
+The **pre-norm** arrangement normalizes *before* each sublayer, leaving the addition last:
+$$
+\mathbf y = \mathbf x + \operatorname{MHA}\big(\operatorname{LN}(\mathbf x)\big), \qquad \mathbf z = \mathbf y + \operatorname{FFN}\big(\operatorname{LN}(\mathbf y)\big).
+$$
+</Theorem>
+
+<MarginNote variant="pattern" label="Where LN sits">Pre-norm: LN inside the residual branch, skip path naked. Post-norm: LN outside, on top of the skip sum.</MarginNote>
+
+The distinction is exactly whether the residual path stays *naked*. In pre-norm, $\mathbf y = \mathbf x + (\cdots)$ is a residual layer of the form in <XRef id="thm-tf4-gradient-highway" />, so its Jacobian is $\mathbf I + \mathbf J$ and the gradient inherits the all-skip $\mathbf I$ directly. In post-norm, $\mathbf y = \operatorname{LN}(\mathbf x + (\cdots))$ wraps the residual sum in a further map, so its Jacobian is $\mathbf J_{\operatorname{LN}}(\mathbf I + \mathbf J)$ — the layer-norm Jacobian of <XRef id="prop-tf4-ln-jacobian" /> multiplies the whole bracket, identity term included. The skip path no longer reaches the next layer untouched; even the all-skip route must pass through a normalization Jacobian at every step.
+
+<Theorem kind="remark" name="What pre-norm buys at initialization" id="rem-tf4-prenorm-init">
+A mean-field analysis <Cite key="xiong2020layer" /> supports a qualitative picture at initialization: a pre-norm block behaves like a small perturbation of the identity, while a post-norm block, with $\operatorname{LN}$ on every skip step, can produce larger gradients near the output layers and is more sensitive to initialization and learning-rate warmup. This is *not* a theorem that every pre-norm transformer has depth-independent gradients — the sublayer terms still accumulate — but it explains why deep post-norm stacks ($L\gtrsim 12$) are notoriously hard to train without warmup and residual-scaling tricks, while pre-norm largely sidesteps the difficulty. Pre-norm is the post-2020 default (GPT-2/3, Llama, PaLM); post-norm is used by the original transformer and BERT.
+</Theorem>
+
+We close by checking that the block is shape-preserving, which is what lets blocks stack without any interface adapter.
+
+<Theorem kind="example" name="Tracing dimensions through a pre-norm block" id="ex-tf4-trace">
+Take a sequence $\mathbf X\in\R^{n\times d}$ and a pre-norm block (<XRef id="def-tf4-prenorm" />) with $\operatorname{FFN}$ width $d_{\text{ff}} = 4d$. Layer normalization preserves shape, so $\operatorname{LN}(\mathbf X)\in\R^{n\times d}$; multi-head attention returns $\R^{n\times d}$; the residual add gives $\mathbf Y = \mathbf X + \operatorname{MHA}(\operatorname{LN}(\mathbf X))\in\R^{n\times d}$. The second $\operatorname{LN}$ again returns $\R^{n\times d}$; the $\operatorname{FFN}$ widens each token to $\R^{n\times 4d}$, applies $\sigma$, and projects back to $\R^{n\times d}$; the final add gives $\mathbf Z = \mathbf Y + \operatorname{FFN}(\operatorname{LN}(\mathbf Y))\in\R^{n\times d}$. The hidden width $4d$ is the only place the representation transiently expands, and the block maps $\R^{n\times d}\to\R^{n\times d}$ — same shape, enriched content.
+</Theorem>
+
+## Exercises
+
+1. **(Prove)** Show the gradient identity $\partial\mathcal L/\partial\mathbf x_\ell = (\partial\mathcal L/\partial\mathbf x_L)\prod_{i=\ell}^{L-1}(\mathbf I + \partial f_i/\partial\mathbf x_i)$ for a residual stack, and identify the single term in its expansion that contains no sublayer Jacobian. — <XRef id="soln-tf4-ex1" />
+2. **(Derive)** For a post-norm layer $\mathbf y = \operatorname{LN}(\mathbf x + f(\mathbf x))$, write $\partial\mathbf y/\partial\mathbf x$ as a product of the layer-norm Jacobian and the residual Jacobian, and contrast it with the pre-norm layer $\mathbf y = \mathbf x + f(\operatorname{LN}(\mathbf x))$. Which one leaves an unmultiplied $\mathbf I$ in the gradient? — <XRef id="soln-tf4-ex2" />
+3. **(Prove)** Using <XRef id="def-tf4-ln" />, show that $\operatorname{LN}$ is invariant to a uniform shift of the input features, $\operatorname{LN}(\mathbf x + c\mathbf 1) = \operatorname{LN}(\mathbf x)$ for every $c\in\R$, and conclude that its Jacobian annihilates $\mathbf 1$. — <XRef id="soln-tf4-ex3" />
+4. **(Compute)** Take $\mathbf x = (4, 0, -2, 2)\in\R^{4}$ with $\boldsymbol\gamma = \mathbf 1$, $\boldsymbol\beta = \mathbf 0$, $\epsilon = 0$. Compute $\mu_{\mathbf x}$, $\sigma_{\mathbf x}^2$, and $\operatorname{LN}(\mathbf x)$, and verify the output has zero mean and unit variance across its features. — <XRef id="soln-tf4-ex4" />
+5. **(Construct)** Exhibit a sublayer $f$ and an input for which the all-skip term of <XRef id="thm-tf4-gradient-highway" /> does *not* dominate the gradient — i.e. choose $\partial f/\partial\mathbf x$ so that the full bracket $\mathbf I + \partial f/\partial\mathbf x$ has spectral norm far from $1$ — showing the theorem guarantees a route, not a magnitude. — <XRef id="soln-tf4-ex5" />

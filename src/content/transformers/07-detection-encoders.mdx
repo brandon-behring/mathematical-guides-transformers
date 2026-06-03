@@ -1,0 +1,186 @@
+---
+title: "Encoders for Detection"
+slug: detection-encoders
+description: "Transformer encoders as detectors: the pooled [CLS] representation as a document embedding, the CLIP-style contrastive objective as a temperature-scaled softmax-plus-cross-entropy over in-batch candidates, and embedding-geometry score functions for out-of-distribution detection."
+last_verified: 2026-06-03
+rigor_level: rigorous
+prerequisites: [notation, attention]
+notation_introduced: ['\operatorname{pool}', '\mathbf r', '\tau', 'InfoNCE', 's(\cdot)']
+theorems: ['def-tf7-encoder-classifier', 'def-tf7-pooled-rep', 'def-tf7-contrastive', 'prop-tf7-contrastive-ce', 'prop-tf7-contrastive-alignment', 'def-tf7-ood-score', 'prop-tf7-auroc-rank']
+los:
+  - id: TF-7.1
+    statement: "Define the pooled document representation produced by an encoder-only classifier and the linear head that turns it into class logits."
+  - id: TF-7.2
+    statement: "Define the symmetric contrastive objective and prove it is cross-entropy over in-batch pair indices with a temperature-scaled similarity logit."
+  - id: TF-7.3
+    statement: "Prove that the contrastive minimizer aligns paired embeddings and separates mismatched ones, and identify the role of the temperature."
+  - id: TF-7.4
+    statement: "Define an embedding-geometry score function for out-of-distribution detection and prove AUROC equals the probability the score ranks an anomaly above an inlier."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+
+# Encoders for Detection
+
+**Where we are.** Earlier chapters built the encoder as a sequence-to-sequence map whose every layer is bidirectional and whose attention rows are convex averages of value vectors (<XRef id="prop-row-stochastic-convex" />). This chapter turns that map into a *detector*: a function from a whole document to a single class label or anomaly score. Three pieces do the work, and each reuses machinery we already proved. First, a **pooling** rule collapses the encoder's contextual states into one document vector $\mathbf r$, on which a linear head and a softmax produce class probabilities — the same softmax and cross-entropy from the notation chapter, now over labels instead of vocabulary. Second, a **contrastive objective** trains $\mathbf r$ without labels by making it identify its true partner among a batch of candidates; we prove this is exactly a temperature-scaled softmax-plus-cross-entropy, so it inherits every property of <XRef id="def-softmax" /> and <XRef id="prop-ce-kl" />. Third, the geometry of the learned embedding gives a **score function** for out-of-distribution detection, whose threshold-free quality is captured by a single ranking probability. We write $\mathbf r$ for a pooled representation, $\tau$ for a temperature, and $s(\cdot)$ for a score; everything else is fixed in the notation chapter.
+
+## The pooled representation
+
+The starting picture is the simplest possible detector. An encoder reads a sequence and emits one contextual vector per position; to decide *one* thing about the *whole* sequence we must compress those vectors into one. The compression is a fixed, parameter-light rule — read off a designated position, or average — and the only learned part of the decision is a linear map from that summary to class logits.
+
+<Theorem kind="definition" n="1" name="Pooled document representation" id="def-tf7-pooled-rep">
+Let an encoder $Q:\R^{n\times d}\to\R^{n\times d}$ map an input sequence to contextual states $\mathbf H = Q(\mathbf X)$ with rows $\mathbf h_1,\dots,\mathbf h_n\in\R^{d}$. A **pooling** rule is a map $\operatorname{pool}:\R^{n\times d}\to\R^{d}$ producing a single **document representation** $\mathbf r \defeq \operatorname{pool}(\mathbf H)$. Two standard choices are
+$$
+\mathbf r_{\textsf{CLS}} = \mathbf h_{1}
+\quad(\text{a designated first position}),
+\qquad
+\mathbf r_{\textsf{mean}} = \frac{1}{n}\sum_{i=1}^{n}\mathbf h_i
+\quad(\text{the average of all positions}).
+$$
+In the first, a learned vector $\mathbf h_{\textsf{CLS}}$ is prepended to the input before the encoder runs, and $\mathbf r$ is read off that position's final state.<Sidenote>The designated-position convention is the one popularized for encoder classifiers <Cite key="devlin2019bert" />.</Sidenote>
+</Theorem>
+
+<MarginNote variant="pattern" label="Pooling">Mean pooling is a row-stochastic average ($A_{ij}=1/n$), so $\mathbf r_{\textsf{mean}}$ lies in the convex hull of the token states — <XRef id="prop-row-stochastic-convex" /> again. The designated-position rule is *not* an average; the learned slot can carry information outside that hull.</MarginNote>
+
+The next picture is the decision itself. The pooled vector is a point in $\R^{d}$; a linear map sends it to one logit per class, and the softmax of those logits is the predicted label distribution. Nothing here is new — it is the vocabulary softmax of the notation chapter with the vocabulary replaced by the label set.
+
+<Theorem kind="definition" n="2" name="Encoder-only classifier" id="def-tf7-encoder-classifier">
+An **encoder-only classifier** over $C$ classes is the composition
+$$
+\mathbf r = \operatorname{pool}\!\big(Q(\mathbf X)\big)\in\R^{d},
+\qquad
+\mathbf o = \mathbf r\,\mathbf W_{\textsf{cls}} + \mathbf b \in\R^{C},
+\qquad
+\hat{\mathbf y} = \softmax(\mathbf o),
+$$
+with a **classifier head** $\mathbf W_{\textsf{cls}}\in\R^{d\times C}$, bias $\mathbf b\in\R^{C}$, and $Q$ a bidirectional encoder. Training minimizes the cross-entropy $H(\mathbf e_y,\hat{\mathbf y}) = -\log \hat y_{y}$ (<XRef id="prop-ce-kl" />) of the true label $y$ under $\hat{\mathbf y}$.
+</Theorem>
+
+<Theorem kind="remark" name="Bidirectionality is the design choice, not the formalism" id="rem-tf7-bidirectional">
+A detector reads a document that already exists, so there is no reason to forbid a position from attending to its right context: the causal mask of the generation setting is simply omitted, and the encoder is bidirectional. Formally this changes nothing in <XRef id="def-tf7-encoder-classifier" /> — the same pooling and head apply — but it is what lets a single position aggregate evidence from the entire sequence, which is exactly what a document-level decision needs.
+</Theorem>
+
+## The contrastive objective
+
+Labeled detection data is often scarce, but *pairs* are cheap: any document and a second view of it — its text under a second encoder, an augmentation, a matched modality — form a positive pair, and every other document in the batch is a negative. The picture to hold is a retrieval game. Lay $B$ representations on one side and their $B$ partners on the other; the objective asks each representation to pick its true partner out of the $B$ candidates by similarity. The crucial observation, which we will prove, is that "pick the true partner by similarity" is *literally* a softmax classification with the similarities as logits — so contrastive learning is the cross-entropy of the notation chapter wearing different clothes.
+
+We first fix the similarity and its scale.
+
+<Theorem kind="definition" n="3" name="Cosine similarity with temperature" id="def-tf7-cosine-temp">
+For embeddings $\mathbf u,\mathbf v\in\R^{d}$, the **cosine similarity** is $\operatorname{sim}(\mathbf u,\mathbf v) \defeq \inner{\mathbf u}{\mathbf v}/(\norm{\mathbf u}\,\norm{\mathbf v})$. When the embeddings are $L^2$-normalized ($\norm{\mathbf u}=\norm{\mathbf v}=1$) this is the plain inner product $\inner{\mathbf u}{\mathbf v}\in[-1,1]$. A **temperature** $\tau>0$ rescales it to the **similarity logit** $\inner{\mathbf u}{\mathbf v}/\tau$.
+</Theorem>
+
+<MarginNote variant="formula" label="Temperature">Small $\tau$ sharpens the candidate softmax toward the single nearest partner; large $\tau$ flattens it toward uniform — exactly the temperature limits of <XRef id="def-softmax" />. Practice learns $\log(1/\tau)$ as a parameter.</MarginNote>
+
+<Theorem kind="definition" n="4" name="Symmetric contrastive objective (InfoNCE)" id="def-tf7-contrastive">
+Let a batch of $B$ matched pairs have $L^2$-normalized embeddings stacked rowwise as $\mathbf U,\mathbf V\in\R^{B\times d}$, with row $i$ of each the two views of example $i$. Form the **similarity matrix**
+$$
+\mathbf M = \frac{1}{\tau}\,\mathbf U\mathbf V^{\top}\in\R^{B\times B},
+\qquad
+M_{ij} = \frac{\inner{\mathbf u_i}{\mathbf v_j}}{\tau}.
+$$
+The **row** and **column** losses are the cross-entropies of the row- and column-wise softmaxes against the diagonal target,
+$$
+\mathcal L_{\textsf{row}} = -\frac{1}{B}\sum_{i=1}^{B}\log\frac{e^{M_{ii}}}{\sum_{j=1}^{B} e^{M_{ij}}},
+\qquad
+\mathcal L_{\textsf{col}} = -\frac{1}{B}\sum_{j=1}^{B}\log\frac{e^{M_{jj}}}{\sum_{i=1}^{B} e^{M_{ij}}},
+$$
+and the **symmetric contrastive objective** is $\mathcal L_{\textsf{con}} \defeq \tfrac12(\mathcal L_{\textsf{row}} + \mathcal L_{\textsf{col}})$.<Sidenote>The in-batch softmax form is InfoNCE <Cite key="oord2018cpc" />; the symmetric dual-encoder version is the CLIP objective <Cite key="radford2021clip" />.</Sidenote>
+</Theorem>
+
+<Theorem kind="proposition" n="1" name="Contrastive loss is cross-entropy over pair indices" id="prop-tf7-contrastive-ce">
+Each row of $\mathbf M$ is a vector of logits over the $B$ candidate $\mathbf v$-embeddings, and row-wise softmax produces the categorical distribution $p(j\mid i) = \softmax(\mathbf M_{i,:})_j$. The $i$-th summand of $\mathcal L_{\textsf{row}}$ is the cross-entropy $H(\mathbf e_i, p(\cdot\mid i)) = -\log p(i\mid i)$ of the one-hot target $\mathbf e_i$ — "the correct partner is index $i$." The same holds column-wise with the two views exchanged. Hence $\mathcal L_{\textsf{con}}$ is an average of standard cross-entropy losses, with the temperature-scaled cosine similarities as logits.
+</Theorem>
+
+<Theorem kind="proof">
+Fix row $i$. By the definition of softmax (<XRef id="def-softmax" />) applied to the logit vector $\mathbf M_{i,:}$,
+$$
+p(j\mid i) \defeq \softmax(\mathbf M_{i,:})_j = \frac{e^{M_{ij}}}{\sum_{j'=1}^{B} e^{M_{ij'}}},
+$$
+which is positive and sums to one over $j$, hence a categorical distribution over the $B$ candidate $\mathbf v$-embeddings. The contrastive target names the matching index, i.e. the one-hot $\mathbf e_i$. Cross-entropy against a one-hot target reduces to the negative log-probability of its support (<XRef id="prop-ce-kl" />, Def. of cross-entropy):
+$$
+H(\mathbf e_i, p(\cdot\mid i)) = -\sum_{j} [\mathbf e_i]_j \log p(j\mid i) = -\log p(i\mid i) = -\log\frac{e^{M_{ii}}}{\sum_{j} e^{M_{ij}}},
+$$
+which is exactly the $i$-th summand of $\mathcal L_{\textsf{row}}$. Averaging over $i$ gives $\mathcal L_{\textsf{row}}$ as a mean cross-entropy. The transpose argument — read $\mathbf M$ columnwise, target $j$ on column $j$ — gives $\mathcal L_{\textsf{col}}$ identically, and $\mathcal L_{\textsf{con}}$ is their average. $\qquad\blacksquare$
+</Theorem>
+
+Because the objective is cross-entropy with softmax logits, every property of that machinery transfers verbatim. Translation invariance of the softmax (<XRef id="prop-softmax-translation-inv" />) says adding a constant to a whole row of $\mathbf M$ — for instance a per-anchor similarity offset — leaves the loss unchanged, so only the *gaps* $M_{ii} - M_{ij}$ between the true and competing similarities matter. The softmax Jacobian (<XRef id="prop-softmax-jacobian" />) governs the gradient: the loss pushes the matched logit $M_{ii}$ up and every mismatched $M_{ij}$ down, with the push on a negative proportional to the probability mass $p(j\mid i)$ it currently steals — hard negatives, those with large current similarity, receive the largest gradient.
+
+<MarginNote variant="tip" label="Self-explanation">Before reading the next proof: the loss is $-\log p(i\mid i)$ and $p(i\mid i)\le 1$, so $\mathcal L_{\textsf{row}}\ge 0$. When is the per-row loss exactly zero, and what must the similarities $M_{ij}$ do to achieve it?</MarginNote>
+
+<Theorem kind="proposition" n="2" name="Contrastive minimizer aligns pairs and separates mismatches" id="prop-tf7-contrastive-alignment">
+The per-row loss $-\log p(i\mid i)$ is bounded below by $0$, and for fixed $\tau>0$ its infimum over the logits is approached if and only if $M_{ii} - \max_{j\ne i} M_{ij} \to +\infty$, i.e. the matched similarity exceeds every mismatched similarity by an unbounded margin. Equivalently, on $L^2$-normalized embeddings the objective drives the matched cosine $\inner{\mathbf u_i}{\mathbf v_i}$ toward its maximum $1$ (**alignment**) and the mismatched cosines $\inner{\mathbf u_i}{\mathbf v_j}$ downward (**separation**), with the temperature $\tau$ setting how large the cosine gap must be to make the softmax confident.
+</Theorem>
+
+<Theorem kind="proof">
+Since $p(i\mid i)\in(0,1]$, $-\log p(i\mid i)\ge 0$, with the bound attained in the limit $p(i\mid i)\to 1$. Writing $p(i\mid i) = \big(1 + \sum_{j\ne i} e^{M_{ij}-M_{ii}}\big)^{-1}$, we have $p(i\mid i)\to 1$ iff every exponent $M_{ij}-M_{ii}\to-\infty$ for $j\ne i$, i.e. iff $M_{ii}-\max_{j\ne i}M_{ij}\to+\infty$. Substituting $M_{ij} = \inner{\mathbf u_i}{\mathbf v_j}/\tau$ and noting that on the unit sphere $\inner{\mathbf u_i}{\mathbf v_j}\in[-1,1]$ with maximum $1$ at $\mathbf u_i=\mathbf v_i$, the gap is increased by raising the matched cosine toward $1$ and lowering the mismatched cosines; the fixed factor $1/\tau$ converts a cosine gap of size $\delta$ into a logit gap $\delta/\tau$, so smaller $\tau$ reaches a confident softmax at a smaller cosine margin. $\qquad\blacksquare$
+</Theorem>
+
+<Theorem kind="remark" name="Why the embedding separates classes" id="rem-tf7-separation-geometry">
+Alignment-plus-separation is precisely a geometric statement: matched views are pulled together on the unit sphere while unmatched ones are pushed apart. A downstream classifier or score then operates on an embedding where same-content points cluster and different-content points are far — the linear head of <XRef id="def-tf7-encoder-classifier" /> needs only to cut between clusters, and the distance-based score below treats *far from every cluster* as evidence of anomaly. The contrastive objective is, in this sense, a labels-free way to manufacture the geometry that detection exploits.
+</Theorem>
+
+## Embedding geometry for out-of-distribution detection
+
+The final picture leaves classification entirely. Suppose we have an embedding $\mathbf r = \operatorname{pool}(Q(\mathbf X))$ and a sample of *inlier* (in-distribution) embeddings. An out-of-distribution input is one the encoder was never shaped to represent, so its embedding should fall in a sparsely populated region of the embedding space — far from the inlier cluster, or low under a density fit to the inliers. Detection is then a one-dimensional thresholding problem on a **score** that measures this outlyingness, and the score is read straight off the geometry.
+
+<Theorem kind="definition" n="5" name="Embedding-geometry OOD score" id="def-tf7-ood-score">
+Let $\{\mathbf r^{(1)},\dots,\mathbf r^{(m)}\}\subset\R^{d}$ be inlier embeddings with mean $\boldsymbol\mu$ and (full-rank) covariance $\boldsymbol\Sigma$. An **out-of-distribution score** $s:\R^{d}\to\R$ assigns each embedding $\mathbf r$ a value increasing in its outlyingness; an input is flagged anomalous when $s(\mathbf r)$ exceeds a threshold. Three standard score functions are
+$$
+s_{\textsf{NN}}(\mathbf r) = \min_{k}\norm{\mathbf r - \mathbf r^{(k)}}
+\quad(\text{nearest-inlier distance}),
+\qquad
+s_{\textsf{M}}(\mathbf r) = \big((\mathbf r-\boldsymbol\mu)\,\boldsymbol\Sigma^{-1}(\mathbf r-\boldsymbol\mu)^{\top}\big)^{1/2}
+\quad(\text{Mahalanobis distance}),
+$$
+$$
+s_{\textsf{nll}}(\mathbf r) = -\log \hat p(\mathbf r)
+\quad(\text{negative log-density under a model } \hat p \text{ fit to the inliers}).
+$$
+</Theorem>
+
+<MarginNote variant="formula" label="Mahalanobis = whitened distance">$s_{\textsf{M}}$ is the Euclidean distance after whitening by $\boldsymbol\Sigma^{-1/2}$: it is the Euclidean score in coordinates where the inlier cloud is isotropic, so it accounts for the cluster's shape, not just its center.</MarginNote>
+
+<Theorem kind="remark" name="The three scores are one idea" id="rem-tf7-scores-unified">
+All three scores answer "how unlike the inliers is this point?" and are monotone reparametrizations of one another under matching modeling assumptions. If the inliers are fit by a single Gaussian $\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$, then the negative log-density is $s_{\textsf{nll}}(\mathbf r) = \tfrac12 s_{\textsf{M}}(\mathbf r)^2 + \text{const}$, so thresholding $s_{\textsf{nll}}$ and thresholding $s_{\textsf{M}}$ produce identical decisions. The nearest-inlier score $s_{\textsf{NN}}$ is the nonparametric counterpart: it makes no distributional assumption and reduces to the same "distance from the support" intuition when the support is a single cluster. The contrastive geometry of <XRef id="rem-tf7-separation-geometry" /> is what makes any of them work — it is what concentrates the inliers so that "far from them" is meaningful.
+</Theorem>
+
+A score function must be judged independently of any particular threshold, because the deployment threshold trades false alarms against misses and is chosen later. The threshold-free summary is the probability that the score ranks a true anomaly above a true inlier — and this probability has a closed name.
+
+<Theorem kind="definition" n="6" name="AUROC as a ranking probability" id="def-tf7-auroc">
+Let $S^{+} = s(\mathbf r)$ for a random anomaly ("positive") and $S^{-} = s(\mathbf r)$ for an independent random inlier ("negative"). The **area under the ROC curve** of the score $s$ is
+$$
+\operatorname{AUROC}(s) \defeq \Pr[\,S^{+} > S^{-}\,] + \tfrac12\Pr[\,S^{+} = S^{-}\,].
+$$
+It lies in $[0,1]$; $\operatorname{AUROC} = 1$ means the score ranks every anomaly above every inlier, and $\operatorname{AUROC} = \tfrac12$ is chance.
+</Theorem>
+
+<Theorem kind="proposition" n="3" name="AUROC equals the rank statistic" id="prop-tf7-auroc-rank">
+For a finite test set of $n_{+}$ anomalies with scores $\{a_p\}$ and $n_{-}$ inliers with scores $\{b_q\}$, the empirical AUROC equals the normalized count of correctly ordered cross pairs,
+$$
+\widehat{\operatorname{AUROC}}
+= \frac{1}{n_{+}n_{-}}\sum_{p=1}^{n_{+}}\sum_{q=1}^{n_{-}}
+\Big(\mathbf 1\{a_p > b_q\} + \tfrac12\,\mathbf 1\{a_p = b_q\}\Big),
+$$
+the Mann–Whitney statistic. It is invariant under any strictly increasing reparametrization of the score and depends on no threshold.
+</Theorem>
+
+<Theorem kind="proof">
+Estimate the probabilities in <XRef id="def-tf7-auroc" /> by their empirical frequencies over the $n_{+}n_{-}$ independent cross pairs $(a_p,b_q)$. The event $S^{+}>S^{-}$ has empirical frequency $\frac{1}{n_+n_-}\sum_{p,q}\mathbf 1\{a_p>b_q\}$, and the tie event contributes $\frac{1}{n_+n_-}\sum_{p,q}\mathbf 1\{a_p=b_q\}$ with weight $\tfrac12$ exactly as in the definition; summing gives the displayed statistic. For the invariance claim, let $\phi$ be strictly increasing. Then $a_p>b_q \iff \phi(a_p)>\phi(b_q)$ and $a_p=b_q\iff\phi(a_p)=\phi(b_q)$, so every indicator in the double sum is unchanged and so is $\widehat{\operatorname{AUROC}}$. No comparison references a cutoff, so the statistic is threshold-free. $\qquad\blacksquare$
+</Theorem>
+
+<Theorem kind="remark" name="Threshold-free ranking is not a deployment guarantee" id="rem-tf7-auroc-caveat">
+AUROC measures only the *ordering* a score induces, averaged over all thresholds; a deployed detector commits to one threshold and therefore to a specific false-positive/false-negative tradeoff, which a single ranking number does not pin down. Two further gaps are routine in detection reports. An average AUROC over evaluation slices can hide a catastrophic worst slice — the relevant quantity for a deployment is often $\min$ over slices, not the mean. And a high AUROC on a held-out distribution close to training is weaker evidence than the same number under a genuine distribution shift (a new content domain, or anomalies from a generator unseen in training). The honest reading of a strong benchmark AUROC is "the score ranks well under the tested shifts," not "the detector is robust."
+</Theorem>
+
+## Exercises
+
+1. **(Prove)** Show that mean pooling $\mathbf r_{\textsf{mean}} = \tfrac1n\sum_i \mathbf h_i$ is the action of a row-stochastic matrix on $\mathbf H$, and conclude $\mathbf r_{\textsf{mean}}$ lies in the convex hull of the contextual states $\{\mathbf h_i\}$. Why does the prepended designated-position rule of <XRef id="def-tf7-pooled-rep" /> escape this hull? — <XRef id="soln-tf7-ex1" />
+2. **(Derive)** Starting from <XRef id="prop-tf7-contrastive-ce" />, write the gradient of the per-row loss $-\log p(i\mid i)$ with respect to the logit row $\mathbf M_{i,:}$ using the softmax Jacobian (<XRef id="prop-softmax-jacobian" />). Show the matched logit $M_{ii}$ is pushed up and each mismatched $M_{ij}$ is pushed down in proportion to $p(j\mid i)$, and explain why this makes hard negatives dominate the update. — <XRef id="soln-tf7-ex2" />
+3. **(Prove)** Using translation invariance of the softmax (<XRef id="prop-softmax-translation-inv" />), show that adding any constant $c$ to an entire row of the similarity matrix $\mathbf M$ leaves $\mathcal L_{\textsf{row}}$ unchanged, and conclude that the contrastive loss depends on the similarities only through the gaps $M_{ii} - M_{ij}$. — <XRef id="soln-tf7-ex3" />
+4. **(Compute)** Inliers are fit by $\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$. Show $s_{\textsf{nll}}(\mathbf r) = \tfrac12 s_{\textsf{M}}(\mathbf r)^2 + \text{const}$, and conclude that thresholding the negative log-density and thresholding the Mahalanobis distance give identical decisions (hence identical AUROC by <XRef id="prop-tf7-auroc-rank" />). — <XRef id="soln-tf7-ex4" />
+5. **(Construct)** Exhibit scores for $2$ anomalies and $2$ inliers with empirical $\widehat{\operatorname{AUROC}} = 1$, then shift one inlier's score so that $\widehat{\operatorname{AUROC}} = \tfrac12$ while the *mean* anomaly score still exceeds the mean inlier score. Explain what this shows about reporting a mean score gap versus AUROC. — <XRef id="soln-tf7-ex5" />
