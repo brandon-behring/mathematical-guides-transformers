@@ -4,14 +4,42 @@ slug: appendix-solutions
 description: "Solutions to the chapter exercises, deferred here so each exercise stays retrieval practice."
 last_verified: 2026-05-27
 rigor_level: rigorous
-prerequisites: [attention]
+prerequisites: [notation, attention]
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 
 # Appendix: Solutions
 
-Solutions to the exercises in [The Attention Mechanism](../attention/).
+Solutions to the chapter exercises, deferred here so each exercise stays retrieval practice. Chapters: [Notation and Prerequisites](../notation/) and [The Attention Mechanism](../attention/).
+
+## Notation and Prerequisites
+
+<Theorem kind="proof" name="Solution — Exercise 1 (translation invariance ⇒ J·1 = 0)" id="soln-tf0-ex1">
+For any $c\in\R$, multiplying the numerator and denominator of $\softmax(\mathbf z)_i$ by $e^{c}$ leaves each entry unchanged, so $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$. The Jacobian then annihilates $\mathbf 1$ directly: $\mathbf J\mathbf 1 = \operatorname{diag}(\mathbf p)\mathbf 1 - \mathbf p(\mathbf p^\top\mathbf 1) = \mathbf p - \mathbf p = \mathbf 0$, since $\mathbf p^\top\mathbf 1 = 1$. (Equivalently, differentiating the invariance in $c$ at $c=0$ gives the directional derivative $\mathbf J\mathbf 1 = \mathbf 0$.) $\qquad\blacksquare$
+</Theorem>
+
+<Theorem kind="proof" name="Solution — Exercise 2 (rank of the softmax Jacobian)" id="soln-tf0-ex2">
+Suppose $\mathbf J\mathbf x = \mathbf 0$, i.e. $\operatorname{diag}(\mathbf p)\mathbf x = \mathbf p(\mathbf p^\top\mathbf x)$. Componentwise, $p_i x_i = p_i(\mathbf p^\top\mathbf x)$ for every $i$. Since every $p_i > 0$, divide by $p_i$ to get $x_i = \mathbf p^\top\mathbf x$ — the same constant for all $i$. Hence $\mathbf x = c\mathbf 1$, so the null space is $\operatorname{span}\{\mathbf 1\}$, of dimension $1$. By rank–nullity, $\operatorname{rank}\mathbf J = K - 1$. $\qquad\blacksquare$
+</Theorem>
+
+<Theorem kind="proof" name="Solution — Exercise 3 (stable softmax + invariance check)" id="soln-tf0-ex3">
+Subtract $\max_i z_i = 2$: $\mathbf z - 2\mathbf 1 = (0, -2, -3)$. Exponentiate to $(1,\ e^{-2},\ e^{-3}) \approx (1,\ 0.135,\ 0.0498)$, with sum $\approx 1.185$, so
+$$
+\softmax(\mathbf z) \approx (0.844,\ 0.114,\ 0.042).
+$$
+Adding $5\mathbf 1$ gives $(7,5,4)$; every weight is multiplied by $e^{5}$, which cancels in the normalization, returning the identical vector (Proposition 1). $\qquad\blacksquare$
+</Theorem>
+
+<Theorem kind="proof" name="Solution — Exercise 4 (cross-entropy = entropy + KL)" id="soln-tf0-ex4">
+Add and subtract $\sum_k p_k \log p_k$:
+$$
+H(\mathbf p,\mathbf q) = -\sum_k p_k\log q_k = -\sum_k p_k\log p_k + \sum_k p_k\log\frac{p_k}{q_k} = H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p\,\|\,\mathbf q).
+$$
+Because $H(\mathbf p)$ depends only on the (fixed) data distribution, $\nabla_{\boldsymbol\theta} H(\mathbf p,\mathbf q) = \nabla_{\boldsymbol\theta} D_{\mathrm{KL}}(\mathbf p\,\|\,\mathbf q)$: the two objectives share the same gradient and minimizer in the model parameters. $\qquad\blacksquare$
+</Theorem>
+
+## The Attention Mechanism
 
 <Theorem kind="proof" name="Solution — Exercise 1 (row-stochastic ⇒ convex combination)" id="soln-tf-ex1">
 Fix a query row $i$ and write the logits $\ell_{ij} = \inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k}$. The attention weight $w_{ij} = e^{\ell_{ij}}/\sum_{j'} e^{\ell_{ij'}}$ is **positive** (an exponential over a positive sum) and the row **sums to one** ($\sum_j w_{ij} = \sum_j e^{\ell_{ij}} / \sum_{j'} e^{\ell_{ij'}} = 1$); so the row is a probability vector — row-stochastic. The output row is $\sum_j w_{ij}\,\mathbf v_j$ with $w_{ij}\ge 0$ and $\sum_j w_{ij}=1$, i.e. a **convex combination** of the value rows. $\qquad\blacksquare$

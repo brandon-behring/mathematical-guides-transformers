@@ -7,11 +7,18 @@ family. Deploys to `/transformers/` under the family hub.
 Authoring follows the family's dossier-grounded
 [formal style guide](https://github.com/brandon-behring/mathematical-guides/blob/main/docs/style-guide-formal-v0.1.md).
 
-## Status: skeleton
+## Status: authoring in progress
 
-One proof-of-style chapter — `src/content/transformers/00-attention.mdx` (ported from the LaTeX
-`transformer_mathematics` guide: softmax + translation-invariance + the variance-preservation theorem,
-with inline structured proofs and the attention-as-convex-combination known-math anchor).
+Chapters authored (ported from the frozen LaTeX `transformer_mathematics` guide; formal D–T–P):
+
+- `00-notation.mdx` — Notation and Prerequisites: single-source dimension/operator tables; softmax with
+  translation invariance + Jacobian; cross-entropy = entropy + KL; row-stochastic matrices.
+- `02-attention.mdx` — The Attention Mechanism: scaled dot-product attention as learned-kernel regression,
+  and the variance-preservation / $1/\sqrt{d_k}$ scaling theorem.
+- `99-appendix-solutions.mdx` — deferred exercise solutions.
+
+Remaining: input representations, multi-head attention, the transformer block, architecture composition,
+training, and the practical training/inference optimization chapters.
 
 ## Figures
 

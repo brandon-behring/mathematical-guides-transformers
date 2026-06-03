@@ -1,0 +1,196 @@
+---
+title: "Notation and Prerequisites"
+slug: notation
+description: "The single-source notation reference: dimension and operator conventions, the softmax (translation invariance and Jacobian), cross-entropy as KL divergence up to a constant, and row-stochastic matrices."
+last_verified: 2026-06-03
+rigor_level: rigorous
+prerequisites: []
+notation_introduced: ['\softmax', '\defeq', 'd', 'n', 'd_k', 'row-stochastic', 'H(p,q)', 'D_KL']
+theorems: ['prop-softmax-translation-inv', 'prop-softmax-jacobian', 'prop-ce-kl', 'prop-row-stochastic-convex']
+los:
+  - id: TF-0.1
+    statement: "State the softmax definition, prove its translation invariance, and derive its Jacobian."
+  - id: TF-0.2
+    statement: "Show that minimizing cross-entropy is equivalent to minimizing KL divergence from the data distribution."
+  - id: TF-0.3
+    statement: "Define row-stochastic matrices and prove their product with a value matrix is a convex combination of the values."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+
+# Notation and Prerequisites
+
+**Where we are.** This chapter is the single-source notation reference for the guide: every dimension symbol, operator, and prerequisite result is fixed here once, and later chapters invoke it by name. Read it front to back on a first pass, then return whenever a proof cites a definition from here. We assume linear algebra and elementary probability; everything specific to transformers is built from the three tools developed below — the softmax, cross-entropy, and row-stochastic matrices.
+
+## Conventions
+
+Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d}$), and matrices are bold uppercase ($\mathbf W$). Vectors are **row** vectors unless stated otherwise, so a sequence of $n$ tokens is a matrix $\mathbf X \in \R^{n\times d}$ whose $i$-th row is the $i$-th token representation. Sets are calligraphic ($\mathcal V$ for the vocabulary). We write $\defeq$ for "is defined as" (marking a definition, not a derived equality), $\odot$ for the Hadamard product, $\mathbf 1$ for the all-ones vector, and $\mathbf e_k$ for the $k$-th standard basis (one-hot) vector. The norm $\norm{\mathbf x}$ is Euclidean and $[\mathbf A]_{ij}$ is the $(i,j)$ entry.
+
+**Standing dimensions.** These symbols keep their meaning throughout the guide.
+
+| Symbol | Meaning |
+|---|---|
+| $d$ | model dimension (embedding width) |
+| $n$ | sequence length (number of tokens) |
+| $h$ | number of attention heads |
+| $d_k$ | key/query dimension per head ($d_k = d/h$) |
+| $d_v$ | value dimension per head |
+| $d_{\text{ff}}$ | feed-forward hidden dimension (typically $4d$) |
+| $\lvert\mathcal V\rvert$ | vocabulary size |
+| $N$ | number of transformer layers (blocks) |
+
+**Standing operators.** Each is defined once, in the chapter named; return here for a lookup.
+
+| Operator | Meaning | Defined in |
+|---|---|---|
+| $\softmax(\mathbf z)$ | normalized exponential | this chapter (Def. 1) |
+| $\operatorname{PE}(t)$ | positional encoding at position $t$ | Input Representations |
+| $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ | scaled dot-product attention | Attention |
+| $\operatorname{MHA}(\mathbf X)$ | multi-head attention | Multi-Head Attention |
+| $\operatorname{FFN}(\mathbf x)$ | position-wise feed-forward network | The Transformer Block |
+| $\operatorname{LN}(\mathbf x)$ | layer normalization | The Transformer Block |
+| $\mathbf M$ | causal mask matrix | Attention |
+
+## The softmax
+
+Softmax turns a vector of real scores into a probability distribution: larger scores receive exponentially more weight, and the weights sum to one. It is the transformer's one ubiquitous nonlinearity — it forms attention weights from similarity logits and the output distribution from vocabulary logits — so we fix its definition and two properties here.
+
+<Theorem kind="definition" n="1" name="Softmax" id="def-softmax">
+For $\mathbf z = (z_1,\dots,z_K)\in\R^K$, the **softmax** $\softmax:\R^K\to\R^K$ is
+$$
+\softmax(\mathbf z)_i \defeq \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}, \qquad i = 1,\dots,K.
+$$
+Every output is positive and the entries sum to $1$, so $\softmax(\mathbf z)$ is a probability distribution over $K$ categories.<Sidenote>The standard probabilistic reading of network logits <Cite key="bridle1990probabilistic" />.</Sidenote>
+</Theorem>
+
+<Theorem kind="proposition" n="1" name="Translation invariance" id="prop-softmax-translation-inv">
+For any scalar $c\in\R$, $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$.
+</Theorem>
+
+<Theorem kind="proof">
+Multiply the numerator and denominator of entry $i$ by $e^{c}$ and cancel:
+$$
+\frac{e^{z_i + c}}{\sum_j e^{z_j + c}}
+= \frac{e^{c}\,e^{z_i}}{e^{c}\sum_j e^{z_j}}
+= \softmax(\mathbf z)_i. \qquad\blacksquare
+$$
+Subtracting $\max_j z_j$ before exponentiating therefore changes nothing while avoiding overflow — the standard numerically stable implementation.
+</Theorem>
+
+<MarginNote variant="formula" label="Stable softmax">Subtract $\max_j z_j$ first; translation invariance makes it exact.</MarginNote>
+
+<MarginNote variant="tip" label="Self-explanation">Before reading the next proof: translation invariance says the output is unchanged along the direction $\mathbf 1$. What must the Jacobian do to the vector $\mathbf 1$?</MarginNote>
+
+<Theorem kind="proposition" n="2" name="Softmax Jacobian" id="prop-softmax-jacobian">
+Let $\mathbf p = \softmax(\mathbf z)$. The Jacobian $\mathbf J\in\R^{K\times K}$ with $J_{ij} = \partial p_i/\partial z_j$ is
+$$
+\mathbf J = \operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top, \qquad J_{ij} = p_i(\delta_{ij} - p_j),
+$$
+where $\delta_{ij}$ is the Kronecker delta.
+</Theorem>
+
+<Theorem kind="proof">
+Differentiate $p_i = e^{z_i}/S$ with $S = \sum_j e^{z_j}$, by cases, each step naming the rule it uses.
+
+**Diagonal ($i = j$).** Here $\partial_{z_i} e^{z_i} = e^{z_i}$ and $\partial_{z_i} S = e^{z_i}$, so by the quotient rule
+$$
+\frac{\partial p_i}{\partial z_i} = \frac{e^{z_i} S - e^{z_i} e^{z_i}}{S^2} = p_i - p_i^2 = p_i(1 - p_i).
+$$
+
+**Off-diagonal ($i \neq j$).** The numerator $e^{z_i}$ does not depend on $z_j$, so
+$$
+\frac{\partial p_i}{\partial z_j} = -\frac{e^{z_i} e^{z_j}}{S^2} = -p_i p_j.
+$$
+
+Both cases read $p_i(\delta_{ij} - p_j)$, i.e. $\mathbf J = \operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top$. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="pattern" label="Saturation">Near a one-hot $\mathbf p$, every $p_i(1-p_i)\to 0$, so $\mathbf J\to\mathbf 0$ and gradients die. This is what the $1/\sqrt{d_k}$ attention scaling guards against.</MarginNote>
+
+Two readings of this Jacobian recur later. First, $\mathbf J\mathbf 1 = \mathbf p - \mathbf p(\mathbf p^\top\mathbf 1) = \mathbf p - \mathbf p = \mathbf 0$: the vector $\mathbf 1$ lies in the null space, so gradients are confined to the tangent plane of the simplex — the differential counterpart of translation invariance. Second, as $\mathbf p$ approaches a vertex of the simplex the entries $p_i(1-p_i)$ all vanish, the Jacobian collapses, and gradients through the softmax are attenuated.
+
+<Theorem kind="remark" name="Temperature">
+A temperature $\tau > 0$ generalizes the map to $\softmax(\mathbf z/\tau)$. As $\tau\to 0^+$ the output approaches the one-hot vector at $\arg\max_i z_i$ (hard selection); as $\tau\to\infty$ it approaches the uniform distribution $\mathbf 1/K$. Transformer attention uses $\tau = 1$.
+</Theorem>
+
+Geometrically, softmax maps $\R^K$ onto the interior of the probability simplex $\Delta^{K-1} = \{\mathbf p : p_i \ge 0,\ \sum_i p_i = 1\}$, the convex hull of the standard basis vectors $\mathbf e_1,\dots,\mathbf e_K$. It is surjective onto the interior but not injective (translation invariance), and the saturation above is the statement that the simplex's tangent plane collapses at its vertices.
+
+## Cross-entropy and KL divergence
+
+Training minimizes a single scalar: the cross-entropy between the data's next-token distribution and the model's. One short decomposition explains why it is the right scalar — cross-entropy splits into the data's intrinsic uncertainty plus the model's excess cost, and only the second term depends on the parameters.
+
+<Theorem kind="definition" n="2" name="Entropy" id="def-entropy">
+The **entropy** of a discrete distribution $\mathbf p = (p_1,\dots,p_K)$ is
+$$
+H(\mathbf p) \defeq -\sum_{k=1}^{K} p_k \log p_k \qquad (\text{with } 0\log 0 = 0).
+$$
+<Sidenote>The original information-theoretic measure of uncertainty <Cite key="shannon1948communication" />.</Sidenote>
+It is maximal at the uniform distribution ($H = \log K$) and zero at any point mass.
+</Theorem>
+
+<Theorem kind="definition" n="3" name="Cross-entropy" id="def-cross-entropy">
+The **cross-entropy** of a model distribution $\mathbf q$ (with $q_k > 0$) relative to a target $\mathbf p$ is
+$$
+H(\mathbf p, \mathbf q) \defeq -\sum_{k=1}^{K} p_k \log q_k.
+$$
+For a one-hot target $\mathbf p = \mathbf e_y$ it reduces to $-\log q_y$, the model's negative log-probability on the correct class.
+</Theorem>
+
+<Theorem kind="definition" n="4" name="KL divergence" id="def-kl">
+The **Kullback–Leibler divergence** from $\mathbf p$ to $\mathbf q$ is
+$$
+D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q) \defeq \sum_{k=1}^{K} p_k \log \frac{p_k}{q_k}.
+$$
+<Sidenote>The directed information gain from $\mathbf q$ to $\mathbf p$ <Cite key="kullback1951information" />.</Sidenote>
+By Gibbs' inequality $D_{\mathrm{KL}} \ge 0$, with equality if and only if $\mathbf p = \mathbf q$.
+</Theorem>
+
+<Theorem kind="proposition" n="3" name="Cross-entropy = entropy + KL" id="prop-ce-kl">
+$H(\mathbf p, \mathbf q) = H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q)$. Since $H(\mathbf p)$ depends only on the data distribution, minimizing $H(\mathbf p, \mathbf q)$ over the model is equivalent to minimizing $D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q)$.
+</Theorem>
+
+<Theorem kind="proof">
+Add and subtract $\sum_k p_k \log p_k$ inside the definition of cross-entropy:
+$$
+\begin{aligned}
+H(\mathbf p, \mathbf q)
+&= -\sum_k p_k \log q_k && \text{(Def. 3)} \\
+&= -\sum_k p_k \log p_k + \sum_k p_k \log p_k - \sum_k p_k \log q_k \\
+&= H(\mathbf p) + \sum_k p_k \log \frac{p_k}{q_k} && \text{(Def. 2)} \\
+&= H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q). && \text{(Def. 4)}
+\end{aligned}
+$$
+The first term is constant in the parameters, so the gradient of the cross-entropy equals the gradient of the KL term. $\qquad\blacksquare$
+</Theorem>
+
+## Row-stochastic matrices
+
+An attention weight matrix has one defining property: every row is a probability distribution. That single property forces each attention output to be an average — a convex combination — of the value vectors, never an extrapolation beyond them.
+
+<Theorem kind="definition" n="5" name="Row-stochastic matrix" id="def-row-stochastic">
+A matrix $\mathbf A\in\R^{n\times n}$ is **row-stochastic** if it is entrywise nonnegative and each row sums to one: $\mathbf A \ge \mathbf 0$ and $\mathbf A\mathbf 1 = \mathbf 1$.
+</Theorem>
+
+<Theorem kind="proposition" n="4" name="Row-stochastic times values is a convex combination" id="prop-row-stochastic-convex">
+If $\mathbf A\in\R^{n\times n}$ is row-stochastic and $\mathbf V\in\R^{n\times d_v}$ holds value vectors in its rows, then each row of $\mathbf A\mathbf V$ is a convex combination of the rows of $\mathbf V$:
+$$
+[\mathbf A\mathbf V]_{i,:} = \sum_{j=1}^{n} A_{ij}\,\mathbf v_j, \qquad A_{ij}\ge 0,\ \ \sum_j A_{ij} = 1.
+$$
+</Theorem>
+
+<Theorem kind="proof">
+Row $i$ of the product is $\sum_j A_{ij}\mathbf v_j$ by the definition of matrix multiplication. The coefficients $A_{ij}$ are nonnegative and sum to one (Def. 5), which is exactly a convex combination. $\qquad\blacksquare$
+</Theorem>
+
+Because the attention weight matrix is row-stochastic — softmax produces it, as the Attention chapter proves — every attention output lies in the convex hull of the value vectors it attends to. Attention *interpolates*; it cannot reach outside that hull. The residual connection $\mathbf x + \operatorname{Attn}(\mathbf x)$ and the feed-forward layer are what let a block escape it.
+
+## Exercises
+
+1. **(Prove)** Show $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$ for every $c\in\R$, and conclude that the Jacobian satisfies $\mathbf J\mathbf 1 = \mathbf 0$. — <XRef id="soln-tf0-ex1" />
+2. **(Derive)** From $\mathbf J = \operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top$ with every $p_i > 0$, show $\operatorname{rank}\mathbf J = K-1$ and identify the null space. — <XRef id="soln-tf0-ex2" />
+3. **(Compute)** For $\mathbf z = (2, 0, -1)$, compute the numerically stable softmax and verify it is unchanged by $\mathbf z + 5\mathbf 1$. — <XRef id="soln-tf0-ex3" />
+4. **(Prove)** Using only the definitions, establish $H(\mathbf p, \mathbf q) = H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q)$, and explain why this makes cross-entropy minimization equivalent to KL minimization. — <XRef id="soln-tf0-ex4" />
