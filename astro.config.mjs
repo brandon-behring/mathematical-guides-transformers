@@ -28,6 +28,7 @@ const mathematicalGuidesFamilyStyle = defineStyle({
     '\\defeq': '\\doteq',
     '\\softmax': '\\operatorname{softmax}',
     '\\Emb': '\\operatorname{Emb}',
+    '\\sg': '\\operatorname{sg}',
   },
 });
 
