@@ -3,9 +3,9 @@ name: content-validate
 on:
   push:
     branches: [main]
-    paths: ['src/content/**', 'src/content.config.ts', '.github/workflows/content-validate.yml']
+    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', '.github/workflows/content-validate.yml']
   pull_request:
-    paths: ['src/content/**', 'src/content.config.ts']
+    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', '.github/workflows/content-validate.yml']
 
 jobs:
   validate:
@@ -17,4 +17,4 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
-      - run: npx book-scaffold validate --preset research-portfolio
+      - run: npm run validate
