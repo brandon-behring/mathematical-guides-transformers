@@ -10,11 +10,9 @@ title = "mathematical-guides-transformers"
 useDefault = true
 
 [allowlist]
-description = "Bibliography citation keys (Cite component lines + bibliography.bib) are public identifiers, not secrets"
+description = "Bibliography citation keys are public identifiers, not secrets. Allowlist by LINE: <Cite> component lines (chapters) and BibTeX entry-declaration lines (@type{key,) in bibliography.bib. The rest of every file — including bib title/url/author fields — is still scanned for real secrets (no blanket file-path exclusion)."
 regexTarget = "line"
 regexes = [
   '''<Cite\s+key="[^"]+"''',
-]
-paths = [
-  '''bibliography\.bib''',
+  '''@\w+\{[^,]+,''',
 ]

@@ -320,7 +320,7 @@ A kernel is compute-bound when $\Phi/F \ge \beta/\mathcal B$, i.e. $I \ge I^* = 
 
 <SolutionBox>
 
-By $M_{\text{KV}} = 2Lndb$ with $L=80$, $d=8192$, $b=2$, $n=8192$: $M_{\text{KV}} = 2\cdot80\cdot8192\cdot8192\cdot2 \approx 17.2$ GB per request. Linear in $n$, so doubling the context doubles the cache. $\qquad\blacksquare$
+By $M_{\text{KV}} = 2Lndb$ with $L=80$, $d=8192$, $b=2$, $n=8192$: $M_{\text{KV}} = 2\cdot80\cdot8192\cdot8192\cdot2 = 21{,}474{,}836{,}480$ bytes $\approx 21.5$ GB ($20$ GiB) per request. Linear in $n$, so doubling the context doubles the cache. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -344,6 +344,6 @@ Induct on $j$. Base: $m_1 = s_1$, $\ell_1 = e^{s_1 - m_1} = 1$. Step: with $m_j 
 
 <SolutionBox>
 
-With $c=0.1$, $K=4$, the denominator is $1 + Kc = 1.4$. At $\alpha=0.8$: $\mathbb E[T_K] = (1 - 0.8^5)/0.2 \approx 3.36$, speedup $\approx 2.40$. At $\alpha=0.4$: $\mathbb E[T_K] = (1 - 0.4^5)/0.6 \approx 1.66$, speedup $\approx 1.19$. As $K\to\infty$ with $\alpha=0.8$, $\mathbb E[T_K]\to 1/(1-\alpha) = 5$ while draft cost $Kc$ keeps growing, so an interior $K$ is optimal. $\qquad\blacksquare$
+With $c=0.1$, $K=4$, the denominator is $1 + Kc = 1.4$. At $\alpha=0.8$: $\mathbb E[T_K] = (1 - 0.8^5)/0.2 \approx 3.36$, speedup $\approx 2.40$. At $\alpha=0.4$: $\mathbb E[T_K] = (1 - 0.4^5)/0.6 \approx 1.65$, speedup $\approx 1.18$. As $K\to\infty$ with $\alpha=0.8$, $\mathbb E[T_K]\to 1/(1-\alpha) = 5$ while draft cost $Kc$ keeps growing, so an interior $K$ is optimal. $\qquad\blacksquare$
 
 </SolutionBox>

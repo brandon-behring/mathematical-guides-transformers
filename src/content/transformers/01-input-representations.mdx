@@ -93,7 +93,7 @@ Let $\mathbf W_{\text{patch}}\in\R^{p^2c\times d}$ define the patch embedding of
 $$
 \big[\,\mathbf I \star_p \mathbf K\,\big]_{a,b,j} = \Emb(\mathbf u_{ab})_j,
 $$
-where $\star_p$ is the stride-$p$, kernel-size-$p$ cross-correlation with no padding — a `Conv2d(c, d, kernel_size=p, stride=p)`. The patch-embedding layer and that convolution compute the same map; they differ only in how the identical parameters are indexed.
+where $\star_p$ is the stride-$p$, kernel-size-$p$ cross-correlation with no padding — a `Conv2d(c, d, kernel_size=p, stride=p, bias=False)` whose weight is $\mathbf K$ in PyTorch's $(d,c,p,p)$ layout. The patch-embedding layer and that convolution compute the same map; they differ only in how the identical parameters are indexed (and the convolution must carry no bias).
 </Theorem>
 
 <Theorem kind="proof">
@@ -108,7 +108,7 @@ $$
 By construction $\mathbf K[:,:,:,j]$ is the reshape of column $j$ of $\mathbf W_{\text{patch}}$, and the reshape and $\operatorname{vec}$ share an index order, so this sum equals $\operatorname{vec}(\mathbf u_{ab})^\top\mathbf W_{\text{patch}}[:,j] = \Emb(\mathbf u_{ab})_j$. The windows tile the image, so the maps agree on every patch. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="tip" label="Why it's not new">Patchification is the degenerate convolution where stride equals kernel: no weight sharing across overlapping windows, so each patch gets one independent linear map.</MarginNote>
+<MarginNote variant="tip" label="Why it's not new">Patchification is the degenerate convolution where stride equals kernel: the windows do not overlap, so the one shared linear map $\mathbf W_{\text{patch}}$ is applied to each patch independently, with no cross-patch mixing.</MarginNote>
 
 <Figure
   src="/figures/dual-embedding.svg"
@@ -287,7 +287,7 @@ $$
 <Theorem kind="proof">
 The high-level step is to collapse the two position rotations into one by orthogonality; the rest is bookkeeping over blocks.
 
-**Expand the dot product.** By <XRef id="def-tf1-sinusoidal-pe" />,
+**Expand the dot product.** By <XRef id="def-tf1-rope" />,
 $$
 f(\mathbf q, m)^\top f(\mathbf k, n)
 = (\mathbf\Theta(m)\mathbf q)^\top (\mathbf\Theta(n)\mathbf k)
@@ -344,7 +344,7 @@ Attempt each before expanding its solution.
 With $d = 4$ the frequencies are $\omega_0 = 10000^{-0/4} = 1$ and $\omega_1 = 10000^{-2/4} = 0.01$. By <XRef id="def-tf1-sinusoidal-pe" />, $\operatorname{PE}(t) = \big(\sin(\omega_0 t),\, \cos(\omega_0 t),\, \sin(\omega_1 t),\, \cos(\omega_1 t)\big)$, so
 $$
 \operatorname{PE}(0) = (0,\, 1,\, 0,\, 1), \qquad
-\operatorname{PE}(1) \approx (0.8415,\, 0.5403,\, 0.0100,\, 0.9999).
+\operatorname{PE}(1) \approx (0.8415,\, 0.5403,\, 0.0100,\, 1.0000).
 $$
 They differ already in the fast pair ($\sin 1 \approx 0.8415 \ne 0$), so $\operatorname{PE}(0) \ne \operatorname{PE}(1)$. $\qquad\blacksquare$
 
