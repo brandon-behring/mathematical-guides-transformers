@@ -27,6 +27,8 @@ const mathematicalGuidesFamilyStyle = defineStyle({
     '\\inner': '\\left\\langle #1, #2 \\right\\rangle',
     '\\defeq': '\\doteq',
     '\\softmax': '\\operatorname{softmax}',
+    '\\Emb': '\\operatorname{Emb}',
+    '\\sg': '\\operatorname{sg}',
   },
 });
 

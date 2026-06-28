@@ -1,0 +1,18 @@
+# gitleaks config — mathematical-guides-transformers
+#
+# Extends the default ruleset (still scans for real secrets) and adds a narrow
+# allowlist so BIBLIOGRAPHY CITATION KEYS are not mis-flagged as `generic-api-key`.
+# Citation keys like "radford2021clip" are high-entropy but are public identifiers
+# in `<Cite key="..."/>` (chapters) and `bibliography.bib` — never secrets.
+title = "mathematical-guides-transformers"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Bibliography citation keys are public identifiers, not secrets. Allowlist by LINE: <Cite> component lines (chapters) and BibTeX entry-declaration lines (@type{key,) in bibliography.bib. The rest of every file — including bib title/url/author fields — is still scanned for real secrets (no blanket file-path exclusion)."
+regexTarget = "line"
+regexes = [
+  '''<Cite\s+key="[^"]+"''',
+  '''@\w+\{[^,]+,''',
+]

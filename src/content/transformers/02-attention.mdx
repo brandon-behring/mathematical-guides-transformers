@@ -1,12 +1,13 @@
 ---
 title: "The Attention Mechanism"
 slug: attention
+chapter: 2
 description: "Scaled dot-product attention from first principles: softmax and its translation invariance, attention as a learned-kernel regression, and why the 1/sqrt(d_k) scaling is exactly the factor that restores unit variance."
 last_verified: 2026-05-27
 rigor_level: rigorous
 prerequisites: []
 notation_introduced: ['\softmax', 'row-stochastic', 'd_k']
-theorems: ['prop-softmax-translation', 'thm-variance-preservation']
+theorems: ['def-tf2-softmax', 'prop-softmax-translation', 'def-tf2-attention', 'thm-variance-preservation']
 los:
   - id: TF-2.1
     statement: "Define scaled dot-product attention and prove its weight matrix is row-stochastic."
@@ -20,6 +21,7 @@ import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote
 import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import SolutionBox from '../../components/SolutionBox.astro';
 
 # The Attention Mechanism
 
@@ -39,15 +41,15 @@ Vectors are bold lowercase **row** vectors $\mathbf x \in \R^{d}$; matrices are 
 | Operator | Meaning |
 |---|---|
 | $\defeq$ | "is defined as" |
-| $\softmax(\cdot)$ | normalized exponential (Def. 1) |
-| $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ | scaled dot-product attention (Def. 2) |
+| $\softmax(\cdot)$ | normalized exponential (<XRef id="def-tf2-softmax" />) |
+| $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ | scaled dot-product attention (<XRef id="def-tf2-attention" />) |
 | $\inner{\cdot}{\cdot}$ | Euclidean inner product |
 
 ## Softmax
 
 Softmax turns a vector of scores into a probability distribution: larger scores get exponentially more weight, and the weights sum to one.
 
-<Theorem kind="definition" n="1" name="Softmax">
+<Theorem kind="definition" name="Softmax" id="def-tf2-softmax">
 For $\mathbf z = (z_1,\dots,z_K)\in\R^K$, the **softmax** $\softmax:\R^K\to\R^K$ is
 $$
 \softmax(\mathbf z)_i \defeq \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}.
@@ -55,7 +57,7 @@ $$
 Each output is positive and the entries sum to $1$, so $\softmax(\mathbf z)$ is a probability distribution over $K$ categories.<Sidenote>The standard probabilistic reading of network logits <Cite key="bridle1990probabilistic" />.</Sidenote>
 </Theorem>
 
-<Theorem kind="proposition" n="1" name="Translation invariance" id="prop-softmax-translation">
+<Theorem kind="proposition" name="Translation invariance" id="prop-softmax-translation">
 For any scalar $c\in\R$, $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$.
 </Theorem>
 
@@ -74,7 +76,7 @@ So subtracting $\max_j z_j$ before exponentiating is numerically safe — it cha
 
 Structurally, attention is **Nadaraya–Watson kernel regression with a learned kernel**: each output is a kernel-weighted average of the value vectors, where the weight value $j$ receives is proportional to $\exp(\inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k})$. The correspondence is exact — *kernel weights* ↦ *a softmax row*, *kernel-regression estimate* ↦ *the attention output* — and it breaks in exactly one place: the kernel is **learned**, so it need not be symmetric or positive-definite, and the classical kernel-smoothing guarantees do not transfer. We make the construction precise.
 
-<Theorem kind="definition" n="2" name="Scaled dot-product attention">
+<Theorem kind="definition" name="Scaled dot-product attention" id="def-tf2-attention">
 Given queries $\mathbf Q\in\R^{n\times d_k}$, keys $\mathbf K\in\R^{n\times d_k}$, and values $\mathbf V\in\R^{n\times d_v}$,
 $$
 \operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V) \defeq \softmax\!\Big(\tfrac{\mathbf Q\mathbf K^\top}{\sqrt{d_k}}\Big)\,\mathbf V,
@@ -82,7 +84,7 @@ $$
 with softmax applied row-wise to the $n\times n$ logit matrix.
 </Theorem>
 
-Because each softmax row is non-negative and sums to one (Def. 1), output row $i$ is a **convex combination** of the value rows — the kernel-regression reading made literal.
+Because each softmax row is non-negative and sums to one (<XRef id="def-tf2-softmax" />), output row $i$ is a **convex combination** of the value rows — the kernel-regression reading made literal.
 
 <Figure
   src="/figures/attention-pattern.svg"
@@ -99,7 +101,7 @@ Each logit $\inner{\mathbf q}{\mathbf k}$ sums $d_k$ independent product terms, 
 Before reading: $\inner{\mathbf q}{\mathbf k}=\sum_m q_m k_m$ adds $d_k$ independent zero-mean unit-variance terms. What should its variance scale like in $d_k$?
 </MarginNote>
 
-<Theorem kind="theorem" n="1" name="Variance preservation" id="thm-variance-preservation">
+<Theorem kind="theorem" name="Variance preservation" id="thm-variance-preservation">
 Let $\mathbf q,\mathbf k\in\R^{d_k}$ have independent components with $\E[q_m]=\E[k_m]=0$, $\Var(q_m)=\Var(k_m)=1$, and $q_m \perp k_m$. Then $\E[\inner{\mathbf q}{\mathbf k}]=0$, $\Var(\inner{\mathbf q}{\mathbf k})=d_k$, and $\Var\!\big(\inner{\mathbf q}{\mathbf k}/\sqrt{d_k}\big)=1$.
 </Theorem>
 
@@ -128,6 +130,32 @@ So $1/\sqrt{d_k}$ is the unique scale that holds logit variance at $1$ as $d_k$ 
 
 ## Exercises
 
-1. **(Prove)** Each row of $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic; conclude each attention output is a convex combination of the value rows. — <XRef id="soln-tf-ex1" />
-2. **(Derive)** Without the $1/\sqrt{d_k}$ scaling, give $\Var(\inner{\mathbf q}{\mathbf k})$ and explain what happens to a softmax row as $d_k\to\infty$ (relate it to gradient saturation). — <XRef id="soln-tf-ex2" />
-3. **(Compute)** For $\mathbf z=(2,1,0)$, compute $\softmax(\mathbf z)$ and verify it is unchanged by $\mathbf z + 5\mathbf 1$. — <XRef id="soln-tf-ex3" />
+Attempt each before expanding its solution.
+
+**Exercise 2.1 (Prove).** Each row of $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic; conclude each attention output is a convex combination of the value rows.
+
+<SolutionBox>
+
+Fix a query row $i$ and write the logits $\ell_{ij} = \inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k}$. The attention weight $w_{ij} = e^{\ell_{ij}}/\sum_{j'} e^{\ell_{ij'}}$ is **positive** (an exponential over a positive sum) and the row **sums to one** ($\sum_j w_{ij} = \sum_j e^{\ell_{ij}} / \sum_{j'} e^{\ell_{ij'}} = 1$); so the row is a probability vector — row-stochastic. The output row is $\sum_j w_{ij}\,\mathbf v_j$ with $w_{ij}\ge 0$ and $\sum_j w_{ij}=1$, i.e. a **convex combination** of the value rows. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 2.2 (Derive).** Without the $1/\sqrt{d_k}$ scaling, give $\Var(\inner{\mathbf q}{\mathbf k})$ and explain what happens to a softmax row as $d_k\to\infty$ (relate it to gradient saturation).
+
+<SolutionBox>
+
+By the variance-preservation theorem (unscaled case), $\Var(\inner{\mathbf q}{\mathbf k}) = d_k$. As $d_k\to\infty$ the logit spread grows without bound, so within a softmax row the largest logit dominates and the row concentrates toward a **one-hot** vector. At a near-one-hot $\mathbf p$, the softmax Jacobian $\operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top$ has entries $p_i(1-p_i)\to 0$, so gradients through the softmax **vanish** (gradient saturation). Dividing logits by $\sqrt{d_k}$ holds the variance at $1$ and prevents this. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 2.3 (Compute).** For $\mathbf z=(2,1,0)$, compute $\softmax(\mathbf z)$ and verify it is unchanged by $\mathbf z + 5\mathbf 1$.
+
+<SolutionBox>
+
+With $\mathbf z=(2,1,0)$ the unnormalized weights are $(e^2, e^1, e^0) \approx (7.389,\, 2.718,\, 1.000)$, summing to $\approx 11.107$, so
+$$
+\softmax(\mathbf z) \approx (0.665,\; 0.245,\; 0.090).
+$$
+For $\mathbf z + 5\mathbf 1 = (7,6,5)$ every weight is multiplied by $e^5$, which cancels in the normalization, giving the identical vector — exactly <XRef id="prop-softmax-translation" />. $\qquad\blacksquare$
+
+</SolutionBox>
