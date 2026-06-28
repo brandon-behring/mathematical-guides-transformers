@@ -1,0 +1,40 @@
+---
+/**
+ * SolutionBox — collapsible exercise solution (guide-local).
+ *
+ * Reuses the scaffold's GLOBAL `.callout-worked` styling (the plum collapsible
+ * callout used by WorkedExample, loaded site-wide via every profile's `styles`
+ * list — see book-scaffold-astro schemas.mjs), but labels it "Solution" rather
+ * than the component's hardcoded "Worked example" chip. `.callout-worked` hides
+ * the native <details> marker, so we draw our own rotating disclosure triangle
+ * (a clear "drop down to reveal" affordance). Native <details>; collapsed by
+ * default (Bjork delayed-feedback: attempt first, then reveal) unless `expanded`.
+ * Optional `id` gives a deep-link anchor.
+ */
+interface Props {
+  id?: string;
+  expanded?: boolean;
+}
+const { id, expanded = false } = Astro.props;
+---
+<aside class="callout callout-worked solution-box" id={id} role="note">
+  <details open={expanded}>
+    <summary>
+      <span class="solution-marker" aria-hidden="true">▸</span>
+      <strong class="callout-title">Solution</strong>
+    </summary>
+    <div class="callout-body"><slot /></div>
+  </details>
+</aside>
+
+<style>
+  .solution-box .solution-marker {
+    display: inline-block;
+    color: var(--callout-worked);
+    transition: transform 0.15s ease;
+    font-size: 0.8em;
+  }
+  .solution-box details[open] > summary .solution-marker {
+    transform: rotate(90deg);
+  }
+</style>

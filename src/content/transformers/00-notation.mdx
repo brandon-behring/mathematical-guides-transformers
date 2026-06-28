@@ -1,11 +1,12 @@
 ---
 title: "Notation and Prerequisites"
 slug: notation
-description: "The single-source notation reference: dimension and operator conventions, the softmax (translation invariance and Jacobian), cross-entropy as KL divergence up to a constant, and row-stochastic matrices."
+chapter: 0
+description: "The single-source notation reference: dimension and operator conventions, the modality-agnostic embedding interface, the softmax (translation invariance and Jacobian), cross-entropy as KL divergence up to a constant, and row-stochastic matrices."
 last_verified: 2026-06-03
 rigor_level: rigorous
 prerequisites: []
-notation_introduced: ['\softmax', '\defeq', 'd', 'n', 'd_k', 'row-stochastic', 'H(p,q)', 'D_KL']
+notation_introduced: ['\softmax', '\defeq', 'd', 'n', 'd_k', 'row-stochastic', 'H(p,q)', 'D_KL', '\Emb', '\mathcal U', 'u_t', 'p', 'c', 'X^{(s)}']
 theorems: ['prop-softmax-translation-inv', 'prop-softmax-jacobian', 'prop-ce-kl', 'prop-row-stochastic-convex']
 los:
   - id: TF-0.1
@@ -14,6 +15,8 @@ los:
     statement: "Show that minimizing cross-entropy is equivalent to minimizing KL divergence from the data distribution."
   - id: TF-0.3
     statement: "Define row-stochastic matrices and prove their product with a value matrix is a convex combination of the values."
+  - id: TF-0.4
+    statement: "State the modality-agnostic embedding interface and the unit/stream notation that place text and vision on a dual footing."
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
@@ -21,6 +24,7 @@ import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/Margin
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import SolutionBox from '../../components/SolutionBox.astro';
 
 # Notation and Prerequisites
 
@@ -42,24 +46,39 @@ Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d
 | $d_{\text{ff}}$ | feed-forward hidden dimension (typically $4d$) |
 | $\lvert\mathcal V\rvert$ | vocabulary size |
 | $N$ | number of transformer layers (blocks) |
+| $p,\,c$ | image patch side and channel count; a patch flattens to dimension $p^2 c$ |
 
 **Standing operators.** Each is defined once, in the chapter named; return here for a lookup.
 
 | Operator | Meaning | Defined in |
 |---|---|---|
-| $\softmax(\mathbf z)$ | normalized exponential | this chapter (Def. 1) |
-| $\operatorname{PE}(t)$ | positional encoding at position $t$ | Input Representations |
+| $\softmax(\mathbf z)$ | normalized exponential | this chapter (<XRef id="def-softmax" />) |
+| $\Emb(u)$ | embedding map $\mathcal U\to\R^{d}$ from a raw unit to a model vector | this chapter; Input Representations |
+| $\operatorname{PE}(t)$ | positional encoding at index $t$ (a grid index $(a,b)$ for images) | Input Representations |
 | $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ | scaled dot-product attention | Attention |
 | $\operatorname{MHA}(\mathbf X)$ | multi-head attention | Multi-Head Attention |
 | $\operatorname{FFN}(\mathbf x)$ | position-wise feed-forward network | The Transformer Block |
 | $\operatorname{LN}(\mathbf x)$ | layer normalization | The Transformer Block |
 | $\mathbf M$ | causal mask matrix | Attention |
 
+## Modality-agnostic conventions
+
+The transformer acts on a sequence $\mathbf X\in\R^{n\times d}$ of $n$ elements. What those elements *are* — words, image patches, audio frames, discrete codes — is fixed once, at the input boundary, by a single embedding map; the layers that follow never consult it. We name that boundary here so later chapters can speak of "units" and "streams" without committing to a modality, and so the vision material reads as one more instance of the same machinery rather than a separate track.
+
+| Symbol | Meaning |
+|---|---|
+| $u_t$ | a **unit**: the raw element at position $t$ — a token, an image patch, or a discrete code |
+| $\mathcal U$ | the **unit space** of a modality (text: the vocabulary $\mathcal V$; vision: patches $\R^{p\times p\times c}$; discrete visual: a codebook index set) |
+| $\Emb$ | the **embedding map** $\Emb:\mathcal U\to\R^{d}$; the embedded sequence is $\hat{\mathbf X} = (\Emb(u_1);\dots;\Emb(u_n))\in\R^{n\times d}$ |
+| $\mathbf X^{(s)}$ | the $s$-th input **stream** $\in\R^{n_s\times d}$, when several modalities coexist (e.g. a vision stream and a text stream) |
+
+A single map $\Emb$ is the *only* place a modality enters the input. The **Input Representations** chapter instantiates it three ways — token lookup, image patches, codebook lookup — and proves they share one linear form; every result after that boundary is stated over $\R^{n\times d}$ and is blind to which modality produced it.
+
 ## The softmax
 
 Softmax turns a vector of real scores into a probability distribution: larger scores receive exponentially more weight, and the weights sum to one. It is the transformer's one ubiquitous nonlinearity — it forms attention weights from similarity logits and the output distribution from vocabulary logits — so we fix its definition and two properties here.
 
-<Theorem kind="definition" n="1" name="Softmax" id="def-softmax">
+<Theorem kind="definition" name="Softmax" id="def-softmax">
 For $\mathbf z = (z_1,\dots,z_K)\in\R^K$, the **softmax** $\softmax:\R^K\to\R^K$ is
 $$
 \softmax(\mathbf z)_i \defeq \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}, \qquad i = 1,\dots,K.
@@ -67,7 +86,7 @@ $$
 Every output is positive and the entries sum to $1$, so $\softmax(\mathbf z)$ is a probability distribution over $K$ categories.<Sidenote>The standard probabilistic reading of network logits <Cite key="bridle1990probabilistic" />.</Sidenote>
 </Theorem>
 
-<Theorem kind="proposition" n="1" name="Translation invariance" id="prop-softmax-translation-inv">
+<Theorem kind="proposition" name="Translation invariance" id="prop-softmax-translation-inv">
 For any scalar $c\in\R$, $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$.
 </Theorem>
 
@@ -85,7 +104,7 @@ Subtracting $\max_j z_j$ before exponentiating therefore changes nothing while a
 
 <MarginNote variant="tip" label="Self-explanation">Before reading the next proof: translation invariance says the output is unchanged along the direction $\mathbf 1$. What must the Jacobian do to the vector $\mathbf 1$?</MarginNote>
 
-<Theorem kind="proposition" n="2" name="Softmax Jacobian" id="prop-softmax-jacobian">
+<Theorem kind="proposition" name="Softmax Jacobian" id="prop-softmax-jacobian">
 Let $\mathbf p = \softmax(\mathbf z)$. The Jacobian $\mathbf J\in\R^{K\times K}$ with $J_{ij} = \partial p_i/\partial z_j$ is
 $$
 \mathbf J = \operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top, \qquad J_{ij} = p_i(\delta_{ij} - p_j),
@@ -123,7 +142,7 @@ Geometrically, softmax maps $\R^K$ onto the interior of the probability simplex 
 
 Training minimizes a single scalar: the cross-entropy between the data's next-token distribution and the model's. One short decomposition explains why it is the right scalar — cross-entropy splits into the data's intrinsic uncertainty plus the model's excess cost, and only the second term depends on the parameters.
 
-<Theorem kind="definition" n="2" name="Entropy" id="def-entropy">
+<Theorem kind="definition" name="Entropy" id="def-entropy">
 The **entropy** of a discrete distribution $\mathbf p = (p_1,\dots,p_K)$ is
 $$
 H(\mathbf p) \defeq -\sum_{k=1}^{K} p_k \log p_k \qquad (\text{with } 0\log 0 = 0).
@@ -132,7 +151,7 @@ $$
 It is maximal at the uniform distribution ($H = \log K$) and zero at any point mass.
 </Theorem>
 
-<Theorem kind="definition" n="3" name="Cross-entropy" id="def-cross-entropy">
+<Theorem kind="definition" name="Cross-entropy" id="def-cross-entropy">
 The **cross-entropy** of a model distribution $\mathbf q$ (with $q_k > 0$) relative to a target $\mathbf p$ is
 $$
 H(\mathbf p, \mathbf q) \defeq -\sum_{k=1}^{K} p_k \log q_k.
@@ -140,7 +159,7 @@ $$
 For a one-hot target $\mathbf p = \mathbf e_y$ it reduces to $-\log q_y$, the model's negative log-probability on the correct class.
 </Theorem>
 
-<Theorem kind="definition" n="4" name="KL divergence" id="def-kl">
+<Theorem kind="definition" name="KL divergence" id="def-kl">
 The **Kullback–Leibler divergence** from $\mathbf p$ to $\mathbf q$ is
 $$
 D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q) \defeq \sum_{k=1}^{K} p_k \log \frac{p_k}{q_k}.
@@ -149,7 +168,7 @@ $$
 By Gibbs' inequality $D_{\mathrm{KL}} \ge 0$, with equality if and only if $\mathbf p = \mathbf q$.
 </Theorem>
 
-<Theorem kind="proposition" n="3" name="Cross-entropy = entropy + KL" id="prop-ce-kl">
+<Theorem kind="proposition" name="Cross-entropy = entropy + KL" id="prop-ce-kl">
 $H(\mathbf p, \mathbf q) = H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q)$. Since $H(\mathbf p)$ depends only on the data distribution, minimizing $H(\mathbf p, \mathbf q)$ over the model is equivalent to minimizing $D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q)$.
 </Theorem>
 
@@ -158,10 +177,10 @@ Add and subtract $\sum_k p_k \log p_k$ inside the definition of cross-entropy:
 $$
 \begin{aligned}
 H(\mathbf p, \mathbf q)
-&= -\sum_k p_k \log q_k && \text{(Def. 3)} \\
+&= -\sum_k p_k \log q_k && \text{(cross-entropy)} \\
 &= -\sum_k p_k \log p_k + \sum_k p_k \log p_k - \sum_k p_k \log q_k \\
-&= H(\mathbf p) + \sum_k p_k \log \frac{p_k}{q_k} && \text{(Def. 2)} \\
-&= H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q). && \text{(Def. 4)}
+&= H(\mathbf p) + \sum_k p_k \log \frac{p_k}{q_k} && \text{(entropy)} \\
+&= H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q). && \text{(KL divergence)}
 \end{aligned}
 $$
 The first term is constant in the parameters, so the gradient of the cross-entropy equals the gradient of the KL term. $\qquad\blacksquare$
@@ -171,11 +190,11 @@ The first term is constant in the parameters, so the gradient of the cross-entro
 
 An attention weight matrix has one defining property: every row is a probability distribution. That single property forces each attention output to be an average — a convex combination — of the value vectors, never an extrapolation beyond them.
 
-<Theorem kind="definition" n="5" name="Row-stochastic matrix" id="def-row-stochastic">
+<Theorem kind="definition" name="Row-stochastic matrix" id="def-row-stochastic">
 A matrix $\mathbf A\in\R^{n\times n}$ is **row-stochastic** if it is entrywise nonnegative and each row sums to one: $\mathbf A \ge \mathbf 0$ and $\mathbf A\mathbf 1 = \mathbf 1$.
 </Theorem>
 
-<Theorem kind="proposition" n="4" name="Row-stochastic times values is a convex combination" id="prop-row-stochastic-convex">
+<Theorem kind="proposition" name="Row-stochastic times values is a convex combination" id="prop-row-stochastic-convex">
 If $\mathbf A\in\R^{n\times n}$ is row-stochastic and $\mathbf V\in\R^{n\times d_v}$ holds value vectors in its rows, then each row of $\mathbf A\mathbf V$ is a convex combination of the rows of $\mathbf V$:
 $$
 [\mathbf A\mathbf V]_{i,:} = \sum_{j=1}^{n} A_{ij}\,\mathbf v_j, \qquad A_{ij}\ge 0,\ \ \sum_j A_{ij} = 1.
@@ -183,14 +202,51 @@ $$
 </Theorem>
 
 <Theorem kind="proof">
-Row $i$ of the product is $\sum_j A_{ij}\mathbf v_j$ by the definition of matrix multiplication. The coefficients $A_{ij}$ are nonnegative and sum to one (Def. 5), which is exactly a convex combination. $\qquad\blacksquare$
+Row $i$ of the product is $\sum_j A_{ij}\mathbf v_j$ by the definition of matrix multiplication. The coefficients $A_{ij}$ are nonnegative and sum to one (<XRef id="def-row-stochastic" />), which is exactly a convex combination. $\qquad\blacksquare$
 </Theorem>
 
 Because the attention weight matrix is row-stochastic — softmax produces it, as the Attention chapter proves — every attention output lies in the convex hull of the value vectors it attends to. Attention *interpolates*; it cannot reach outside that hull. The residual connection $\mathbf x + \operatorname{Attn}(\mathbf x)$ and the feed-forward layer are what let a block escape it.
 
 ## Exercises
 
-1. **(Prove)** Show $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$ for every $c\in\R$, and conclude that the Jacobian satisfies $\mathbf J\mathbf 1 = \mathbf 0$. — <XRef id="soln-tf0-ex1" />
-2. **(Derive)** From $\mathbf J = \operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top$ with every $p_i > 0$, show $\operatorname{rank}\mathbf J = K-1$ and identify the null space. — <XRef id="soln-tf0-ex2" />
-3. **(Compute)** For $\mathbf z = (2, 0, -1)$, compute the numerically stable softmax and verify it is unchanged by $\mathbf z + 5\mathbf 1$. — <XRef id="soln-tf0-ex3" />
-4. **(Prove)** Using only the definitions, establish $H(\mathbf p, \mathbf q) = H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q)$, and explain why this makes cross-entropy minimization equivalent to KL minimization. — <XRef id="soln-tf0-ex4" />
+Attempt each before expanding its solution.
+
+**Exercise 0.1 (Prove).** Show $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$ for every $c\in\R$, and conclude that the Jacobian satisfies $\mathbf J\mathbf 1 = \mathbf 0$.
+
+<SolutionBox>
+
+For any $c\in\R$, multiplying the numerator and denominator of $\softmax(\mathbf z)_i$ by $e^{c}$ leaves each entry unchanged, so $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$. The Jacobian then annihilates $\mathbf 1$ directly: $\mathbf J\mathbf 1 = \operatorname{diag}(\mathbf p)\mathbf 1 - \mathbf p(\mathbf p^\top\mathbf 1) = \mathbf p - \mathbf p = \mathbf 0$, since $\mathbf p^\top\mathbf 1 = 1$. (Equivalently, differentiating the invariance in $c$ at $c=0$ gives the directional derivative $\mathbf J\mathbf 1 = \mathbf 0$.) $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 0.2 (Derive).** From $\mathbf J = \operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top$ with every $p_i > 0$, show $\operatorname{rank}\mathbf J = K-1$ and identify the null space.
+
+<SolutionBox>
+
+Suppose $\mathbf J\mathbf x = \mathbf 0$, i.e. $\operatorname{diag}(\mathbf p)\mathbf x = \mathbf p(\mathbf p^\top\mathbf x)$. Componentwise, $p_i x_i = p_i(\mathbf p^\top\mathbf x)$ for every $i$. Since every $p_i > 0$, divide by $p_i$ to get $x_i = \mathbf p^\top\mathbf x$ — the same constant for all $i$. Hence $\mathbf x = c\mathbf 1$, so the null space is $\operatorname{span}\{\mathbf 1\}$, of dimension $1$. By rank–nullity, $\operatorname{rank}\mathbf J = K - 1$. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 0.3 (Compute).** For $\mathbf z = (2, 0, -1)$, compute the numerically stable softmax and verify it is unchanged by $\mathbf z + 5\mathbf 1$.
+
+<SolutionBox>
+
+Subtract $\max_i z_i = 2$: $\mathbf z - 2\mathbf 1 = (0, -2, -3)$. Exponentiate to $(1,\ e^{-2},\ e^{-3}) \approx (1,\ 0.135,\ 0.0498)$, with sum $\approx 1.185$, so
+$$
+\softmax(\mathbf z) \approx (0.844,\ 0.114,\ 0.042).
+$$
+Adding $5\mathbf 1$ gives $(7,5,4)$; every weight is multiplied by $e^{5}$, which cancels in the normalization, returning the identical vector (<XRef id="prop-softmax-translation-inv" />). $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 0.4 (Prove).** Using only the definitions, establish $H(\mathbf p, \mathbf q) = H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q)$, and explain why this makes cross-entropy minimization equivalent to KL minimization.
+
+<SolutionBox>
+
+Add and subtract $\sum_k p_k \log p_k$:
+$$
+H(\mathbf p,\mathbf q) = -\sum_k p_k\log q_k = -\sum_k p_k\log p_k + \sum_k p_k\log\frac{p_k}{q_k} = H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p\,\|\,\mathbf q).
+$$
+Because $H(\mathbf p)$ depends only on the (fixed) data distribution, $\nabla_{\boldsymbol\theta} H(\mathbf p,\mathbf q) = \nabla_{\boldsymbol\theta} D_{\mathrm{KL}}(\mathbf p\,\|\,\mathbf q)$: the two objectives share the same gradient and minimizer in the model parameters. $\qquad\blacksquare$
+
+</SolutionBox>
