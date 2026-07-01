@@ -353,3 +353,36 @@ Confirmed delivery: **Increment 1 (Part A weave) ships and is reviewed/built bef
 - Chapters `02`, `03`, `04`, `08`, `09` are deliberately **untouched** — that they need no change
   is itself the proof of the dual-footing thesis and should be stated as such in Ch 1's capstone
   remark.
+
+---
+
+## Completion (2026-07-01)
+
+**Shipped.** Increment 1 + 2 delivered as PR #1 → squash-merged `36cb6b1`
+("feat: vision-language models (dual-footing extension, chapters 10–13)"),
+review fixes in `c1ec95d`. The guide is 14 chapters (00–13), no appendix.
+
+**Gate evidence.** `npm run build` green (14 chapters, 12 figures, 0 KaTeX
+errors in rendered HTML); `validate` clean; codex adversarial proof audit of
+all 13 genuinely-new proofs (6 rigor fixes applied, incl. KL-direction and
+`prop-tf12-why-discrete` rescope); 3-voice adversarial review on PR #1 found
+3 semantic bugs (KV-cache 21.5 GB, Ex9.5 1.65, RoPE-proof XRef), fixed.
+
+**Decisions / deviations from this plan.**
+- Solutions appendix (`99`) replaced by inline collapsible `SolutionBox`
+  components per exercise (50 boxes across 10 chapters) — supersedes
+  Infrastructure item 4 and the appendix rows in the chapter map.
+- The 3-voice adversarial-review engine truncated to 4/78 files (covered the
+  Increment-1 edits + config); the codex proof audit covered the full
+  new-proof surface of chapters 10–13.
+- Guide-health / readiness workflows inapplicable: this repo has no
+  `guide_qa.yaml`.
+- `ssmMacros` import deferred pending scaffold issue #177 (OPEN as of
+  2026-07-01); KaTeX macros remain inline-duplicated in `astro.config.mjs`.
+
+**Post-ship CI repair.** The standalone `content-validate` job failed on fresh
+checkouts (gitignored `src/data/*.json` never generated); fixed via PR #3 →
+`b8dc252` (`prevalidate` npm hook + `npm run validate` + widened trigger
+paths). Both workflows green on `main`. Siblings + upstream tracked:
+mathematical-guides#2, mathematical-guides-reinforcement-learning#1,
+book-scaffold-astro#186.
