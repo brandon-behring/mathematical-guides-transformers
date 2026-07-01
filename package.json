@@ -11,6 +11,7 @@
     "build:labels": "book-scaffold build-labels",
     "build:figures": "book-scaffold build-figures",
     "build:notebooks": "book-scaffold render-notebooks",
+    "prevalidate": "npm run build:bib --if-present && npm run build:labels --if-present",
     "validate": "book-scaffold validate",
     "dev": "astro dev",
     "build": "astro build && pagefind --site dist",
