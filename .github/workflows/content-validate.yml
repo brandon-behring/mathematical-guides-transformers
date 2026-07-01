@@ -3,9 +3,9 @@ name: content-validate
 on:
   push:
     branches: [main]
-    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', '.github/workflows/content-validate.yml']
+    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', 'package-lock.json', '.github/workflows/content-validate.yml']
   pull_request:
-    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', '.github/workflows/content-validate.yml']
+    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', 'package-lock.json', '.github/workflows/content-validate.yml']
 
 jobs:
   validate:
