@@ -5,7 +5,7 @@ chapter: 4
 description: "The transformer block from its parts: the position-wise feed-forward network, layer normalization and its Jacobian bound, residual connections and the gradient-highway identity, and why pre-norm leaves the skip path naked while post-norm does not."
 last_verified: 2026-06-03
 rigor_level: rigorous
-prerequisites: [notation, attention]
+prerequisites: [notation, attention, multi-head-attention]
 notation_introduced: ['\operatorname{FFN}', '\operatorname{LN}', 'd_{\text{ff}}', '\gamma', '\beta']
 theorems: ['prop-tf4-ln-jacobian', 'thm-tf4-gradient-highway']
 los:
@@ -49,17 +49,17 @@ Applied to a sequence $\mathbf X\in\R^{n\times d}$, the map acts row-wise: $[\op
 The two layers admit a memory reading that makes the structural kinship with attention exact.
 
 <Theorem kind="remark" name="The feed-forward network as fixed key–value memory" id="rem-tf4-kv-memory">
-Write the rows of $\mathbf W_1$ as "keys" and the columns of $\mathbf W_2$ as "values": $\mathbf W_1 = [\mathbf k_1\mid\cdots\mid\mathbf k_{d_{\text{ff}}}]^\top$ and $\mathbf W_2 = [\mathbf v_1\mid\cdots\mid\mathbf v_{d_{\text{ff}}}]$. Ignoring biases,
+Write the **columns** of $\mathbf W_1$ as "keys" and the **rows** of $\mathbf W_2$ as "values": $\mathbf W_1 = [\mathbf k_1\mid\cdots\mid\mathbf k_{d_{\text{ff}}}]$ and $\mathbf W_2 = [\mathbf v_1\mid\cdots\mid\mathbf v_{d_{\text{ff}}}]^\top$, with each $\mathbf k_j, \mathbf v_j \in \R^{d}$. Ignoring biases,
 $$
 \operatorname{FFN}(\mathbf x) = \sum_{j=1}^{d_{\text{ff}}} \sigma(\inner{\mathbf x}{\mathbf k_j})\,\mathbf v_j.
 $$
-The input is matched against each key, $\sigma$ gates the match, and the output is the gated sum of values — structurally identical to an attention row, except the keys and values are *fixed parameters* rather than functions of the input. Attention routes contextual information; the feed-forward network routes parametric (memorized) information.<Sidenote>The two together form a retrieval system combining context-dependent and context-independent knowledge.</Sidenote>
+The input is matched against each key, $\sigma$ gates the match, and the output is the gated sum of values — structurally identical to an attention row, except the keys and values are *fixed parameters* rather than functions of the input. Attention routes contextual information; the feed-forward network routes parametric (memorized) information.<Sidenote>The key–value memory reading of the FFN is due to <Cite key="geva2021kv" />; the two together form a retrieval system combining context-dependent and context-independent knowledge.</Sidenote>
 </Theorem>
 
 Gated variants refine the activation without changing this picture.
 
 <Theorem kind="remark" name="SwiGLU and gated feed-forward variants" id="rem-tf4-swiglu">
-Modern models replace the activation with a multiplicative gate <Cite key="shazeer2020glu" />: with $\operatorname{Swish}(z) = z\,\sigma_{\mathrm{sig}}(z)$ and a third matrix $\mathbf W_3\in\R^{d\times d_{\text{ff}}}$,
+Modern models replace the activation with a multiplicative gate <Cite key="shazeer2020glu" />: with $\operatorname{Swish}(z) = z\,\sigma_{\mathrm{sig}}(z)$ — where $\sigma_{\mathrm{sig}}(z) = 1/(1+e^{-z})$ is the logistic sigmoid, distinct from the generic activation $\sigma$ — and a third matrix $\mathbf W_3\in\R^{d\times d_{\text{ff}}}$,
 $$
 \operatorname{SwiGLU}(\mathbf x) \defeq \big(\operatorname{Swish}(\mathbf x\mathbf W_1)\odot \mathbf x\mathbf W_3\big)\,\mathbf W_2,
 $$
@@ -125,7 +125,7 @@ The identity path $\mathbf x\mapsto\mathbf x$ guarantees the layer can represent
 <MarginNote variant="tip" label="Self-explanation">Before the proof: a residual layer's Jacobian is $\mathbf I + \partial f/\partial\mathbf x$. Multiply $L-\ell$ such factors and expand — which term has no sublayer Jacobian?</MarginNote>
 
 <Theorem kind="theorem" name="Gradient highway" id="thm-tf4-gradient-highway">
-In a depth-$L$ residual stack $\mathbf x_{\ell+1} = \mathbf x_\ell + f_\ell(\mathbf x_\ell)$, $\ell = 0,\dots,L-1$, the gradient of a loss $\mathcal L$ with respect to the layer-$\ell$ input is, in the row-vector convention,
+In a depth-$L$ residual stack $\mathbf x_{\ell+1} = \mathbf x_\ell + f_\ell(\mathbf x_\ell)$, $\ell = 0,\dots,L-1$, the gradient of a loss $\mathcal L$ with respect to the layer-$\ell$ input is, in the row-vector convention (all products over layers ordered with $i$ *decreasing* left to right, outermost factor first),
 $$
 \frac{\partial\mathcal L}{\partial\mathbf x_\ell} = \frac{\partial\mathcal L}{\partial\mathbf x_L}\prod_{i=\ell}^{L-1}\Big(\mathbf I + \frac{\partial f_i}{\partial\mathbf x_i}\Big).
 $$
@@ -139,7 +139,7 @@ Two steps: the identity, then the reading of its expansion.
 $$
 \frac{\partial\mathbf x_{i+1}}{\partial\mathbf x_i} = \mathbf I + \frac{\partial f_i}{\partial\mathbf x_i},
 $$
-by differentiating $\mathbf x_{i+1} = \mathbf x_i + f_i(\mathbf x_i)$ (sum rule). The loss depends on $\mathbf x_\ell$ only through the composition $\mathbf x_\ell\mapsto\mathbf x_{\ell+1}\mapsto\cdots\mapsto\mathbf x_L$, so the chain rule multiplies these single-layer Jacobians:
+by differentiating $\mathbf x_{i+1} = \mathbf x_i + f_i(\mathbf x_i)$ (sum rule). The loss depends on $\mathbf x_\ell$ only through the composition $\mathbf x_\ell\mapsto\mathbf x_{\ell+1}\mapsto\cdots\mapsto\mathbf x_L$, so the chain rule multiplies these single-layer Jacobians, ordered with $i$ decreasing left to right:
 $$
 \frac{\partial\mathcal L}{\partial\mathbf x_\ell} = \frac{\partial\mathcal L}{\partial\mathbf x_L}\prod_{i=\ell}^{L-1}\frac{\partial\mathbf x_{i+1}}{\partial\mathbf x_i} = \frac{\partial\mathcal L}{\partial\mathbf x_L}\prod_{i=\ell}^{L-1}\Big(\mathbf I + \frac{\partial f_i}{\partial\mathbf x_i}\Big).
 $$
@@ -153,7 +153,7 @@ The leading $\mathbf I$ is independent of every $\mathbf J_i$: it is the path th
 
 <MarginNote variant="formula" label="Gradient highway">$\partial\mathcal L/\partial\mathbf x_\ell$ expands to $\mathbf I + (\text{Jacobian terms})$; the leading $\mathbf I$ is the all-skip path.</MarginNote>
 
-The theorem says only that the identity term is *present*, not that it dominates: the bracket is $\mathbf I$ plus a sum that may be large, so this is no uniform lower bound on the whole gradient.<Sidenote>The sublayer terms can still cause growth or, through correlation, cancellation. The skip path guarantees a route, not a magnitude.</Sidenote> What it does establish is structural: in a plain stack the *only* route from $\mathbf x_L$ to $\mathbf x_\ell$ runs through every Jacobian, and a single contractive layer can throttle it; in a residual stack the all-skip route is immune to any individual $\mathbf J_i$ shrinking <Cite key="he2016deep" />. This is also why the residual makes the block expressive enough to escape the convex hull of <XRef id="prop-row-stochastic-convex" />: attention alone interpolates among values, but $\mathbf x + \operatorname{Attn}(\mathbf x)$ adds the original token back, moving the output off the hull.
+The theorem says only that the identity term is *present*, not that it dominates: the bracket is $\mathbf I$ plus a sum that may be large, so this is no uniform lower bound on the whole gradient.<Sidenote>The sublayer terms can still cause growth or, through correlation, cancellation. The skip path guarantees a route, not a magnitude.</Sidenote> What it does establish is structural: in a plain stack the *only* route from $\mathbf x_L$ to $\mathbf x_\ell$ runs through every Jacobian, and a single contractive layer can throttle it; in a residual stack the all-skip route is immune to any individual $\mathbf J_i$ shrinking <Cite key="he2016identity" />. This is also why the residual makes the block expressive enough to escape the convex hull of <XRef id="prop-row-stochastic-convex" />: attention alone interpolates among values, but $\mathbf X + \operatorname{MHA}(\mathbf X)$ adds the original tokens back, moving the output off the hull.
 
 ## Assembling the block: pre-norm and post-norm
 
@@ -162,20 +162,20 @@ A block uses each of the two sublayers once, each wrapped in a residual connecti
 <Theorem kind="definition" name="Post-norm block" id="def-tf4-postnorm">
 The **post-norm** arrangement (the original transformer <Cite key="vaswani2017attention" />) normalizes *after* each residual addition:
 $$
-\mathbf y = \operatorname{LN}\big(\mathbf x + \operatorname{MHA}(\mathbf x)\big), \qquad \mathbf z = \operatorname{LN}\big(\mathbf y + \operatorname{FFN}(\mathbf y)\big).
+\mathbf Y = \operatorname{LN}\big(\mathbf X + \operatorname{MHA}(\mathbf X)\big), \qquad \mathbf Z = \operatorname{LN}\big(\mathbf Y + \operatorname{FFN}(\mathbf Y)\big).
 $$
 </Theorem>
 
 <Theorem kind="definition" name="Pre-norm block" id="def-tf4-prenorm">
 The **pre-norm** arrangement normalizes *before* each sublayer, leaving the addition last:
 $$
-\mathbf y = \mathbf x + \operatorname{MHA}\big(\operatorname{LN}(\mathbf x)\big), \qquad \mathbf z = \mathbf y + \operatorname{FFN}\big(\operatorname{LN}(\mathbf y)\big).
+\mathbf Y = \mathbf X + \operatorname{MHA}\big(\operatorname{LN}(\mathbf X)\big), \qquad \mathbf Z = \mathbf Y + \operatorname{FFN}\big(\operatorname{LN}(\mathbf Y)\big).
 $$
 </Theorem>
 
 <MarginNote variant="pattern" label="Where LN sits">Pre-norm: LN inside the residual branch, skip path naked. Post-norm: LN outside, on top of the skip sum.</MarginNote>
 
-The distinction is exactly whether the residual path stays *naked*. In pre-norm, $\mathbf y = \mathbf x + (\cdots)$ is a residual layer of the form in <XRef id="thm-tf4-gradient-highway" />, so its Jacobian is $\mathbf I + \mathbf J$ and the gradient inherits the all-skip $\mathbf I$ directly. In post-norm, $\mathbf y = \operatorname{LN}(\mathbf x + (\cdots))$ wraps the residual sum in a further map, so its Jacobian is $\mathbf J_{\operatorname{LN}}(\mathbf I + \mathbf J)$ — the layer-norm Jacobian of <XRef id="prop-tf4-ln-jacobian" /> multiplies the whole bracket, identity term included. The skip path no longer reaches the next layer untouched; even the all-skip route must pass through a normalization Jacobian at every step.
+The distinction is exactly whether the residual path stays *naked*. In pre-norm, $\mathbf Y = \mathbf X + (\cdots)$ is a residual layer of the form in <XRef id="thm-tf4-gradient-highway" />, so its Jacobian is $\mathbf I + \mathbf J$ and the gradient inherits the all-skip $\mathbf I$ directly. In post-norm, $\mathbf Y = \operatorname{LN}(\mathbf X + (\cdots))$ wraps the residual sum in a further map, so its Jacobian is $\mathbf J_{\operatorname{LN}}(\mathbf I + \mathbf J)$ — the layer-norm Jacobian of <XRef id="prop-tf4-ln-jacobian" /> multiplies the whole bracket, identity term included. The skip path no longer reaches the next layer untouched; even the all-skip route must pass through a normalization Jacobian at every step.
 
 <Theorem kind="remark" name="What pre-norm buys at initialization" id="rem-tf4-prenorm-init">
 A mean-field analysis <Cite key="xiong2020layer" /> supports a qualitative picture at initialization: a pre-norm block behaves like a small perturbation of the identity, while a post-norm block, with $\operatorname{LN}$ on every skip step, can produce larger gradients near the output layers and is more sensitive to initialization and learning-rate warmup. This is *not* a theorem that every pre-norm transformer has depth-independent gradients — the sublayer terms still accumulate — but it explains why deep post-norm stacks ($L\gtrsim 12$) are notoriously hard to train without warmup and residual-scaling tricks, while pre-norm largely sidesteps the difficulty. Pre-norm is the post-2020 default (GPT-2/3, Llama, PaLM); post-norm is used by the original transformer and BERT.
@@ -231,6 +231,6 @@ with feature mean $0$ and feature variance $1$, as required. $\qquad\blacksquare
 
 <SolutionBox>
 
-Take $f(\mathbf x) = \mathbf x\mathbf A$ with $\mathbf A = 9\mathbf I$, so the layer Jacobian is $\mathbf I + 9\mathbf I = 10\mathbf I$, spectral norm $10$: the all-skip term is the single $\mathbf I$, but the full bracket has norm $10$, so the skip route is a $10\%$ share, not dominant. Conversely $\mathbf A = -\tfrac{9}{10}\mathbf I$ gives bracket $\tfrac{1}{10}\mathbf I$. Either way, <XRef id="thm-tf4-gradient-highway" /> guarantees the identity route exists; it does not bound its relative magnitude. $\qquad\blacksquare$
+Take $f(\mathbf x) = \mathbf x\mathbf A$ with $\mathbf A = 9\mathbf I$, at any input — say $\mathbf x = \mathbf 0$; $f$ is linear, so its Jacobian is the same at every input — and the layer Jacobian is $\mathbf I + 9\mathbf I = 10\mathbf I$, spectral norm $10$: the all-skip term is the single $\mathbf I$, but the full bracket has norm $10$, so the skip route is a $10\%$ share, not dominant. Conversely $\mathbf A = -\tfrac{9}{10}\mathbf I$ gives bracket $\tfrac{1}{10}\mathbf I$. Either way, <XRef id="thm-tf4-gradient-highway" /> guarantees the identity route exists; it does not bound its relative magnitude. $\qquad\blacksquare$
 
 </SolutionBox>

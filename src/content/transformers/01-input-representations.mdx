@@ -112,7 +112,7 @@ By construction $\mathbf K[:,:,:,j]$ is the reshape of column $j$ of $\mathbf W_
 
 <Figure
   src="/figures/dual-embedding.svg"
-  caption="The embedding interface. Text token lookup and image patch projection are two instances of one linear map into the same space R^(n×d); everything the transformer does afterwards is identical. Rendered from TikZ via the figures pipeline."
+  caption="The embedding interface. Text token lookup and image patch projection are two instances of one linear map into the same space R^(n×d), producing X-hat; position is then added (X = X-hat + P) and everything the transformer does afterwards is identical. Rendered from TikZ via the figures pipeline."
   id="fig-dual-embedding"
   width="70%"
 />
@@ -260,27 +260,27 @@ It is orthogonal, with $\mathbf R(\theta)^\top = \mathbf R(-\theta) = \mathbf R(
 </Theorem>
 
 <Theorem kind="definition" name="Rotary position embedding" id="def-tf1-rope">
-Given a query $\mathbf q \in \R^{d}$ at position $m$ and a key $\mathbf k \in \R^{d}$ at position $n$, RoPE applies a position-dependent rotation to each $2$D subspace before the dot product:
+Given a query $\mathbf q \in \R^{d}$ at position $m$ and a key $\mathbf k \in \R^{d}$ at position $t$, RoPE applies a position-dependent rotation to each $2$D subspace before the dot product:
 $$
 f(\mathbf q, m) \defeq \mathbf\Theta(m)\,\mathbf q,
 \qquad
-f(\mathbf k, n) \defeq \mathbf\Theta(n)\,\mathbf k,
+f(\mathbf k, t) \defeq \mathbf\Theta(t)\,\mathbf k,
 $$
 where
 $$
-\mathbf\Theta(t) = \operatorname{diag}\!\big(\mathbf R(\theta_0 t),\, \mathbf R(\theta_1 t),\, \dots,\, \mathbf R(\theta_{d/2-1} t)\big)
+\mathbf\Theta(t) \defeq \operatorname{diag}\!\big(\mathbf R(\theta_0 t),\, \mathbf R(\theta_1 t),\, \dots,\, \mathbf R(\theta_{d/2-1} t)\big)
 $$
-is block-diagonal in the $2\times 2$ rotations of <XRef id="def-tf1-rotation-2d" />, and the base angles $\theta_i = 10000^{-2i/d}$ follow the same geometric schedule as the sinusoidal frequencies (<XRef id="def-tf1-sinusoidal-pe" />).
+is block-diagonal in the $2\times 2$ rotations of <XRef id="def-tf1-rotation-2d" />, and the base angles $\theta_i = 10000^{-2i/d}$ follow the same geometric schedule as the sinusoidal frequencies (<XRef id="def-tf1-sinusoidal-pe" />). Here $\mathbf q, \mathbf k$ are treated as **column** vectors — as in the 2D-shift proof — and transposing converts the rotation action to the row form.
 </Theorem>
 
 <MarginNote variant="pattern" label="Position in the dot product">RoPE writes relative position directly into the query-key inner product — no fixed vector is added and no positions are subtracted.</MarginNote>
 
-<MarginNote variant="tip" label="Self-explanation">Before reading the proof: $\mathbf\Theta(t)$ is built from orthogonal rotations that compose additively. What does $\mathbf\Theta(m)^\top\mathbf\Theta(n)$ have to be?</MarginNote>
+<MarginNote variant="tip" label="Self-explanation">Before reading the proof: $\mathbf\Theta(t)$ is built from orthogonal rotations that compose additively. What does $\mathbf\Theta(m)^\top\mathbf\Theta(t)$ have to be?</MarginNote>
 
 <Theorem kind="theorem" name="RoPE relative-position property" id="thm-tf1-rope-relative">
-The dot product of RoPE-encoded query and key depends only on the relative position $n - m$:
+The dot product of RoPE-encoded query and key depends only on the relative position $t - m$:
 $$
-f(\mathbf q, m)^\top f(\mathbf k, n) = \mathbf q^\top\, \mathbf\Theta(n - m)\, \mathbf k.
+f(\mathbf q, m)^\top f(\mathbf k, t) = \mathbf q^\top\, \mathbf\Theta(t - m)\, \mathbf k.
 $$
 </Theorem>
 
@@ -289,24 +289,24 @@ The high-level step is to collapse the two position rotations into one by orthog
 
 **Expand the dot product.** By <XRef id="def-tf1-rope" />,
 $$
-f(\mathbf q, m)^\top f(\mathbf k, n)
-= (\mathbf\Theta(m)\mathbf q)^\top (\mathbf\Theta(n)\mathbf k)
-= \mathbf q^\top \mathbf\Theta(m)^\top \mathbf\Theta(n)\, \mathbf k.
+f(\mathbf q, m)^\top f(\mathbf k, t)
+= (\mathbf\Theta(m)\mathbf q)^\top (\mathbf\Theta(t)\mathbf k)
+= \mathbf q^\top \mathbf\Theta(m)^\top \mathbf\Theta(t)\, \mathbf k.
 $$
 
 **Transpose is negative rotation (blockwise).** Each diagonal block is orthogonal with $\mathbf R(\theta_i m)^\top = \mathbf R(-\theta_i m)$ (<XRef id="def-tf1-rotation-2d" />), so $\mathbf\Theta(m)^\top = \mathbf\Theta(-m)$.
 
-**Compose additively (blockwise).** For each block, $\mathbf R(-\theta_i m)\mathbf R(\theta_i n) = \mathbf R(\theta_i(n - m))$ by the composition rule of <XRef id="def-tf1-rotation-2d" />; assembling the blocks gives $\mathbf\Theta(-m)\mathbf\Theta(n) = \mathbf\Theta(n - m)$.
+**Compose additively (blockwise).** For each block, $\mathbf R(-\theta_i m)\mathbf R(\theta_i t) = \mathbf R(\theta_i(t - m))$ by the composition rule of <XRef id="def-tf1-rotation-2d" />; assembling the blocks gives $\mathbf\Theta(-m)\mathbf\Theta(t) = \mathbf\Theta(t - m)$.
 
-**Substitute.** Therefore $f(\mathbf q, m)^\top f(\mathbf k, n) = \mathbf q^\top \mathbf\Theta(n-m)\mathbf k$, a function of $n - m$ alone. $\qquad\blacksquare$
+**Substitute.** Therefore $f(\mathbf q, m)^\top f(\mathbf k, t) = \mathbf q^\top \mathbf\Theta(t-m)\mathbf k$, a function of $t - m$ alone. $\qquad\blacksquare$
 </Theorem>
 
 <Theorem kind="remark" name="Complex-number viewpoint" id="rem-tf1-rope-complex">
-RoPE is cleanest in $\mathbb C^{\,d/2}$. Pair adjacent coordinates into $z_i = x_{2i} + \mathrm i\, x_{2i+1}$; the rotation $\mathbf R(\theta_i t)$ becomes multiplication by $e^{\mathrm i\theta_i t}$, so $f(\mathbf q, m)_i = q_i\, e^{\mathrm i\theta_i m}$ and $f(\mathbf k, n)_i = k_i\, e^{\mathrm i\theta_i n}$. The (Hermitian) dot product is then $\sum_i \overline{q_i}\,k_i\, e^{\mathrm i\theta_i(n-m)}$, manifestly a function of $n - m$. This is also how RoPE is implemented: an entrywise complex multiply costs $O(d)$, not the $O(d^2)$ of a dense matrix product.
+RoPE is cleanest in $\mathbb C^{\,d/2}$. Pair adjacent coordinates into $z_i = x_{2i} + \mathrm i\, x_{2i+1}$; the rotation $\mathbf R(\theta_i t)$ becomes multiplication by $e^{\mathrm i\theta_i t}$, so $f(\mathbf q, m)_i = q_i\, e^{\mathrm i\theta_i m}$ and $f(\mathbf k, t)_i = k_i\, e^{\mathrm i\theta_i t}$. The (Hermitian) dot product is then $\sum_i \overline{q_i}\,k_i\, e^{\mathrm i\theta_i(t-m)}$, manifestly a function of $t - m$. This is also how RoPE is implemented: an entrywise complex multiply costs $O(d)$, not the $O(d^2)$ of a dense matrix product.
 </Theorem>
 
 <Theorem kind="remark" name="Sinusoidal PE versus RoPE" id="rem-tf1-pe-vs-rope">
-Both schemes use the geometric schedule $\theta_i = 10000^{-2i/d}$, but they inject position differently. Sinusoidal PE *adds* a fixed vector to the input (<XRef id="def-tf1-input" />), so its relative-position structure (<XRef id="thm-tf1-pe-rotation" />) survives only approximately once the learned projections $\mathbf W^Q, \mathbf W^K$ act. RoPE *multiplies* inside attention (<XRef id="def-tf1-rope" />), so the relative-position identity (<XRef id="thm-tf1-rope-relative" />) holds *exactly* in the dot product. Open decoder-only models such as LLaMA adopt RoPE for this reason.<Sidenote>RoPE was introduced by <Cite key="su2024roformer" />; its use in a large open model is documented in <Cite key="touvron2023llama" />.</Sidenote>
+Both schemes use the geometric schedule $\theta_i = 10000^{-2i/d}$, but they inject position differently. Sinusoidal PE *adds* a fixed vector to the input (<XRef id="def-tf1-input" />), so its relative-position structure (<XRef id="thm-tf1-pe-rotation" />) survives only approximately once the learned projections $\mathbf W^Q, \mathbf W^K$ act. RoPE *multiplies* inside attention (<XRef id="def-tf1-rope" />), so the relative-position identity (<XRef id="thm-tf1-rope-relative" />) holds *exactly* in the dot product. Open decoder-only models such as LLaMA adopt RoPE for this reason.<Sidenote>RoPE was introduced in 2021 by <Cite key="su2024roformer" /> (journal version 2024); its use in a large open model is documented in <Cite key="touvron2023llama" />.</Sidenote>
 </Theorem>
 
 <Theorem kind="remark" name="Axial RoPE" id="rem-tf1-rope-2d">
@@ -314,14 +314,14 @@ RoPE extends to a grid the same way the sinusoidal scheme did in <XRef id="thm-t
 </Theorem>
 
 <Theorem kind="remark" name="The core cannot tell which modality produced X" id="rem-tf1-modality-blind">
-Once $\mathbf X = \hat{\mathbf X} + \mathbf P$ is formed, it is a point in $\R^{n\times d}$ carrying no record of whether it came from token lookup (<XRef id="def-tf1-token-embedding" />), patch projection (<XRef id="def-tf1-patch-embedding" />), or codebook lookup (<XRef id="def-tf1-codebook-embedding" />), nor whether position was injected over a 1D index or a 2D grid. Every result in the chapters that follow — attention and its variance scaling, multi-head factorization, the feed-forward and layer-norm sublayers, residual stacking, the training loss, and the inference optimizations — is stated over $\R^{n\times d}$ and never references a vocabulary, so each transfers verbatim. Modality is **fully discharged at this boundary**; the transformer core is modality-blind. A learned modality-type vector or a $\texttt{[CLS]}$ slot, added to $\hat{\mathbf X}$ exactly as position is, is the only further interface-level marking a multimodal model needs.
+Once $\mathbf X = \hat{\mathbf X} + \mathbf P$ is formed, it is a point in $\R^{n\times d}$ carrying no record of whether it came from token lookup (<XRef id="def-tf1-token-embedding" />), patch projection (<XRef id="def-tf1-patch-embedding" />), or codebook lookup (<XRef id="def-tf1-codebook-embedding" />), nor whether position was injected over a 1D index or a 2D grid. Every result in the chapters that follow — attention and its variance scaling, multi-head factorization, the feed-forward and layer-norm sublayers, residual stacking, the training loss, and the inference optimizations — is stated over $\R^{n\times d}$ and never references a vocabulary, so each transfers verbatim. Modality is **fully discharged at this boundary**; the transformer core is modality-blind. We number the three interfaces where modality may enter, for later chapters to cite: **Interface (1)** the embedding boundary $\Emb$; **Interface (2)** the positional structure $\operatorname{PE}$; **Interface (3)** the read-out and cross-modal coupling (output heads and cross-attention). Everything between them is the shared core. A learned modality-type vector or a $\texttt{[CLS]}$ slot, added to $\hat{\mathbf X}$ exactly as position is, is the only further interface-level marking a multimodal model needs.
 </Theorem>
 
 ## Other positional schemes
 
-Two further schemes recur in practice and contrast usefully with the two above. A **learned positional encoding** is a parameter matrix $\mathbf P \in \R^{n_{\max}\times d}$ trained jointly with the model, giving position $t$ the row $\mathbf P[t, :]$; it is flexible at a fixed context length but, having no closed form, cannot extrapolate beyond $n_{\max}$. **ALiBi** leaves the query and key vectors untouched and instead subtracts a head-specific linear penalty $m_r\,(i - j)$ from each logit before softmax, encoding an explicit monotone preference for nearby tokens that is defined for any distance and so extrapolates naturally. RoPE and ALiBi both encode *relative* position but in different places — RoPE in the geometry of the query-key vectors (<XRef id="thm-tf1-rope-relative" />), ALiBi in the logits after the dot product.
+Three further schemes recur in practice and contrast usefully with the two above. A **learned positional encoding** is a parameter matrix $\mathbf P \in \R^{n_{\max}\times d}$ trained jointly with the model, giving position $t$ the row $\mathbf P[t, :]$; it is flexible at a fixed context length but, having no closed form, cannot extrapolate beyond $n_{\max}$. **ALiBi** leaves the query and key vectors untouched and instead subtracts a head-specific linear penalty $m_r\,(i - j)$ from each logit before softmax, encoding an explicit monotone preference for nearby tokens that is defined for any distance and so extrapolates naturally<Cite key="press2022alibi" />. RoPE and ALiBi both encode *relative* position but in different places — RoPE in the geometry of the query-key vectors (<XRef id="thm-tf1-rope-relative" />), ALiBi in the logits after the dot product. Finally, for patch grids a **learned 2D positional encoding** factorizes the table into row and column halves, $\mathbf P^{\text{row}}_a + \mathbf P^{\text{col}}_b$ — the learned counterpart of the axial construction of <XRef id="def-tf1-pe-2d" />.
 
-We summarize the four schemes by where they inject position and how they extrapolate.
+We summarize the five schemes by where they inject position and how they extrapolate.
 
 | Method | Relative-position mechanism | Extrapolation |
 |---|---|---|
@@ -331,7 +331,7 @@ We summarize the four schemes by where they inject position and how they extrapo
 | ALiBi | Head-specific linear distance bias added to the logits | Natural — the bias is defined for arbitrary distances |
 | Learned 2D PE | Separable row/column tables $\mathbf P^{\text{row}} + \mathbf P^{\text{col}}$ over the patch grid | None beyond the trained grid; interpolated for new resolutions |
 
-The Vision Transformer originally used a *learned 1D* table over the raster patch index and found explicitly 2D-aware encodings only marginally better, since self-attention recovers grid structure from the data.<Sidenote>The ablation is reported in the original ViT study <Cite key="dosovitskiy2021vit" />.</Sidenote>
+The Vision Transformer originally used a *learned 1D* table over the raster patch index, observing **no significant gain** from explicitly 2D-aware encodings — in the reported ablation the 2D variant scored marginally *worse* — since self-attention recovers grid structure from the data.<Sidenote>The ablation is reported in the original ViT study <Cite key="dosovitskiy2021vit" />.</Sidenote>
 
 ## Exercises
 
@@ -386,7 +386,7 @@ Suppose a fixed map sent each token's embedding to the next, $\mathbf E[x+1,:] =
 
 <SolutionBox>
 
-Each diagonal block of $\mathbf\Theta(\cdot)$ is $\mathbf R(\theta_i\,\cdot)$. By <XRef id="def-tf1-rotation-2d" />, $\mathbf R(\theta_i s)\mathbf R(\theta_i t) = \mathbf R(\theta_i(s+t))$ and $\mathbf R(\theta_i t)^\top = \mathbf R(-\theta_i t)$; blockwise this gives $\mathbf\Theta(s)\mathbf\Theta(t) = \mathbf\Theta(s+t)$ and $\mathbf\Theta(t)^\top = \mathbf\Theta(-t)$. Then $f(\mathbf q,m)^\top f(\mathbf k,n) = \mathbf q^\top\mathbf\Theta(m)^\top\mathbf\Theta(n)\mathbf k = \mathbf q^\top\mathbf\Theta(n-m)\mathbf k$, which is <XRef id="thm-tf1-rope-relative" />. $\qquad\blacksquare$
+Each diagonal block of $\mathbf\Theta(\cdot)$ is $\mathbf R(\theta_i\,\cdot)$. By <XRef id="def-tf1-rotation-2d" />, $\mathbf R(\theta_i s)\mathbf R(\theta_i t) = \mathbf R(\theta_i(s+t))$ and $\mathbf R(\theta_i t)^\top = \mathbf R(-\theta_i t)$; blockwise this gives $\mathbf\Theta(s)\mathbf\Theta(t) = \mathbf\Theta(s+t)$ and $\mathbf\Theta(t)^\top = \mathbf\Theta(-t)$. Then $f(\mathbf q,m)^\top f(\mathbf k,t) = \mathbf q^\top\mathbf\Theta(m)^\top\mathbf\Theta(t)\mathbf k = \mathbf q^\top\mathbf\Theta(t-m)\mathbf k$, which is <XRef id="thm-tf1-rope-relative" />. $\qquad\blacksquare$
 
 </SolutionBox>
 

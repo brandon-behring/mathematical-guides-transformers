@@ -32,7 +32,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Inference Optimizations
 
-**Where we are.** Training optimized a loss; inference optimizes a different quantity — the time to emit one token on fixed hardware. This chapter extracts the algebraic core common to every production serving technique: each one moves a single term in one cost equation. We fix that equation first (the roofline model and its memory-bound regime), then derive the mathematics behind five techniques in turn — the **KV-cache** (why autoregressive decoding would otherwise recompute, and how caching collapses per-step compute from quadratic to linear), **quantization** (the affine map from floats to integers and its round-off bound), **FlashAttention** (the online-softmax recurrence that computes attention *exactly* without ever materializing the $n\times n$ score matrix), **speculative decoding** (the draft-then-verify acceptance law and its expected speedup), and **mixture-of-experts** (top-$k$ routing and the conditional-compute FLOP argument). Throughout, $\operatorname{softmax}$, scaled dot-product attention, and the standing dimensions $n,d,d_k$ are as fixed in earlier chapters. We give definitions and inline proofs for the quantitative claims and reserve remarks for the qualitative engineering facts.
+**Where we are.** Training optimized a loss; inference optimizes a different quantity — the time to emit one token on fixed hardware. This chapter extracts the algebraic core common to every production serving technique: each one moves a single term in one cost equation. We fix that equation first (the roofline model and its memory-bound regime), then derive the mathematics behind five techniques in turn — the **KV-cache** (why autoregressive decoding would otherwise recompute, and how caching collapses per-step compute from quadratic to linear), **quantization** (the affine map from floats to integers and its round-off bound), **FlashAttention** (the online-softmax recurrence that computes attention *exactly* without ever materializing the $n\times n$ score matrix), **speculative decoding** (the draft-then-verify acceptance law and its expected speedup), and **mixture-of-experts** (top-$k$ routing and the conditional-compute FLOP argument). Throughout, $\softmax$, scaled dot-product attention, and the standing dimensions $n,d,d_k$ are as fixed in earlier chapters. We give definitions and inline proofs for the quantitative claims and reserve remarks for the qualitative engineering facts.
 
 ## The cost-per-token equation
 
@@ -59,7 +59,7 @@ A workload with arithmetic intensity $I < I^*$ has time per token $T_{\text{toke
 </Theorem>
 
 <Theorem kind="proof">
-When $I < I^*$, divide both sides by $\beta$: $\Phi/(\beta F) < 1/\mathcal B$, i.e. $\Phi/F < \beta/\mathcal B$. So the second argument of the $\max$ in <XRef id="def-tf9-cost-eq" /> dominates and $T_{\text{token}} = \beta/\mathcal B$. Achieved throughput is the operations done divided by the time taken,
+When $I < I^*$, divide both sides by $F$: $\Phi/(\beta F) < 1/\mathcal B$, i.e. $\Phi/F < \beta/\mathcal B$. So the second argument of the $\max$ in <XRef id="def-tf9-cost-eq" /> dominates and $T_{\text{token}} = \beta/\mathcal B$. Achieved throughput is the operations done divided by the time taken,
 $$
 \frac{\Phi}{T_{\text{token}}} = \frac{\Phi}{\beta/\mathcal B} = \mathcal B\cdot\frac{\Phi}{\beta} = \mathcal B\cdot I,
 $$
@@ -71,7 +71,7 @@ which is independent of $F$. $\qquad\blacksquare$
 The proposition isolates the lever. Below the ridge, the only way to go faster is to read fewer bytes (smaller $\beta$) or to do more arithmetic per byte read (larger $I$). Every technique in the rest of the chapter is one of those two moves. The qualitative split between the two inference phases explains why decode is the phase that matters here.
 
 <Theorem kind="remark" name="Prefill is compute-bound; decode is memory-bound" id="rem-tf9-prefill-decode">
-Prefill processes the whole prompt at once: the dominant products have shape $\R^{n\times d}\cdot\R^{d\times d}$ with $n$ in the thousands, so a weight read of $O(d^2)$ bytes is amortized across $O(n)$ rows and the intensity is $I\approx n$ — comfortably above the ridge, hence compute-bound. Decode generates one token at a time: each step has a single new query against the cached keys and values, so the matrix product degenerates to a matrix–vector product, the weight read is amortized across one row, and $I$ collapses to $\sim 1$. "Inference is memory-bound" is shorthand for "the decode phase is memory-bound."
+Prefill processes the whole prompt at once: the dominant products have shape $\R^{n\times d}\cdot\R^{d\times d}$ with $n$ in the thousands, so a weight read of $O(d^2)$ bytes is amortized across $O(n)$ rows: the weight term alone gives $I\approx n$, and activation reads and writes cap the total near $d/b$ once $n \gtrsim d$ — comfortably above the ridge either way, hence compute-bound. Decode generates one token at a time: each step has a single new query against the cached keys and values, so the matrix product degenerates to a matrix–vector product, the weight read is amortized across one row, and $I$ collapses to $\sim 1$. "Inference is memory-bound" is shorthand for "the decode phase is memory-bound."
 </Theorem>
 
 ## The KV-cache
@@ -85,15 +85,15 @@ During decoding, the **KV-cache** stores, for each layer, the key and value vect
 <MarginNote variant="formula" label="Cache size">Per layer: $\mathbf K$ and $\mathbf V$, each $n\times d$, so $2nd$ elements — linear in context length $n$.</MarginNote>
 
 <Theorem kind="proposition" name="KV-cache memory" id="prop-tf9-kv-memory">
-For a model with $L$ layers, storing keys and values in $b$ bytes per element, the KV-cache for a single request at context length $n$ occupies
+For a model with $N$ layers, storing keys and values in $b$ bytes per element, the KV-cache for a single request at context length $n$ occupies
 $$
-M_{\text{KV}} \;=\; 2\,L\,n\,d\,b \quad\text{bytes},
+M_{\text{KV}} \;=\; 2\,N\,n\,d\,b \quad\text{bytes},
 $$
 the factor $2$ accounting for the $\mathbf K$ and $\mathbf V$ tensors.
 </Theorem>
 
 <Theorem kind="proof">
-One layer stores two tensors, $\mathbf K\in\R^{n\times d}$ and $\mathbf V\in\R^{n\times d}$ (<XRef id="def-tf9-kv-cache" />), hence $2nd$ elements, i.e. $2ndb$ bytes. The layers store disjoint caches, so summing over $L$ layers multiplies by $L$. $\qquad\blacksquare$
+One layer stores two tensors, $\mathbf K\in\R^{n\times d}$ and $\mathbf V\in\R^{n\times d}$ (<XRef id="def-tf9-kv-cache" />), hence $2nd$ elements, i.e. $2ndb$ bytes. The layers store disjoint caches, so summing over $N$ layers multiplies by $N$. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="pattern" label="Count the redo">An uncached step $t$ re-forms all $\Theta(t^2)$ prefix scores; a cached step forms only the $\Theta(t)$ scores of the one new query. Summing over the sequence is what turns that per-step gap into a factor of $n$.</MarginNote>
@@ -101,24 +101,24 @@ One layer stores two tensors, $\mathbf K\in\R^{n\times d}$ and $\mathbf V\in\R^{
 The cache trades memory for compute. The trade is favorable because it changes the order of the per-step work, not merely its constant — and the cumulative effect over a full generation is one order of $n$.
 
 <Theorem kind="proposition" name="Caching makes per-step attention compute linear" id="prop-tf9-decode-cost">
-Fix one attention layer. At decode step $t$, computing the attention output for the new position against all $t$ positions costs $\Theta(t\,d)$ arithmetic with a KV-cache, versus $\Theta(t^2 d)$ without one (recomputing every key and value from scratch). Consequently, generating a sequence of length $n$ costs $\Theta(n^2 d)$ with the cache and $\Theta(n^3 d)$ without it.
+Fix one attention layer. At decode step $t$, computing the attention output for the new position against all $t$ positions costs $\Theta(t\,d + d^2)$ arithmetic with a KV-cache (the $d^2$ for projecting the new token), versus $\Theta(t\,d^2 + t^2 d)$ without one (recomputing every key and value from scratch; the quadratic term dominates once $t \ge d$). Consequently, generating a sequence of length $n$ costs $\Theta(n^2 d + n\,d^2)$ with the cache and $\Theta(n^2 d^2 + n^3 d)$ without it.
 </Theorem>
 
 <Theorem kind="proof">
 **Cached step.** The keys and values for positions $1,\dots,t-1$ are already stored. The step computes one new key and value ($\Theta(d^2)$, independent of $t$ and absorbed below), then the single new query forms $t$ inner products of dimension $d_k$ with the cached keys and a convex combination of $t$ value rows — $\Theta(t\,d_k)+\Theta(t\,d_v)=\Theta(t\,d)$ arithmetic.
 
-**Uncached step.** Without a cache, step $t$ must regenerate the keys and values for *all* $t$ positions and then attend. Regenerating $t$ keys and values is $\Theta(t\,d^2)$, and the score matrix for the prefix of length $t$ is $\Theta(t^2 d)$ inner products; the latter dominates, giving $\Theta(t^2 d)$.
+**Uncached step.** Without a cache, step $t$ must regenerate the keys and values for *all* $t$ positions and then attend. Regenerating $t$ keys and values is $\Theta(t\,d^2)$, and the score matrix for the prefix of length $t$ is $\Theta(t^2 d)$ inner products; together $\Theta(t\,d^2 + t^2 d)$, the score term dominating once $t \ge d$.
 
 **Whole sequence.** Summing the per-step costs over $t=1,\dots,n$,
 $$
-\text{cached: }\ \sum_{t=1}^{n}\Theta(t\,d)=\Theta(d)\sum_{t=1}^n t=\Theta(n^2 d),
+\text{cached: }\ \sum_{t=1}^{n}\Theta(t\,d + d^2)=\Theta(n^2 d + n\,d^2),
 \qquad
-\text{uncached: }\ \sum_{t=1}^{n}\Theta(t^2 d)=\Theta(d)\sum_{t=1}^n t^2=\Theta(n^3 d),
+\text{uncached: }\ \sum_{t=1}^{n}\Theta(t\,d^2 + t^2 d)=\Theta(n^2 d^2 + n^3 d),
 $$
-using $\sum_{t=1}^n t=\Theta(n^2)$ and $\sum_{t=1}^n t^2=\Theta(n^3)$. The cache removes one factor of $n$ at every step, hence one factor of $n$ overall. $\qquad\blacksquare$
+using $\sum_{t=1}^n t=\Theta(n^2)$ and $\sum_{t=1}^n t^2=\Theta(n^3)$. In every regime the cache removes one factor — the dominant uncached term exceeds its cached counterpart by $n$ (or by $d$, whichever binds) at each step. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="pattern" label="Why cache">Per step: $O(t^2 d)\to O(t\,d)$. Over a generation: $O(n^3 d)\to O(n^2 d)$. The cache spends $O(nd)$ memory per layer to buy back one factor of $n$ in time.</MarginNote>
+<MarginNote variant="pattern" label="Why cache">Per step: $O(t\,d^2 + t^2 d)\to O(t\,d + d^2)$. Over a generation: $O(n^2 d^2 + n^3 d)\to O(n^2 d + n\,d^2)$. The cache spends $O(nd)$ memory per layer to buy back one factor of $n$ in time.</MarginNote>
 
 <Theorem kind="remark" name="The cache is the byte budget, and paging packs it" id="rem-tf9-kv-bytes">
 By <XRef id="prop-tf9-kv-memory" /> the cache grows linearly in context length and in batch size, so at long context (or large batch) it overtakes the weight stream as the dominant term in $\beta$ of <XRef id="def-tf9-cost-eq" />, making it the binding read each decode step. Two qualitative engineering moves follow. *Paged attention* stores the cache in fixed-size blocks with a per-request page table instead of one contiguous reservation per request, so internal fragmentation is bounded by one block rather than by the maximum context length; this raises the number of concurrent requests that fit, which raises batch and thus arithmetic intensity, but it does not change the per-request decode time. *KV quantization* lowers $b$ (e.g. INT8 halves it), shrinking $M_{\text{KV}}$ proportionally at some cost in decode quality. Both are tunings of terms in the same equation.
@@ -142,7 +142,7 @@ $$
 The stored tensor is $Q(w)$ in $B$ bits; computation uses the reconstruction $\widehat w \defeq D(Q(w))$.
 </Theorem>
 
-<MarginNote variant="formula" label="Step size">The reconstruction grid has spacing $s$. INT8 over a fixed range has $s$ four times smaller than INT4 — four times finer, one byte versus half a byte.</MarginNote>
+<MarginNote variant="formula" label="Step size">The reconstruction grid has spacing $s$. INT8 over a fixed range has $s$ sixteen-fold smaller than INT4 ($(2^8{-}1)/(2^4{-}1) = 17 \approx 2^4$) — one byte versus half a byte.</MarginNote>
 
 <Theorem kind="proposition" name="Round-off error bound" id="prop-tf9-quant-error">
 For any weight $w\in[w_{\min},w_{\max}]$ whose quantized value is not clamped, the reconstruction $\widehat w = D(Q(w))$ satisfies
@@ -169,7 +169,7 @@ The bound above is for *weights*, which are fixed after training, so quantizatio
 
 ## FlashAttention
 
-Standard attention forms the full $n\times n$ score matrix, applies a row-wise $\operatorname{softmax}$, and multiplies by the values — writing and re-reading $\Theta(n^2)$ numbers from memory. FlashAttention <Cite key="dao2022flashattention" /> computes the *same function* while streaming the keys and values in blocks and never storing the score matrix. The mathematical content is a recurrence that updates a running maximum and a running normalizer so that the softmax is assembled exactly, one block at a time.
+Standard attention forms the full $n\times n$ score matrix, applies a row-wise $\softmax$, and multiplies by the values — writing and re-reading $\Theta(n^2)$ numbers from memory. FlashAttention <Cite key="dao2022flashattention" /> computes the *same function* while streaming the keys and values in blocks and never storing the score matrix. The mathematical content is a recurrence that updates a running maximum and a running normalizer so that the softmax is assembled exactly, one block at a time.
 
 <Theorem kind="definition" name="Online-softmax recurrence" id="def-tf9-online-softmax">
 Let a query have scores $s_1,\dots,s_n$ (one per key) and let $\mathbf v_1,\dots,\mathbf v_n$ be the value rows. Process the keys left to right, maintaining a running maximum $m$, a running normalizer $\ell$, and a running output accumulator $\mathbf o$, initialized $m_0 = -\infty$, $\ell_0 = 0$, $\mathbf o_0 = \mathbf 0$. On reading score $s_j$ with value $\mathbf v_j$,
@@ -192,9 +192,9 @@ With $m_n = \max_{j} s_j$, the online recurrence of <XRef id="def-tf9-online-sof
 $$
 \ell_n = \sum_{j=1}^{n} e^{\,s_j - m_n}, \qquad
 \frac{\mathbf o_n}{\ell_n} = \sum_{j=1}^{n} \frac{e^{\,s_j}}{\sum_{k} e^{\,s_k}}\,\mathbf v_j
-= \big[\operatorname{softmax}(\mathbf s)\,\mathbf V\big],
+= \big[\softmax(\mathbf s)\,\mathbf V\big],
 $$
-i.e. it equals scaled dot-product attention (<XRef id="def-softmax" />) exactly. The HBM traffic is $\Theta(n^2 d / M)$ bytes for on-chip memory of size $M$, against $\Theta(n^2 + nd)$ for the materialized kernel, with no change to the arithmetic or the output.
+i.e. it equals scaled dot-product attention (<XRef id="def-softmax" />) exactly. The HBM traffic is $\Theta(n^2 d^2 / M)$ bytes for on-chip memory of size $M$, against $\Theta(n^2 + nd)$ for the materialized kernel, with no change to the arithmetic or the output.
 </Theorem>
 
 <Theorem kind="proof">
@@ -215,15 +215,15 @@ and the identical algebra on the value-weighted accumulator gives $\mathbf o_j=\
 
 **Conclusion.** At $j=n$, $m_n=\max_i s_i$ and $(\star)$ reads $\ell_n=\sum_i e^{s_i-m_n}$, $\mathbf o_n=\sum_i e^{s_i-m_n}\mathbf v_i$. Dividing, the common factor $e^{-m_n}$ cancels (translation invariance, <XRef id="prop-softmax-translation-inv" />):
 $$
-\frac{\mathbf o_n}{\ell_n} = \frac{\sum_i e^{s_i-m_n}\mathbf v_i}{\sum_i e^{s_i-m_n}} = \frac{\sum_i e^{s_i}\mathbf v_i}{\sum_i e^{s_i}} = \operatorname{softmax}(\mathbf s)\,\mathbf V.
+\frac{\mathbf o_n}{\ell_n} = \frac{\sum_i e^{s_i-m_n}\mathbf v_i}{\sum_i e^{s_i-m_n}} = \frac{\sum_i e^{s_i}\mathbf v_i}{\sum_i e^{s_i}} = \softmax(\mathbf s)\,\mathbf V.
 $$
-The output is the materialized-kernel output. For the IO count, tiling the queries into blocks of $M/d$ rows reads all $n$ keys and values once per query block; there are $\Theta(nd/M)$ such blocks, each reading $\Theta(nd)$ bytes, for $\Theta(n^2 d/M)$ total — and the $n\times n$ matrix is never written. $\qquad\blacksquare$
+The output is the materialized-kernel output. For the IO count, tiling the queries into blocks of $M/d$ rows reads all $n$ keys and values once per query block; there are $\Theta(nd/M)$ such blocks, each reading $\Theta(nd)$ bytes, for $\Theta(n^2 d^2/M)$ total — and the $n\times n$ matrix is never written. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="pattern" label="Exact, not approximate">FlashAttention changes the *memory access pattern*, not the function. Same FLOPs ($O(n^2d)$), same output — only the $O(n^2)$ HBM writes disappear.</MarginNote>
 
 <Theorem kind="remark" name="The big-O is invariant across versions" id="rem-tf9-flash-versions">
-Successive FlashAttention variants reorganize the *parallelism* of the same recurrence — for instance distributing work along the sequence dimension rather than only across heads, raising the fraction of the device kept busy. These change the constant factor in $\Theta(n^2 d/M)$, not the bound, and they leave <XRef id="thm-tf9-online-softmax-exact" /> untouched: the tile-plus-online-softmax computation is exact by construction in every version. The technique's gain is realized only where attention is memory-bound (large $n$); at very short sequences the $n\times n$ matrix already fits on chip and there is nothing to save.
+Successive FlashAttention variants reorganize the *parallelism* of the same recurrence — for instance distributing work along the sequence dimension rather than only across heads, raising the fraction of the device kept busy. These change the constant factor in $\Theta(n^2 d^2/M)$, not the bound, and they leave <XRef id="thm-tf9-online-softmax-exact" /> untouched: the tile-plus-online-softmax computation is exact by construction in every version. The technique's gain is realized only where attention is memory-bound (large $n$); at very short sequences the $n\times n$ matrix already fits on chip and there is nothing to save.
 </Theorem>
 
 ## Speculative decoding
@@ -234,16 +234,16 @@ The previous techniques shrank $\beta$. Speculative decoding <Cite key="leviatha
 A small **draft model** generates $K$ candidate tokens autoregressively. The **target model** performs one parallel forward pass over the prefix and the $K$ candidates, producing its distribution at each position. Candidates are checked left to right under a rejection-sampling rule that accepts each with probability matching the target distribution; on the first rejection the target's own resampled token is used at that position, and the remaining drafts are discarded. The accepted prefix seeds the next cycle.
 </Theorem>
 
-<MarginNote variant="formula" label="Per cycle">One target pass (cost $1$) plus $K$ draft passes (cost $Kc$, where $c$ is the draft/target per-token cost ratio), in exchange for an expected $\mathbb E[T_K]$ accepted tokens.</MarginNote>
+<MarginNote variant="formula" label="Per cycle">One target pass (cost $1$) plus $K$ draft passes (cost $Kc$, where $c$ is the draft/target per-token cost ratio), in exchange for an expected $\E[T_K]$ accepted tokens.</MarginNote>
 
 <Theorem kind="proposition" name="Expected tokens and speedup per cycle" id="prop-tf9-spec-speedup">
 Suppose each candidate is accepted independently with the same probability $\alpha\in[0,1]$. Then the expected number of tokens produced per cycle (the accepted drafts plus one guaranteed target token) is
 $$
-\mathbb E[T_K] = \frac{1-\alpha^{K+1}}{1-\alpha} \qquad (\alpha<1),
+\E[T_K] = \frac{1-\alpha^{K+1}}{1-\alpha} \qquad (\alpha<1),
 $$
 and the expected speedup over one-token-at-a-time target decoding is
 $$
-\text{speedup} = \frac{\mathbb E[T_K]}{1 + Kc},
+\text{speedup} = \frac{\E[T_K]}{1 + Kc},
 $$
 where $c$ is the per-token cost of the draft relative to one target forward pass.
 </Theorem>
@@ -251,21 +251,21 @@ where $c$ is the per-token cost of the draft relative to one target forward pass
 <Theorem kind="proof">
 **Expected tokens.** Accepting independently with probability $\alpha$, the first rejection occurs after exactly $j$ acceptances ($0\le j\le K-1$) with probability $\alpha^j(1-\alpha)$, and the cycle then outputs $j{+}1$ tokens (the $j$ drafts plus the target's resample). If all $K$ are accepted — probability $\alpha^K$ — the cycle outputs $K{+}1$ tokens (the $K$ drafts plus the target's free next-token sample). Hence
 $$
-\mathbb E[T_K] = \sum_{j=0}^{K-1}(j+1)\,\alpha^j(1-\alpha) \;+\; (K+1)\,\alpha^K.
+\E[T_K] = \sum_{j=0}^{K-1}(j+1)\,\alpha^j(1-\alpha) \;+\; (K+1)\,\alpha^K.
 $$
 A cleaner route to the closed form: since each of the $K$ drafts is accepted iff all earlier ones were, the $i$-th draft contributes an accepted token with probability $\alpha^{i}$, and the one target token is always produced. Summing the indicator expectations,
 $$
-\mathbb E[T_K] = 1 + \sum_{i=1}^{K}\alpha^{i} = \sum_{i=0}^{K}\alpha^{i} = \frac{1-\alpha^{K+1}}{1-\alpha},
+\E[T_K] = 1 + \sum_{i=1}^{K}\alpha^{i} = \sum_{i=0}^{K}\alpha^{i} = \frac{1-\alpha^{K+1}}{1-\alpha},
 $$
 the last step the finite geometric series.
 
-**Speedup.** Each cycle costs one target pass ($1$ unit) plus $K$ draft passes ($Kc$ units) and yields $\mathbb E[T_K]$ tokens, so its tokens-per-unit-cost is $\mathbb E[T_K]/(1+Kc)$. Plain target decoding yields one token per target pass, i.e. one token per unit cost. The ratio of the two rates is the displayed speedup. $\qquad\blacksquare$
+**Speedup.** Each cycle costs one target pass ($1$ unit) plus $K$ draft passes ($Kc$ units) and yields $\E[T_K]$ tokens, so its tokens-per-unit-cost is $\E[T_K]/(1+Kc)$. Plain target decoding yields one token per target pass, i.e. one token per unit cost. The ratio of the two rates is the displayed speedup. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="pattern" label="Saturation in K">$\mathbb E[T_K]\to 1/(1-\alpha)$ as $K\to\infty$: accepted tokens cap at $1/(1-\alpha)$, so beyond a few drafts the numerator stalls while $Kc$ keeps growing — there is an interior-optimal $K$.</MarginNote>
+<MarginNote variant="pattern" label="Saturation in K">$\E[T_K]\to 1/(1-\alpha)$ as $K\to\infty$: accepted tokens cap at $1/(1-\alpha)$, so beyond a few drafts the numerator stalls while $Kc$ keeps growing — there is an interior-optimal $K$.</MarginNote>
 
 <Theorem kind="remark" name="Why a memory-bound target makes it pay" id="rem-tf9-spec-regime">
-The speedup exceeds one when $\mathbb E[T_K] > 1 + Kc$, which for a cheap draft ($c\to 0$) holds for any $\alpha>0$ since $\mathbb E[T_K]\ge 1+\alpha$. The hidden premise is that one target pass over $K{+}1$ candidates costs about the same as one target pass over a single token. That is exactly the memory-bound regime of <XRef id="prop-tf9-memory-bound" />: the target reads its full weight set once per pass regardless of how many positions it scores, so the verification of many candidates is amortized into a single weight read. In a compute-bound regime (large batches, prefill) the verification pass costs proportionally more arithmetic and the free-lunch argument fails.
+The speedup exceeds one when $\E[T_K] > 1 + Kc$, which for a cheap draft ($c\to 0$) holds for any $\alpha>0$ since $\E[T_K]\ge 1+\alpha$. The hidden premise is that one target pass over $K{+}1$ candidates costs about the same as one target pass over a single token. That is exactly the memory-bound regime of <XRef id="prop-tf9-memory-bound" />: the target reads its full weight set once per pass regardless of how many positions it scores, so the verification of many candidates is amortized into a single weight read. In a compute-bound regime (large batches, prefill) the verification pass costs proportionally more arithmetic and the free-lunch argument fails.
 </Theorem>
 
 ## Mixture-of-experts
@@ -275,7 +275,7 @@ A dense feed-forward layer applies the same parameters to every token. A mixture
 <Theorem kind="definition" name="Top-k mixture-of-experts layer" id="def-tf9-moe">
 A **top-$k$ mixture-of-experts** layer has $E$ expert networks $\{\mathrm{FFN}_1,\dots,\mathrm{FFN}_E\}$ of identical shape and a router $\mathbf W_r\in\R^{d\times E}$. For a token $\mathbf x\in\R^{d}$ the router scores $\mathbf s = \mathbf W_r^\top\mathbf x$, selects the index set $\mathcal S$ of the $k$ largest scores, and outputs
 $$
-\mathrm{MoE}(\mathbf x) = \sum_{i\in\mathcal S} \operatorname{softmax}(\mathbf s)_i\,\mathrm{FFN}_i(\mathbf x).
+\mathrm{MoE}(\mathbf x) = \sum_{i\in\mathcal S} \softmax(\mathbf s)_i\,\mathrm{FFN}_i(\mathbf x).
 $$
 Experts outside $\mathcal S$ are not evaluated for this token.
 </Theorem>
@@ -320,7 +320,7 @@ A kernel is compute-bound when $\Phi/F \ge \beta/\mathcal B$, i.e. $I \ge I^* = 
 
 <SolutionBox>
 
-By $M_{\text{KV}} = 2Lndb$ with $L=80$, $d=8192$, $b=2$, $n=8192$: $M_{\text{KV}} = 2\cdot80\cdot8192\cdot8192\cdot2 = 21{,}474{,}836{,}480$ bytes $\approx 21.5$ GB ($20$ GiB) per request. Linear in $n$, so doubling the context doubles the cache. $\qquad\blacksquare$
+By $M_{\text{KV}} = 2Nndb$ with $N=80$, $d=8192$, $b=2$, $n=8192$: $M_{\text{KV}} = 2\cdot80\cdot8192\cdot8192\cdot2 = 21{,}474{,}836{,}480$ bytes $\approx 21.5$ GB ($20$ GiB) per request. Linear in $n$, so doubling the context doubles the cache. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -340,10 +340,10 @@ Induct on $j$. Base: $m_1 = s_1$, $\ell_1 = e^{s_1 - m_1} = 1$. Step: with $m_j 
 
 </SolutionBox>
 
-**Exercise 9.5 (Compute).** A target/draft pair has $c=0.1$ and runs at $K=4$. Using <XRef id="prop-tf9-spec-speedup" />, compute the expected speedup at $\alpha=0.8$ and at $\alpha=0.4$, and state the limit of $\mathbb E[T_K]$ as $K\to\infty$ for $\alpha=0.8$.
+**Exercise 9.5 (Compute).** A target/draft pair has $c=0.1$ and runs at $K=4$. Using <XRef id="prop-tf9-spec-speedup" />, compute the expected speedup at $\alpha=0.8$ and at $\alpha=0.4$, and state the limit of $\E[T_K]$ as $K\to\infty$ for $\alpha=0.8$.
 
 <SolutionBox>
 
-With $c=0.1$, $K=4$, the denominator is $1 + Kc = 1.4$. At $\alpha=0.8$: $\mathbb E[T_K] = (1 - 0.8^5)/0.2 \approx 3.36$, speedup $\approx 2.40$. At $\alpha=0.4$: $\mathbb E[T_K] = (1 - 0.4^5)/0.6 \approx 1.65$, speedup $\approx 1.18$. As $K\to\infty$ with $\alpha=0.8$, $\mathbb E[T_K]\to 1/(1-\alpha) = 5$ while draft cost $Kc$ keeps growing, so an interior $K$ is optimal. $\qquad\blacksquare$
+With $c=0.1$, $K=4$, the denominator is $1 + Kc = 1.4$. At $\alpha=0.8$: $\E[T_K] = (1 - 0.8^5)/0.2 \approx 3.36$, speedup $\approx 2.40$. At $\alpha=0.4$: $\E[T_K] = (1 - 0.4^5)/0.6 \approx 1.65$, speedup $\approx 1.18$. As $K\to\infty$ with $\alpha=0.8$, $\E[T_K]\to 1/(1-\alpha) = 5$ while draft cost $Kc$ keeps growing, so an interior $K$ is optimal. $\qquad\blacksquare$
 
 </SolutionBox>

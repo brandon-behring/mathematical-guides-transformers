@@ -5,9 +5,9 @@ chapter: 2
 description: "Scaled dot-product attention from first principles: softmax and its translation invariance, attention as a learned-kernel regression, and why the 1/sqrt(d_k) scaling is exactly the factor that restores unit variance."
 last_verified: 2026-05-27
 rigor_level: rigorous
-prerequisites: []
-notation_introduced: ['\softmax', 'row-stochastic', 'd_k']
-theorems: ['def-tf2-softmax', 'prop-softmax-translation', 'def-tf2-attention', 'thm-variance-preservation']
+prerequisites: [notation]
+notation_introduced: ['\mathbf M', 'd_v']
+theorems: ['def-tf2-attention', 'def-tf2-causal-mask', 'thm-variance-preservation']
 los:
   - id: TF-2.1
     statement: "Define scaled dot-product attention and prove its weight matrix is row-stochastic."
@@ -29,48 +29,11 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 ## Notation
 
-Vectors are bold lowercase **row** vectors $\mathbf x \in \R^{d}$; matrices are bold uppercase.
+Vector conventions, the standing dimensions ($n$, $d$, $d_k$), $\defeq$, the inner product, and the softmax are all fixed in the notation chapter; we invoke them by name. This chapter introduces the attention operator $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$, the causal mask $\mathbf M$, and the per-head value dimension $d_v$.
 
-| Dimension | Meaning |
-|---|---|
-| $d$ | model / embedding dimension |
-| $n$ | sequence length (number of tokens) |
-| $d_k$ | key/query dimension per head |
-| $d_v$ | value dimension per head |
+## Softmax, recalled
 
-| Operator | Meaning |
-|---|---|
-| $\defeq$ | "is defined as" |
-| $\softmax(\cdot)$ | normalized exponential (<XRef id="def-tf2-softmax" />) |
-| $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ | scaled dot-product attention (<XRef id="def-tf2-attention" />) |
-| $\inner{\cdot}{\cdot}$ | Euclidean inner product |
-
-## Softmax
-
-Softmax turns a vector of scores into a probability distribution: larger scores get exponentially more weight, and the weights sum to one.
-
-<Theorem kind="definition" name="Softmax" id="def-tf2-softmax">
-For $\mathbf z = (z_1,\dots,z_K)\in\R^K$, the **softmax** $\softmax:\R^K\to\R^K$ is
-$$
-\softmax(\mathbf z)_i \defeq \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}.
-$$
-Each output is positive and the entries sum to $1$, so $\softmax(\mathbf z)$ is a probability distribution over $K$ categories.<Sidenote>The standard probabilistic reading of network logits <Cite key="bridle1990probabilistic" />.</Sidenote>
-</Theorem>
-
-<Theorem kind="proposition" name="Translation invariance" id="prop-softmax-translation">
-For any scalar $c\in\R$, $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$.
-</Theorem>
-
-<Theorem kind="proof">
-Multiply numerator and denominator of entry $i$ by $e^{c}$ and cancel:
-$$
-\softmax(\mathbf z + c\mathbf 1)_i
-= \frac{e^{z_i + c}}{\sum_j e^{z_j + c}}
-= \frac{e^{c}e^{z_i}}{e^{c}\sum_j e^{z_j}}
-= \softmax(\mathbf z)_i. \qquad\blacksquare
-$$
-So subtracting $\max_j z_j$ before exponentiating is numerically safe — it changes nothing.
-</Theorem>
+Softmax turns a vector of scores into a probability distribution: larger scores get exponentially more weight, and the weights sum to one. Its definition and its two working properties are fixed once in the notation chapter — the definition (<XRef id="def-softmax" />), translation invariance (<XRef id="prop-softmax-translation-inv" />), and the Jacobian (<XRef id="prop-softmax-jacobian" />). Everything this chapter proves rides on the first two: the definition makes each attention weight row a probability vector, and translation invariance is what makes the numerically stable max-subtracted implementation exact.
 
 ## Scaled dot-product attention
 
@@ -84,7 +47,21 @@ $$
 with softmax applied row-wise to the $n\times n$ logit matrix.
 </Theorem>
 
-Because each softmax row is non-negative and sums to one (<XRef id="def-tf2-softmax" />), output row $i$ is a **convex combination** of the value rows — the kernel-regression reading made literal.
+Because each softmax row is non-negative and sums to one (<XRef id="def-softmax" />), the weight matrix is row-stochastic, so output row $i$ is a **convex combination** of the value rows (<XRef id="prop-row-stochastic-convex" />) — the kernel-regression reading made literal.
+
+For language modeling, attention must additionally respect time: position $i$ may consult only positions $j \le i$. This is imposed not by changing the operator but by adding a fixed mask to the logits before the softmax.
+
+<Theorem kind="definition" name="Causal (masked) attention" id="def-tf2-causal-mask">
+The **causal mask** $\mathbf M \in \R^{n\times n}$ has entries
+$$
+M_{ij} \defeq \begin{cases} 0 & j \le i,\\ -\infty & j > i,\end{cases}
+$$
+and **causal attention** is attention on the masked logits:
+$$
+\operatorname{Attn}^{\text{causal}}(\mathbf Q,\mathbf K,\mathbf V) \defeq \softmax\!\Big(\tfrac{\mathbf Q\mathbf K^\top}{\sqrt{d_k}} + \mathbf M\Big)\,\mathbf V.
+$$
+A $-\infty$ logit exponentiates to $0$, so each softmax row remains a probability distribution, now supported on $\{j : j \le i\}$: row $i$ attends only to positions up to $i$.
+</Theorem>
 
 <Figure
   src="/figures/attention-pattern.svg"
@@ -102,7 +79,7 @@ Before reading: $\inner{\mathbf q}{\mathbf k}=\sum_m q_m k_m$ adds $d_k$ indepen
 </MarginNote>
 
 <Theorem kind="theorem" name="Variance preservation" id="thm-variance-preservation">
-Let $\mathbf q,\mathbf k\in\R^{d_k}$ have independent components with $\E[q_m]=\E[k_m]=0$, $\Var(q_m)=\Var(k_m)=1$, and $q_m \perp k_m$. Then $\E[\inner{\mathbf q}{\mathbf k}]=0$, $\Var(\inner{\mathbf q}{\mathbf k})=d_k$, and $\Var\!\big(\inner{\mathbf q}{\mathbf k}/\sqrt{d_k}\big)=1$.
+Let the $2d_k$ scalar components $q_1,\dots,q_{d_k},k_1,\dots,k_{d_k}$ be **mutually independent** with $\E[q_m]=\E[k_m]=0$ and $\Var(q_m)=\Var(k_m)=1$. Then $\E[\inner{\mathbf q}{\mathbf k}]=0$, $\Var(\inner{\mathbf q}{\mathbf k})=d_k$, and $\Var\!\big(\inner{\mathbf q}{\mathbf k}/\sqrt{d_k}\big)=1$.
 </Theorem>
 
 <Theorem kind="proof">
@@ -114,7 +91,7 @@ $$
 \qquad\text{(linearity; } q_m\perp k_m\text{)}.
 $$
 
-**Variance.** Since the mean is $0$, $\Var(\inner{\mathbf q}{\mathbf k}) = \E[(\sum_m q_m k_m)^2]$. The cross terms $\E[q_m k_m q_n k_n]$ with $m\neq n$ contain a mean-zero factor and vanish, leaving
+**Variance.** Since the mean is $0$, $\Var(\inner{\mathbf q}{\mathbf k}) = \E[(\sum_m q_m k_m)^2]$. For $m\neq n$ mutual independence factorizes the cross term into $\E[q_m]\E[k_m]\E[q_n]\E[k_n]=0$ — this is where independence *across* indices is used, not just $q_m \perp k_m$ — leaving
 $$
 \sum_m \E[q_m^2]\,\E[k_m^2] = \sum_{m=1}^{d_k} 1\cdot 1 = d_k
 \qquad\text{(independence; } \Var=\E[\,\cdot\,^2]\text{ at mean }0).
@@ -132,11 +109,11 @@ So $1/\sqrt{d_k}$ is the unique scale that holds logit variance at $1$ as $d_k$ 
 
 Attempt each before expanding its solution.
 
-**Exercise 2.1 (Prove).** Each row of $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic; conclude each attention output is a convex combination of the value rows.
+**Exercise 2.1 (Prove).** The weight matrix $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic (<XRef id="def-row-stochastic" />); conclude each attention output is a convex combination of the value rows.
 
 <SolutionBox>
 
-Fix a query row $i$ and write the logits $\ell_{ij} = \inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k}$. The attention weight $w_{ij} = e^{\ell_{ij}}/\sum_{j'} e^{\ell_{ij'}}$ is **positive** (an exponential over a positive sum) and the row **sums to one** ($\sum_j w_{ij} = \sum_j e^{\ell_{ij}} / \sum_{j'} e^{\ell_{ij'}} = 1$); so the row is a probability vector — row-stochastic. The output row is $\sum_j w_{ij}\,\mathbf v_j$ with $w_{ij}\ge 0$ and $\sum_j w_{ij}=1$, i.e. a **convex combination** of the value rows. $\qquad\blacksquare$
+Fix a query row $i$ and write the logits $\ell_{ij} = \inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k}$. The attention weight $w_{ij} = e^{\ell_{ij}}/\sum_{j'} e^{\ell_{ij'}}$ is **positive** (an exponential over a positive sum) and the row **sums to one** ($\sum_j w_{ij} = \sum_j e^{\ell_{ij}} / \sum_{j'} e^{\ell_{ij'}} = 1$); so every row is a probability vector, i.e. the weight matrix is row-stochastic. The output row is $\sum_j w_{ij}\,\mathbf v_j$ with $w_{ij}\ge 0$ and $\sum_j w_{ij}=1$, i.e. a **convex combination** of the value rows. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -144,7 +121,7 @@ Fix a query row $i$ and write the logits $\ell_{ij} = \inner{\mathbf q_i}{\mathb
 
 <SolutionBox>
 
-By the variance-preservation theorem (unscaled case), $\Var(\inner{\mathbf q}{\mathbf k}) = d_k$. As $d_k\to\infty$ the logit spread grows without bound, so within a softmax row the largest logit dominates and the row concentrates toward a **one-hot** vector. At a near-one-hot $\mathbf p$, the softmax Jacobian $\operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top$ has entries $p_i(1-p_i)\to 0$, so gradients through the softmax **vanish** (gradient saturation). Dividing logits by $\sqrt{d_k}$ holds the variance at $1$ and prevents this. $\qquad\blacksquare$
+By the variance-preservation theorem (unscaled case), $\Var(\inner{\mathbf q}{\mathbf k}) = d_k$. As $d_k\to\infty$ the logit spread grows without bound, so within a softmax row the largest logit dominates and the row concentrates toward a **one-hot** vector. At a near-one-hot $\mathbf p$, the softmax Jacobian $\operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top$ has entries $J_{ij} = p_i(\delta_{ij} - p_j)$ (<XRef id="prop-softmax-jacobian" />) — diagonal $p_i(1-p_i)\to 0$ and off-diagonal $-p_i p_j\to 0$ — so gradients through the softmax **vanish** (gradient saturation). Dividing logits by $\sqrt{d_k}$ holds the variance at $1$ and prevents this. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -156,6 +133,6 @@ With $\mathbf z=(2,1,0)$ the unnormalized weights are $(e^2, e^1, e^0) \approx (
 $$
 \softmax(\mathbf z) \approx (0.665,\; 0.245,\; 0.090).
 $$
-For $\mathbf z + 5\mathbf 1 = (7,6,5)$ every weight is multiplied by $e^5$, which cancels in the normalization, giving the identical vector — exactly <XRef id="prop-softmax-translation" />. $\qquad\blacksquare$
+For $\mathbf z + 5\mathbf 1 = (7,6,5)$ every weight is multiplied by $e^5$, which cancels in the normalization, giving the identical vector — exactly <XRef id="prop-softmax-translation-inv" />. $\qquad\blacksquare$
 
 </SolutionBox>

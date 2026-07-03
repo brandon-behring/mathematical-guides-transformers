@@ -5,8 +5,8 @@ chapter: 11
 description: "Turning an image into a discrete sequence so the autoregressive machinery of training applies verbatim: the codebook quantizer as Euclidean projection onto a Voronoi partition, the straight-through estimator as forward-quantize/backward-identity, the vector-quantization loss and its codebook-versus-commitment gradient split, the codebook update as a k-means step, the dual-footing theorem that image generation is autoregressive language modeling over a visual vocabulary, and the rate it can carry."
 last_verified: 2026-06-28
 rigor_level: rigorous
-prerequisites: [notation, input-representations, architecture-composition, training]
-notation_introduced: ['\mathcal C', 'q(\cdot)', '\mathbf z_e', '\mathbf z_q', '\Phi', '\Psi', '\beta', 'K', 'L']
+prerequisites: [notation, input-representations, architecture-composition, training, connectors-resamplers]
+notation_introduced: ['\mathcal C', 'q(\cdot)', '\sg', 'd_c', '\mathbf z_e', '\mathbf z_q', '\Phi', '\Psi', '\beta', 'K', 'L']
 theorems: ['def-tf11-codebook', 'prop-tf11-voronoi', 'def-tf11-ste', 'thm-tf11-ste-identity', 'def-tf11-vq-loss', 'prop-tf11-vq-gradient', 'thm-tf11-codebook-kmeans', 'thm-tf11-dual-footing', 'prop-tf11-rate']
 los:
   - id: TF-11.1
@@ -38,20 +38,20 @@ import SolutionBox from '../../components/SolutionBox.astro';
 The setup is an autoencoder with a discrete waist. An encoder $\Phi$ compresses an image to a grid of $L$ latent vectors; each is replaced ("quantized") by its nearest entry in a learned codebook; a decoder $\Psi$ reconstructs the image from the quantized grid. The discrete waist is the whole interest: after quantization the image is fully described by $L$ integers in $\{1,\dots,K\}$.
 
 <Theorem kind="definition" name="Codebook and quantizer" id="def-tf11-codebook">
-A **codebook** is a finite set $\mathcal C = \{\mathbf e_1,\dots,\mathbf e_K\}\subset\R^{d_c}$ of $K$ learned vectors. The **quantizer** $q:\R^{d_c}\to\mathcal C$ snaps a vector to its nearest codebook entry,
+A **codebook** is a finite set $\mathcal C = \{\mathbf e_1,\dots,\mathbf e_K\}\subset\R^{d_c}$ of $K$ learned vectors, where $d_c$ is the code (latent) dimension. In this chapter $\mathbf e_k$ denotes the $k$-th *codebook vector* — a stated departure from the standing one-hot meaning; codebook vectors live in $\R^{d_c}$, one-hots in $\R^{K}$, so context disambiguates. The **quantizer** $q:\R^{d_c}\to\mathcal C$ snaps a vector to its nearest codebook entry,
 $$
-q(\mathbf z) = \mathbf e_{k^\star(\mathbf z)},
+q(\mathbf z) \defeq \mathbf e_{k^\star(\mathbf z)},
 \qquad
-k^\star(\mathbf z) = \argmin_{k\in\{1,\dots,K\}} \norm{\mathbf z - \mathbf e_k}.
+k^\star(\mathbf z) \defeq \argmin_{k\in\{1,\dots,K\}} \norm{\mathbf z - \mathbf e_k}.
 $$
-Ties (points equidistant from two or more codes) are broken by the smallest index, so $q$ is a well-defined function on all of $\R^{d_c}$. An encoder $\Phi$ maps an image $x$ to a grid of latents $\mathbf z_e = \Phi(x)$ with $L$ rows $\mathbf z_e^{(1)},\dots,\mathbf z_e^{(L)}\in\R^{d_c}$; applying $q$ row-wise yields the **index sequence** $\big(k^\star(\mathbf z_e^{(1)}),\dots,k^\star(\mathbf z_e^{(L)})\big)\in\{1,\dots,K\}^{L}$ and the quantized grid $\mathbf z_q$ with rows $q(\mathbf z_e^{(i)})$. A decoder $\Psi$ reconstructs $\hat x = \Psi(\mathbf z_q)$.<Sidenote>This is the VQ-VAE <Cite key="vandenoord2017vqvae" />; the codebook lookup $z\mapsto\mathbf e_z=\mathbf C[z,:]$ is the codebook embedding of <XRef id="def-tf1-codebook-embedding" />, run in reverse to produce the indices.</Sidenote>
+Ties (points equidistant from two or more codes) are broken by the smallest index, so $q$ is a well-defined function on all of $\R^{d_c}$. An encoder $\Phi$ maps an image $x$ to a grid of latents $\mathbf z_e = \Phi(x)$ with $L$ rows $\mathbf z_e^{(1)},\dots,\mathbf z_e^{(L)}\in\R^{d_c}$; applying $q$ row-wise yields the **index sequence** $\big(k^\star(\mathbf z_e^{(1)}),\dots,k^\star(\mathbf z_e^{(L)})\big)\in\{1,\dots,K\}^{L}$ and the quantized grid $\mathbf z_q$ with rows $q(\mathbf z_e^{(i)})$. A decoder $\Psi$ reconstructs $\hat x = \Psi(\mathbf z_q)$.<Sidenote>This is the VQ-VAE <Cite key="vandenoord2017vqvae" />; the codebook lookup $z\mapsto\mathbf e_z=\mathbf C[z,:]$ is the codebook embedding of <XRef id="def-tf1-codebook-embedding" />, run in reverse to produce the indices — with the caveat that ch. 1's codebook is the LM-side table $\mathbf C\in\R^{K\times d}$ in model space, while $\mathcal C\subset\R^{d_c}$ here lives in the codec's latent space: two distinct tables sharing one index alphabet.</Sidenote>
 </Theorem>
 
 <MarginNote variant="pattern" label="Same lookup, both directions">Quantization produces an index; <XRef id="def-tf1-codebook-embedding" /> consumes one. The codebook is the visual analogue of a token vocabulary, and a quantized image is a sentence in it.</MarginNote>
 
 <Figure
   src="/figures/grid-sequence.svg"
-  caption="From image to sequence. The encoder compresses an image to an L-cell latent grid; each cell is quantized to its nearest codebook index; reading the index grid in raster order yields a length-L sequence over the alphabet {1,…,K} — a sentence in the visual vocabulary. Rendered from TikZ via the figures pipeline."
+  caption="From index grid to sequence. Each cell of the L-cell grid holds the index of its nearest codebook vector (the quantization happens upstream); reading the grid in raster order yields a length-L sequence over the alphabet {1,…,K} — a sentence in the visual vocabulary. Rendered from TikZ via the figures pipeline."
   id="fig-grid-sequence"
   width="70%"
 />
@@ -83,7 +83,7 @@ The straight-through estimator keeps the exact quantization in the forward pass 
 <Theorem kind="definition" name="Straight-through estimator" id="def-tf11-ste">
 Let $\sg[\cdot]$ be the **stop-gradient** operator: $\sg[\mathbf u]=\mathbf u$ in the forward pass and $\partial\,\sg[\mathbf u]/\partial\mathbf u = \mathbf 0$ in the backward pass. The **straight-through estimator (STE)** defines the quantized latent passed to the decoder as
 $$
-\mathbf z_q \;=\; \mathbf z_e + \sg\!\big[\,q(\mathbf z_e) - \mathbf z_e\,\big].
+\mathbf z_q \defeq \mathbf z_e + \sg\!\big[\,q(\mathbf z_e) - \mathbf z_e\,\big].
 $$
 The decoder receives $\mathbf z_q$; gradients are computed as if $\mathbf z_q=\mathbf z_e$.<Sidenote>The STE dates to <Cite key="bengio2013estimating" /> and is the gradient estimator that makes VQ-VAE trainable end to end <Cite key="vandenoord2017vqvae" />.</Sidenote>
 </Theorem>
@@ -116,7 +116,7 @@ The encoder is trained for reconstruction (via the STE), but two more things mus
 <Theorem kind="definition" name="Vector-quantization loss" id="def-tf11-vq-loss">
 With $\mathbf e \defeq q(\mathbf z_e)$ the code assigned to encoder output $\mathbf z_e$, and reconstruction loss $\mathcal L_{\mathrm{rec}}(\Psi(\mathbf z_q),x)$ (e.g. $\norm{x-\hat x}^2$), the **VQ loss** is
 $$
-\mathcal L_{\mathrm{VQ}} \;=\; \underbrace{\mathcal L_{\mathrm{rec}}\big(\Psi(\mathbf z_q),x\big)}_{\text{reconstruction}}
+\mathcal L_{\mathrm{VQ}} \defeq \underbrace{\mathcal L_{\mathrm{rec}}\big(\Psi(\mathbf z_q),x\big)}_{\text{reconstruction}}
 \;+\; \underbrace{\norm{\sg[\mathbf z_e] - \mathbf e}^2}_{\text{codebook}}
 \;+\; \beta\,\underbrace{\norm{\mathbf z_e - \sg[\mathbf e]}^2}_{\text{commitment}},
 $$
@@ -167,17 +167,17 @@ Fix the codec $(\Phi,q,\Psi)$ of <XRef id="def-tf11-codebook" />, and let $\math
 $$
 p_\theta(\mathbf z) = \prod_{t=1}^{L} p_\theta(z_t\mid z_{<t}),
 \qquad
-p_\theta(z_t\mid z_{<t}) = \softmax(\mathbf o_t)_{z_t},
+p_\theta(z_t\mid z_{<t}) = \softmax(\mathbf h_t\mathbf W_{\text{out}})_{z_t},
 $$
-trained by the cross-entropy loss of <XRef id="def-tf6-ce-loss" /> (which minimizes the KL from the data to the model, $\mathrm{KL}(p_{\mathrm{data}}\Vert p_\theta)$, <XRef id="prop-tf6-ce-kl-training" />) with teacher forcing (<XRef id="def-tf6-teacher-forcing" />). Every theorem of the training chapter holds verbatim with $|\mathcal V|=K$; modality enters **only** through the fixed codec, which translates pixels to indices ($q\circ\Phi$) and indices back to pixels ($\Psi$). To sample an image, draw $\mathbf z\sim p_\theta$ autoregressively and decode $\hat x = \Psi(\mathbf z)$.
+trained by the cross-entropy loss of <XRef id="def-tf6-ce-loss" /> (whose expectation over the data minimizes $D_{\mathrm{KL}}(p_{\mathrm{data}}\,\|\,p_\theta)$, <XRef id="prop-tf6-ce-kl-training" />) with teacher forcing (<XRef id="def-tf6-teacher-forcing" />). Every theorem of the training chapter holds verbatim with $|\mathcal V|=K$; modality enters **only** through the fixed codec, which translates pixels to indices ($q\circ\Phi$) and indices back to pixels ($\Psi$). To sample an image, draw $\mathbf z\sim p_\theta$ autoregressively and decode $\hat x = \Psi(\mathbf z)$.
 </Theorem>
 
 <Theorem kind="proof">
-The codec is a fixed deterministic map $x\mapsto \mathbf z = (q\circ\Phi)(x)\in\{1,\dots,K\}^L$, so the image distribution pushes forward to a distribution over index sequences on the finite alphabet $\mathcal V=\{1,\dots,K\}$. An autoregressive model over $\mathcal V^L$ is, by definition (<XRef id="def-tf6-autoregressive-lm" />), the chain-rule factorization $p_\theta(\mathbf z)=\prod_t p_\theta(z_t\mid z_{<t})$ with each conditional a softmax over $|\mathcal V|=K$ logits. The construction of the autoregressive loss uses only: (i) the chain rule, which is alphabet-agnostic; (ii) the softmax over the finite label set, here of size $K$; (iii) the identity that per-token cross-entropy equals the KL from the data to the model, $\mathrm{KL}(p_{\mathrm{data}}\Vert p_\theta)$, plus the data entropy (<XRef id="prop-tf6-ce-kl-training" />), which references the alphabet only through the sum over its symbols; and (iv) teacher forcing (<XRef id="def-tf6-teacher-forcing" />), which conditions on ground-truth prefixes and is likewise indifferent to token meaning. None of (i)–(iv) mentions text, so each transfers unchanged under $\mathcal V\to\{1,\dots,K\}$. Sampling composes the learned autoregressive sampler with the fixed decoder $\Psi$, which is the only modality-specific step. Hence image generation is autoregressive language modeling over a visual vocabulary. $\qquad\blacksquare$
+The codec is a fixed deterministic map $x\mapsto \mathbf z = (q\circ\Phi)(x)\in\{1,\dots,K\}^L$, so the image distribution pushes forward to a distribution over index sequences on the finite alphabet $\mathcal V=\{1,\dots,K\}$. An autoregressive model over $\mathcal V^L$ is, by definition (<XRef id="def-tf6-autoregressive-lm" />), the chain-rule factorization $p_\theta(\mathbf z)=\prod_t p_\theta(z_t\mid z_{<t})$ with each conditional a softmax over $|\mathcal V|=K$ logits. The construction of the autoregressive loss uses only: (i) the chain rule, which is alphabet-agnostic; (ii) the softmax over the finite label set, here of size $K$; (iii) the identity that the *expected* loss over the data equals the data entropy plus $D_{\mathrm{KL}}(p_{\mathrm{data}}\,\|\,p_\theta)$, up to the $1/T$ average (<XRef id="prop-tf6-ce-kl-training" />), which references the alphabet only through the sum over its symbols; and (iv) teacher forcing (<XRef id="def-tf6-teacher-forcing" />), which conditions on ground-truth prefixes and is likewise indifferent to token meaning. None of (i)–(iv) mentions text, so each transfers unchanged under $\mathcal V\to\{1,\dots,K\}$. Sampling composes the learned autoregressive sampler with the fixed decoder $\Psi$, which is the only modality-specific step. Hence image generation is autoregressive language modeling over a visual vocabulary. $\qquad\blacksquare$
 </Theorem>
 
 <Theorem kind="remark" name="What is genuinely new versus reused" id="rem-tf11-new-vs-reused">
-The reused part is everything inside the sequence model: <XRef id="thm-tf11-dual-footing" /> shows the transformer, its loss, and its sampler are the text apparatus untouched — this is the dual-footing thesis (<XRef id="rem-tf1-modality-blind" />) made exact for generation. The genuinely new mathematics is everything *around* the sequence: the quantizer and its Voronoi geometry (<XRef id="prop-tf11-voronoi" />), the straight-through estimator (<XRef id="thm-tf11-ste-identity" />) that makes the discrete waist trainable, and the k-means codebook (<XRef id="thm-tf11-codebook-kmeans" />). This is the precise sense in which "image generation as a language model" is both a real reduction and a real new construction — the codec is new, the language model is not. The same recipe with a convolutional/transformer codec and an autoregressive or masked prior underlies VQ-VAE-2, VQGAN, and DALL·E <Cite key="razavi2019vqvae2" /><Cite key="esser2021vqgan" /><Cite key="ramesh2021dalle" />.
+The reused part is everything inside the sequence model: <XRef id="thm-tf11-dual-footing" /> shows the transformer, its loss, and its sampler are the text apparatus untouched — this is the dual-footing thesis (<XRef id="rem-tf1-modality-blind" />) made exact for generation. The genuinely new mathematics is everything *around* the sequence: the quantizer and its Voronoi geometry (<XRef id="prop-tf11-voronoi" />), the straight-through estimator (<XRef id="thm-tf11-ste-identity" />) that makes the discrete waist trainable, and the k-means codebook (<XRef id="thm-tf11-codebook-kmeans" />). This is the precise sense in which "image generation as a language model" is both a real reduction and a real new construction — the codec is new, the language model is not. The same recipe with a convolutional/transformer codec and an autoregressive prior underlies VQ-VAE-2 and VQGAN <Cite key="razavi2019vqvae2" /><Cite key="esser2021vqgan" />; DALL·E <Cite key="ramesh2021dalle" /> keeps the tokenize-then-model pipeline but trains its discrete VAE with a Gumbel-softmax relaxation in place of the VQ/straight-through codec.
 </Theorem>
 
 ## The rate of the code
@@ -189,11 +189,11 @@ An index sequence of length $L$ over a codebook of size $K$ carries at most
 $$
 H(\mathbf z) \;\le\; L\log_2 K \quad\text{bits},
 $$
-with equality iff the codes are independent and uniformly distributed (<XRef id="def-entropy" />). Consequently the image information recoverable from the code is at most $L\log_2 K$ bits (the bottleneck bound of <XRef id="prop-tf10-bottleneck" /> with $\mathbf S=\mathbf z$), and two images sharing an index sequence are identical after decoding — so the codec's quantization, not the prior over codes, sets the fidelity ceiling, which only a larger $K$ or $L$ can raise. Codebook size and code length are the rate knobs in a rate–distortion trade.
+with equality iff the codes are independent and uniformly distributed (uniform maximum from <XRef id="def-entropy" />; the joint-entropy subadditivity supplying the independence half is standard and taken as given). Consequently the image information recoverable from the code is at most $L\log_2 K$ bits (the bottleneck bound of <XRef id="prop-tf10-bottleneck" /> with $\mathbf S=\mathbf z$), and two images sharing an index sequence are identical after decoding — so the codec's quantization, not the prior over codes, sets the fidelity ceiling, which only a larger $K$ or $L$ can raise. Codebook size and code length are the rate knobs in a rate–distortion trade.
 </Theorem>
 
 <Theorem kind="proof">
-The entropy of a sequence of $L$ symbols satisfies $H(\mathbf z)\le\sum_{t=1}^L H(z_t)$ by subadditivity, and each $H(z_t)\le\log_2 K$ because a distribution on $K$ outcomes has maximal entropy $\log_2 K$ at the uniform; equality throughout requires independence (for the first inequality) and uniform marginals (for the second), i.e. i.i.d. uniform codes. By <XRef id="prop-tf10-bottleneck" /> with discrete bottleneck $\mathbf S=\mathbf z$, $I(X;\hat X)\le H(\mathbf z)\le L\log_2 K$. Finally, decoding is a function of $\mathbf z$ alone, so any two images with the same $\mathbf z$ map to the same $\hat x$; their distinguishing information sits in the discarded residual $\mathbf z_e - q(\mathbf z_e)$, whose expected squared norm lower-bounds the achievable reconstruction error for the fixed codec. $\qquad\blacksquare$
+The entropy of a sequence of $L$ symbols satisfies $H(\mathbf z)\le\sum_{t=1}^L H(z_t)$ by subadditivity of joint entropy (standard; not proved in this guide), and each $H(z_t)\le\log_2 K$ because a distribution on $K$ outcomes has maximal entropy $\log_2 K$ at the uniform; equality throughout requires independence (for the first inequality) and uniform marginals (for the second), i.e. i.i.d. uniform codes. By <XRef id="prop-tf10-bottleneck" /> with discrete bottleneck $\mathbf S=\mathbf z$, $I(X;\hat X)\le H(\mathbf z)\le L\log_2 K$. Finally, decoding is a function of $\mathbf z$ alone, so any two images with the same $\mathbf z$ map to the same $\hat x$; their distinguishing information sits in the discarded residual $\mathbf z_e - q(\mathbf z_e)$ — a latent-space quantity; how much pixel-space error it induces depends on the decoder's geometry, but *what was discarded cannot be recovered* by any prior over the codes. $\qquad\blacksquare$
 </Theorem>
 
 ## Exercises
@@ -236,6 +236,6 @@ For fixed assignments $S_k$, the codebook objective $\sum_{i\in S_k}\norm{\mathb
 
 <SolutionBox>
 
-(a) By <XRef id="prop-tf11-rate" />, $H(\mathbf z)\le L\log_2 K = 256\cdot\log_2(2^{13}) = 256\cdot 13 = 3328$ bits per image (attained only by i.i.d. uniform codes; real codes carry fewer). (b) By <XRef id="thm-tf11-dual-footing" /> the prior is an autoregressive language model over $\mathcal V=\{1,\dots,8192\}$, trained to minimize the per-token cross-entropy $-\frac1L\sum_t\log p_\theta(z_t\mid z_{<t})$, which equals the KL from the data to the model, $\mathrm{KL}(p_{\mathrm{data}}\Vert p_\theta)$, plus the data entropy (<XRef id="prop-tf6-ce-kl-training" />). Lower cross-entropy means the model assigns higher likelihood to the true code sequences — its samples $\mathbf z\sim p_\theta$ match the distribution of real images' codes more closely, so decoding $\Psi(\mathbf z)$ yields more realistic images. The fidelity ceiling is still set by the codec's $3328$-bit rate (<XRef id="prop-tf11-rate" />); the prior only controls how well that budget is used. $\qquad\blacksquare$
+(a) By <XRef id="prop-tf11-rate" />, $H(\mathbf z)\le L\log_2 K = 256\cdot\log_2(2^{13}) = 256\cdot 13 = 3328$ bits per image (attained only by i.i.d. uniform codes; real codes carry fewer). (b) By <XRef id="thm-tf11-dual-footing" /> the prior is an autoregressive language model over $\mathcal V=\{1,\dots,8192\}$, trained to minimize the per-token cross-entropy $-\frac1L\sum_t\log p_\theta(z_t\mid z_{<t})$, whose *expectation over the data* equals the data entropy plus $D_{\mathrm{KL}}(p_{\mathrm{data}}\,\|\,p_\theta)$, up to the $1/L$ average (<XRef id="prop-tf6-ce-kl-training" />). Lower cross-entropy means the model assigns higher likelihood to the true code sequences — its samples $\mathbf z\sim p_\theta$ match the distribution of real images' codes more closely, so decoding $\Psi(\mathbf z)$ yields more realistic images. The fidelity ceiling is still set by the codec's $3328$-bit rate (<XRef id="prop-tf11-rate" />); the prior only controls how well that budget is used. $\qquad\blacksquare$
 
 </SolutionBox>

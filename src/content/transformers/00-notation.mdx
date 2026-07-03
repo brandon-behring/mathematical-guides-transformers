@@ -59,7 +59,7 @@ Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d
 | $\operatorname{MHA}(\mathbf X)$ | multi-head attention | Multi-Head Attention |
 | $\operatorname{FFN}(\mathbf x)$ | position-wise feed-forward network | The Transformer Block |
 | $\operatorname{LN}(\mathbf x)$ | layer normalization | The Transformer Block |
-| $\mathbf M$ | causal mask matrix | Attention |
+| $\mathbf M$ | causal mask matrix | Attention (<XRef id="def-tf2-causal-mask" />) |
 
 ## Modality-agnostic conventions
 
@@ -104,6 +104,8 @@ Subtracting $\max_j z_j$ before exponentiating therefore changes nothing while a
 
 <MarginNote variant="tip" label="Self-explanation">Before reading the next proof: translation invariance says the output is unchanged along the direction $\mathbf 1$. What must the Jacobian do to the vector $\mathbf 1$?</MarginNote>
 
+For the Jacobian calculus below (and in Exercises 0.1–0.2) we treat $\mathbf z$ and $\mathbf p$ as **column** vectors — a stated departure from the row convention — so that $\mathbf p\mathbf p^\top$ is the $K\times K$ outer product and $\mathbf J$ acts by left multiplication.
+
 <Theorem kind="proposition" name="Softmax Jacobian" id="prop-softmax-jacobian">
 Let $\mathbf p = \softmax(\mathbf z)$. The Jacobian $\mathbf J\in\R^{K\times K}$ with $J_{ij} = \partial p_i/\partial z_j$ is
 $$
@@ -132,8 +134,8 @@ Both cases read $p_i(\delta_{ij} - p_j)$, i.e. $\mathbf J = \operatorname{diag}(
 
 Two readings of this Jacobian recur later. First, $\mathbf J\mathbf 1 = \mathbf p - \mathbf p(\mathbf p^\top\mathbf 1) = \mathbf p - \mathbf p = \mathbf 0$: the vector $\mathbf 1$ lies in the null space, so gradients are confined to the tangent plane of the simplex — the differential counterpart of translation invariance. Second, as $\mathbf p$ approaches a vertex of the simplex the entries $p_i(1-p_i)$ all vanish, the Jacobian collapses, and gradients through the softmax are attenuated.
 
-<Theorem kind="remark" name="Temperature">
-A temperature $\tau > 0$ generalizes the map to $\softmax(\mathbf z/\tau)$. As $\tau\to 0^+$ the output approaches the one-hot vector at $\arg\max_i z_i$ (hard selection); as $\tau\to\infty$ it approaches the uniform distribution $\mathbf 1/K$. Transformer attention uses $\tau = 1$.
+<Theorem kind="remark" name="Temperature" id="rem-softmax-temperature">
+A temperature $\tau > 0$ generalizes the map to $\softmax(\mathbf z/\tau)$. As $\tau\to 0^+$ the output approaches the uniform distribution over the maximizing set $\arg\max_i z_i$ — when the maximizer is unique, the one-hot vector at it (hard selection); as $\tau\to\infty$ it approaches the uniform distribution $\mathbf 1/K$. Transformer attention uses $\tau = 1$.
 </Theorem>
 
 Geometrically, softmax maps $\R^K$ onto the interior of the probability simplex $\Delta^{K-1} = \{\mathbf p : p_i \ge 0,\ \sum_i p_i = 1\}$, the convex hull of the standard basis vectors $\mathbf e_1,\dots,\mathbf e_K$. It is surjective onto the interior but not injective (translation invariance), and the saturation above is the statement that the simplex's tangent plane collapses at its vertices.
@@ -205,7 +207,7 @@ $$
 Row $i$ of the product is $\sum_j A_{ij}\mathbf v_j$ by the definition of matrix multiplication. The coefficients $A_{ij}$ are nonnegative and sum to one (<XRef id="def-row-stochastic" />), which is exactly a convex combination. $\qquad\blacksquare$
 </Theorem>
 
-Because the attention weight matrix is row-stochastic — softmax produces it, as the Attention chapter proves — every attention output lies in the convex hull of the value vectors it attends to. Attention *interpolates*; it cannot reach outside that hull. The residual connection $\mathbf x + \operatorname{Attn}(\mathbf x)$ and the feed-forward layer are what let a block escape it.
+Because the attention weight matrix is row-stochastic — softmax produces it, as the Attention chapter proves — every attention output lies in the convex hull of the value vectors it attends to. Attention *interpolates*; it cannot reach outside that hull. The residual connection $\mathbf X + \operatorname{MHA}(\mathbf X)$ and the feed-forward layer are what let a block escape it.
 
 ## Exercises
 
