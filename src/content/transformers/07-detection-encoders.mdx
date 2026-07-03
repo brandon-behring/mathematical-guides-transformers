@@ -61,7 +61,7 @@ $$
 \qquad
 \hat{\mathbf y} = \softmax(\mathbf o),
 $$
-with a **classifier head** $\mathbf W_{\textsf{cls}}\in\R^{d\times C}$, bias $\mathbf b\in\R^{C}$, and $Q$ a bidirectional encoder. Training minimizes the cross-entropy $H(\mathbf e_y,\hat{\mathbf y}) = -\log \hat y_{y}$ (<XRef id="prop-ce-kl" />) of the true label $y$ under $\hat{\mathbf y}$.
+with a **classifier head** $\mathbf W_{\textsf{cls}}\in\R^{d\times C}$, bias $\mathbf b\in\R^{C}$, and $Q$ a bidirectional encoder. Training minimizes the cross-entropy $H(\mathbf e_y,\hat{\mathbf y}) = -\log \hat y_{y}$ (<XRef id="def-cross-entropy" />) of the true label $y$ under $\hat{\mathbf y}$.
 </Theorem>
 
 <Theorem kind="remark" name="Bidirectionality is the design choice, not the formalism" id="rem-tf7-bidirectional">
@@ -78,7 +78,7 @@ We first fix the similarity and its scale.
 For embeddings $\mathbf u,\mathbf v\in\R^{d}$, the **cosine similarity** is $\operatorname{sim}(\mathbf u,\mathbf v) \defeq \inner{\mathbf u}{\mathbf v}/(\norm{\mathbf u}\,\norm{\mathbf v})$. When the embeddings are $L^2$-normalized ($\norm{\mathbf u}=\norm{\mathbf v}=1$) this is the plain inner product $\inner{\mathbf u}{\mathbf v}\in[-1,1]$. A **temperature** $\tau>0$ rescales it to the **similarity logit** $\inner{\mathbf u}{\mathbf v}/\tau$.
 </Theorem>
 
-<MarginNote variant="formula" label="Temperature">Small $\tau$ sharpens the candidate softmax toward the single nearest partner; large $\tau$ flattens it toward uniform — exactly the temperature limits of <XRef id="def-softmax" />. Practice learns $\log(1/\tau)$ as a parameter.</MarginNote>
+<MarginNote variant="formula" label="Temperature">Small $\tau$ sharpens the candidate softmax toward the single nearest partner; large $\tau$ flattens it toward uniform — exactly the temperature limits of <XRef id="rem-softmax-temperature" />. Practice learns $\log(1/\tau)$ as a parameter.</MarginNote>
 
 <Theorem kind="definition" name="Symmetric contrastive objective (InfoNCE)" id="def-tf7-contrastive">
 Let a batch of $B$ matched pairs have $L^2$-normalized embeddings stacked rowwise as $\mathbf U,\mathbf V\in\R^{B\times d}$, with row $i$ of each the two views of example $i$. Form the **similarity matrix**
@@ -105,14 +105,14 @@ Fix row $i$. By the definition of softmax (<XRef id="def-softmax" />) applied to
 $$
 p(j\mid i) \defeq \softmax(\mathbf M_{i,:})_j = \frac{e^{M_{ij}}}{\sum_{j'=1}^{B} e^{M_{ij'}}},
 $$
-which is positive and sums to one over $j$, hence a categorical distribution over the $B$ candidate $\mathbf v$-embeddings. The contrastive target names the matching index, i.e. the one-hot $\mathbf e_i$. Cross-entropy against a one-hot target reduces to the negative log-probability of its support (<XRef id="prop-ce-kl" />, Def. of cross-entropy):
+which is positive and sums to one over $j$, hence a categorical distribution over the $B$ candidate $\mathbf v$-embeddings. The contrastive target names the matching index, i.e. the one-hot $\mathbf e_i$. Cross-entropy against a one-hot target reduces to the negative log-probability of its support (<XRef id="def-cross-entropy" />):
 $$
 H(\mathbf e_i, p(\cdot\mid i)) = -\sum_{j} [\mathbf e_i]_j \log p(j\mid i) = -\log p(i\mid i) = -\log\frac{e^{M_{ii}}}{\sum_{j} e^{M_{ij}}},
 $$
 which is exactly the $i$-th summand of $\mathcal L_{\textsf{row}}$. Averaging over $i$ gives $\mathcal L_{\textsf{row}}$ as a mean cross-entropy. The transpose argument — read $\mathbf M$ columnwise, target $j$ on column $j$ — gives $\mathcal L_{\textsf{col}}$ identically, and $\mathcal L_{\textsf{con}}$ is their average. $\qquad\blacksquare$
 </Theorem>
 
-Because the objective is cross-entropy with softmax logits, every property of that machinery transfers verbatim. Translation invariance of the softmax (<XRef id="prop-softmax-translation-inv" />) says adding a constant to a whole row of $\mathbf M$ — for instance a per-anchor similarity offset — leaves the loss unchanged, so only the *gaps* $M_{ii} - M_{ij}$ between the true and competing similarities matter. The softmax Jacobian (<XRef id="prop-softmax-jacobian" />) governs the gradient: the loss pushes the matched logit $M_{ii}$ up and every mismatched $M_{ij}$ down, with the push on a negative proportional to the probability mass $p(j\mid i)$ it currently steals — hard negatives, those with large current similarity, receive the largest gradient.
+Because the objective is cross-entropy with softmax logits, every property of that machinery transfers verbatim. Translation invariance of the softmax (<XRef id="prop-softmax-translation-inv" />) says adding a constant to a whole row of $\mathbf M$ — a per-anchor similarity offset — leaves $\mathcal L_{\textsf{row}}$ unchanged, so the row loss sees the similarities only through the row gaps $M_{ii} - M_{ij}$; the symmetric objective is likewise invariant to *column* shifts through $\mathcal L_{\textsf{col}}$, so it depends on the row and column gaps together. The softmax Jacobian (<XRef id="prop-softmax-jacobian" />) governs the gradient: the loss pushes the matched logit $M_{ii}$ up and every mismatched $M_{ij}$ down, with the push on a negative proportional to the probability mass $p(j\mid i)$ it currently steals — hard negatives, those with large current similarity, receive the largest gradient.
 
 <MarginNote variant="tip" label="Self-explanation">Before reading the next proof: the loss is $-\log p(i\mid i)$ and $p(i\mid i)\le 1$, so $\mathcal L_{\textsf{row}}\ge 0$. When is the per-row loss exactly zero, and what must the similarities $M_{ij}$ do to achieve it?</MarginNote>
 
@@ -129,7 +129,7 @@ Alignment-plus-separation is precisely a geometric statement: matched views are 
 </Theorem>
 
 <Theorem kind="remark" name="Contrastive alignment is the canonical cross-modal objective" id="rem-tf7-crossmodal-canonical">
-Take the two views of <XRef id="def-tf7-contrastive" /> to be **two modalities**: $\mathbf U$ the pooled embeddings of images (a Vision Transformer, <XRef id="rem-tf5-vit" />) and $\mathbf V$ the pooled embeddings of their captions (a text encoder), each formed through the embedding interface (<XRef id="def-tf1-embedding-interface" />) and an encoder, each pooled to $\R^{d}$ by <XRef id="def-tf7-pooled-rep" />. Then the symmetric InfoNCE of <XRef id="prop-tf7-contrastive-ce" /> is **exactly** the CLIP image–text objective <Cite key="radford2021clip" />, and the alignment-plus-separation minimizer of <XRef id="prop-tf7-contrastive-alignment" /> produces a **shared embedding space** in which a picture of a dog and the string "a dog" are neighbors. This geometry is the dual-footing payoff: it powers zero-shot classification (<XRef id="def-tf13-zeroshot" />) — score an image against text-prompt embeddings, the same retrieval game — and supplies the projection (<XRef id="def-tf10-connector" />) that injects visual evidence into a language model's space for the generative vision-language models of <XRef id="ex-tf6-captioning" />. The contrastive head, the autoregressive head (<XRef id="def-tf6-ce-loss" />), and cross-attention (<XRef id="def-tf5-cross-attention" />) are the three read-out interfaces of the modality-agnostic core; this chapter's objective is the cross-modal one.
+Take the two views of <XRef id="def-tf7-contrastive" /> to be **two modalities**: $\mathbf U$ the pooled embeddings of images (a Vision Transformer, <XRef id="rem-tf5-vit" />) and $\mathbf V$ the pooled embeddings of their captions (a text encoder), each formed through the embedding interface (<XRef id="def-tf1-embedding-interface" />) and an encoder, each pooled to $\R^{d}$ by <XRef id="def-tf7-pooled-rep" />. Then the symmetric InfoNCE of <XRef id="prop-tf7-contrastive-ce" /> is **exactly** the CLIP image–text objective <Cite key="radford2021clip" />, and the alignment-plus-separation minimizer of <XRef id="prop-tf7-contrastive-alignment" /> produces a **shared embedding space** in which a picture of a dog and the string "a dog" are neighbors. This geometry is the dual-footing payoff: it powers zero-shot classification (<XRef id="def-tf13-zeroshot" />) — score an image against text-prompt embeddings, the same retrieval game — and supplies the projection (<XRef id="def-tf10-connector" />) that injects visual evidence into a language model's space for the generative vision-language models of <XRef id="ex-tf6-captioning" />. The contrastive head, the autoregressive head (<XRef id="def-tf6-autoregressive-lm" />), and cross-attention (<XRef id="def-tf5-cross-attention" />) are the three read-out interfaces of the modality-agnostic core; this chapter's objective is the cross-modal one.
 </Theorem>
 
 ## Embedding geometry for out-of-distribution detection
@@ -160,7 +160,7 @@ All three scores answer "how unlike the inliers is this point?" and are monotone
 A score function must be judged independently of any particular threshold, because the deployment threshold trades false alarms against misses and is chosen later. The threshold-free summary is the probability that the score ranks a true anomaly above a true inlier — and this probability has a closed name.
 
 <Theorem kind="definition" name="AUROC as a ranking probability" id="def-tf7-auroc">
-Let $S^{+} = s(\mathbf r)$ for a random anomaly ("positive") and $S^{-} = s(\mathbf r)$ for an independent random inlier ("negative"). The **area under the ROC curve** of the score $s$ is
+Let $S^{+} = s(\mathbf r)$ for a random anomaly ("positive") and $S^{-} = s(\mathbf r)$ for an independent random inlier ("negative"). The **AUROC** (area under the receiver-operating-characteristic curve) of the score $s$ is *defined here* as the ranking probability<Sidenote>That this ranking probability equals the literal area under the ROC curve is the Hanley–McNeil identity <Cite key="hanley1982meaning" />; we only ever use the ranking form.</Sidenote>
 $$
 \operatorname{AUROC}(s) \defeq \Pr[\,S^{+} > S^{-}\,] + \tfrac12\Pr[\,S^{+} = S^{-}\,].
 $$
@@ -189,11 +189,11 @@ AUROC measures only the *ordering* a score induces, averaged over all thresholds
 
 Attempt each before expanding its solution.
 
-**Exercise 7.1 (Prove).** Show that mean pooling $\mathbf r_{\textsf{mean}} = \tfrac1n\sum_i \mathbf h_i$ is the action of a row-stochastic matrix on $\mathbf H$, and conclude $\mathbf r_{\textsf{mean}}$ lies in the convex hull of the contextual states $\{\mathbf h_i\}$. Why does the prepended designated-position rule of <XRef id="def-tf7-pooled-rep" /> escape this hull?
+**Exercise 7.1 (Prove).** Show that mean pooling $\mathbf r_{\textsf{mean}} = \tfrac1n\sum_i \mathbf h_i$ is the action of a row-stochastic matrix on $\mathbf H$, and conclude $\mathbf r_{\textsf{mean}}$ lies in the convex hull of the contextual states $\{\mathbf h_i\}$. In what sense does the prepended designated-position rule of <XRef id="def-tf7-pooled-rep" /> escape confinement — being itself one of the states, $\mathbf r_{\textsf{CLS}}$ trivially lies in the full hull, so what hull need it *not* lie in?
 
 <SolutionBox>
 
-Mean pooling is $\mathbf r_{\text{mean}} = \mathbf a\mathbf H$ with $\mathbf a = \tfrac1n\mathbf 1^\top$, a $1\times n$ row-stochastic vector, so $\mathbf r_{\text{mean}} = \sum_j \tfrac1n\mathbf h_j$ lies in the convex hull of the token states (<XRef id="prop-row-stochastic-convex" />). The prepended designated-position representation $\mathbf r_{\text{CLS}}$ escapes the hull because $\mathbf h_{\text{CLS}}$ is a learned input vector, not one of the $\mathbf h_j$ averaged: the encoder writes into that slot through attention and the residual path, so it need not be any convex mixture of the token states. $\qquad\blacksquare$
+Mean pooling is $\mathbf r_{\textsf{mean}} = \mathbf a\mathbf H$ with $\mathbf a = \tfrac1n\mathbf 1^\top$, a $1\times n$ row-stochastic vector, so $\mathbf r_{\textsf{mean}} = \sum_j \tfrac1n\mathbf h_j$ lies in the convex hull of the token states (<XRef id="prop-row-stochastic-convex" />). The prepended designated-position representation $\mathbf r_{\textsf{CLS}}$ need not lie in the hull of the *averaged token states* $\{\mathbf h_j\}_{j\ge 2}$, because $\mathbf h_{\textsf{CLS}}$ is a learned input vector, not one of the $\mathbf h_j$ averaged: the encoder writes into that slot through attention and the residual path, so it need not be any convex mixture of the token states. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -205,11 +205,11 @@ With $p_j = \softmax(\mathbf M_{i,:})_j$ and $L_i = -\log p_i$, the loss is the 
 
 </SolutionBox>
 
-**Exercise 7.3 (Prove).** Using translation invariance of the softmax (<XRef id="prop-softmax-translation-inv" />), show that adding any constant $c$ to an entire row of the similarity matrix $\mathbf M$ leaves $\mathcal L_{\textsf{row}}$ unchanged, and conclude that the contrastive loss depends on the similarities only through the gaps $M_{ii} - M_{ij}$.
+**Exercise 7.3 (Prove).** Using translation invariance of the softmax (<XRef id="prop-softmax-translation-inv" />), show that adding any constant $c$ to an entire row of the similarity matrix $\mathbf M$ leaves $\mathcal L_{\textsf{row}}$ unchanged, and conclude that the *row* loss depends on the similarities only through the row gaps $M_{ii} - M_{ij}$. Why does the symmetric $\mathcal L_{\textsf{con}}$ additionally depend on the column gaps $M_{jj} - M_{ij}$?
 
 <SolutionBox>
 
-Adding $c$ to row $i$ replaces $\mathbf M_{i,:}$ by $\mathbf M_{i,:} + c\mathbf 1$; by translation invariance (<XRef id="prop-softmax-translation-inv" />) the softmax row is unchanged, so $p(i\mid i)$ and the loss are unchanged. Equivalently $p(i\mid i) = \big(1 + \sum_{j\ne i} e^{M_{ij}-M_{ii}}\big)^{-1}$ depends on the logits only through the gaps $M_{ii}-M_{ij}$. $\qquad\blacksquare$
+Adding $c$ to row $i$ replaces $\mathbf M_{i,:}$ by $\mathbf M_{i,:} + c\mathbf 1$; by translation invariance (<XRef id="prop-softmax-translation-inv" />) the softmax row is unchanged, so $p(i\mid i)$ and $\mathcal L_{\textsf{row}}$ are unchanged. Equivalently $p(i\mid i) = \big(1 + \sum_{j\ne i} e^{M_{ij}-M_{ii}}\big)^{-1}$ depends on the logits only through the row gaps $M_{ii}-M_{ij}$. The symmetric $\mathcal L_{\textsf{con}}$ also averages $\mathcal L_{\textsf{col}}$, whose column softmaxes are *not* invariant to a row shift; by the transposed argument it contributes the column gaps $M_{jj}-M_{ij}$. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -217,7 +217,7 @@ Adding $c$ to row $i$ replaces $\mathbf M_{i,:}$ by $\mathbf M_{i,:} + c\mathbf 
 
 <SolutionBox>
 
-For $\mathbf r\sim\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$, $-\log\hat p(\mathbf r) = \tfrac12(\mathbf r-\boldsymbol\mu)\boldsymbol\Sigma^{-1}(\mathbf r-\boldsymbol\mu)^\top + \tfrac{d}{2}\log(2\pi) + \tfrac12\log|\boldsymbol\Sigma| = \tfrac12 s_{\text{M}}(\mathbf r)^2 + \text{const}$, where $s_{\text{M}}^2$ is the squared Mahalanobis distance. Since $u\mapsto\tfrac12 u^2 + \text{const}$ is strictly increasing on $u\ge0$, the neg-log-density is a strictly increasing reparametrization of $s_{\text{M}}$, so thresholding either gives identical accept/reject sets and identical AUROC. $\qquad\blacksquare$
+For $\mathbf r\sim\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$, $-\log\hat p(\mathbf r) = \tfrac12(\mathbf r-\boldsymbol\mu)\boldsymbol\Sigma^{-1}(\mathbf r-\boldsymbol\mu)^\top + \tfrac{d}{2}\log(2\pi) + \tfrac12\log|\boldsymbol\Sigma| = \tfrac12 s_{\textsf{M}}(\mathbf r)^2 + \text{const}$, where $s_{\textsf{M}}^2$ is the squared Mahalanobis distance. Since $u\mapsto\tfrac12 u^2 + \text{const}$ is strictly increasing on $u\ge0$, the neg-log-density is a strictly increasing reparametrization of $s_{\textsf{M}}$, so thresholding either gives identical accept/reject sets and identical AUROC. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -225,6 +225,6 @@ For $\mathbf r\sim\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$, $-\log\hat p(\m
 
 <SolutionBox>
 
-Take 4 anomaly scores $\{5,6,7,8\}$ (mean $6.5$) and 4 inlier scores $\{1,2,3,4\}$ (mean $2.5$): every one of the $16$ cross-pairs has anomaly $>$ inlier, so $\widehat{\operatorname{AUROC}} = 16/16 = 1$, with mean gap $+4$. Now replace one inlier by a mild outlier: inliers $\{1,1,1,12\}$ (mean $3.75$). The mean gap stays positive ($6.5 - 3.75 = +2.75$), but ranking degrades: the three inliers at $1$ lose to all $4$ anomalies ($12$ correctly-ranked pairs) while the outlier at $12$ beats all $4$ anomalies ($4$ misranked pairs), so $\widehat{\operatorname{AUROC}} = 12/16 = 0.75 < 1$. A single badly-placed inlier flips many pairwise comparisons while barely moving the mean — the mean gap is a first-moment summary, AUROC is the pairwise ranking. Report AUROC (or a worst-slice metric), not a mean-score difference. $\qquad\blacksquare$
+Take 4 anomaly scores $\{5,6,7,8\}$ (mean $6.5$) and 4 inlier scores $\{1,2,3,4\}$ (mean $2.5$): every one of the $16$ cross-pairs has anomaly $>$ inlier, so $\widehat{\operatorname{AUROC}} = 16/16 = 1$, with mean gap $+4$. Now shift one inlier's score, $4 \to 12$: inliers $\{1,2,3,12\}$ (mean $4.5$). The mean gap stays positive ($6.5 - 4.5 = +2.0$), but ranking degrades: the inliers at $1,2,3$ lose to all $4$ anomalies ($12$ correctly-ranked pairs) while the shifted inlier at $12$ beats all $4$ anomalies ($4$ misranked pairs), so $\widehat{\operatorname{AUROC}} = 12/16 = 0.75 < 1$. A single badly-placed inlier flips many pairwise comparisons while barely moving the mean — the mean gap is a first-moment summary, AUROC is the pairwise ranking. Report AUROC (or a worst-slice metric), not a mean-score difference. $\qquad\blacksquare$
 
 </SolutionBox>

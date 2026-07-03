@@ -3,7 +3,8 @@
 % converts to public/figures/dual-embedding.svg (PDF -> SVG via pdftocairo).
 %
 % Two lanes — text token lookup and image patch projection — terminate in the
-% SAME box X in R^{n x d}: modality is discharged at this one linear interface.
+% SAME box X-hat in R^{n x d}: modality is discharged at this one linear
+% interface; position is then added (X = X-hat + P) before the core.
 \documentclass[tikz,border=3pt]{standalone}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -31,7 +32,7 @@
 
   % --- Shared target box (right) ---
   \node[box, fill=black!8, minimum height=24mm, right=24mm of $(txtemb)!0.5!(imgemb)$]
-    (X) {$\mathbf X \in \mathbb{R}^{n\times d}$\\[2pt]\scriptsize the core sees\\\scriptsize only this};
+    (X) {$\hat{\mathbf X} \in \mathbb{R}^{n\times d}$\\[2pt]\scriptsize position is added next:\\\scriptsize $\mathbf X = \hat{\mathbf X} + \mathbf P$};
   \draw[op] (txtemb.east) -- (X.west);
   \draw[op] (imgemb.east) -- (X.west);
 
