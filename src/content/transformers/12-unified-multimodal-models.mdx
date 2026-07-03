@@ -54,7 +54,7 @@ Each modality carries its own embedding table, $\mathbf E_{\mathrm{txt}}\in\R^{|
 $$
 \mathbf x_t \defeq \mathbf E_{c_t}[x_t,:] + \mathbf m_{c_t} + \mathbf P[t,:],
 $$
-the modality table lookup plus the offset plus a position code $\mathbf P_t$ (<XRef id="def-tf1-sinusoidal-pe" />). This is the token embedding of <XRef id="def-tf1-token-embedding" /> with the single table replaced by a modality-indexed one — an instance of the embedding interface (<XRef id="def-tf1-embedding-interface" />).
+the modality table lookup plus the offset plus a position code $\mathbf P[t,:]$ (<XRef id="def-tf1-sinusoidal-pe" />). This is the token embedding of <XRef id="def-tf1-token-embedding" /> with the single table replaced by a modality-indexed one — an instance of the embedding interface (<XRef id="def-tf1-embedding-interface" />).
 </Theorem>
 
 <Theorem kind="definition" name="Routed generation heads" id="def-tf12-routed-heads">
@@ -166,7 +166,7 @@ By the chain rule, $p_\theta(u_{1:n})=\prod_{t=1}^n p_\theta(u_t\mid u_{<t})$. D
 
 <SolutionBox>
 
-Define $\iota(\mathrm{txt},x)=x$ for $x\in\{1,\dots,|\mathcal V_{\mathrm{txt}}|\}$ and $\iota(\mathrm{img},z)=|\mathcal V_{\mathrm{txt}}|+z$ for $z\in\{1,\dots,K\}$. The two image and text ranges are disjoint and their union is $\{1,\dots,|\mathcal V_{\mathrm{txt}}|+K\}=\mathcal V$, so $\iota$ is a bijection. Set $\mathbf E[\iota(c,x),:]=\mathbf E_c[x,:]+\mathbf m_c$: then the modality embedding $\mathbf E_{c_t}[x_t,:]+\mathbf m_{c_t}+\mathbf P_t$ equals $\mathbf E[\iota(c_t,x_t),:]+\mathbf P_t$, one lookup in $\mathbf E$ — precisely <XRef id="def-tf1-token-embedding" /> over $\mathcal V$. Set $\mathbf W^{\mathrm{out}}$'s text and image column blocks to $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}$ and $\mathbf W^{\mathrm{out}}_{\mathrm{img}}$; then $\softmax(\mathbf h_t\mathbf W^{\mathrm{out}})$ is a categorical over $\mathcal V$, the next-token head of <XRef id="def-tf6-autoregressive-lm" />. The body is unchanged, so the unified model is the training-chapter transformer with $|\mathcal V|=|\mathcal V_{\mathrm{txt}}|+K$. $\qquad\blacksquare$
+Define $\iota(\mathrm{txt},x)=x$ for $x\in\{1,\dots,|\mathcal V_{\mathrm{txt}}|\}$ and $\iota(\mathrm{img},z)=|\mathcal V_{\mathrm{txt}}|+z$ for $z\in\{1,\dots,K\}$. The two image and text ranges are disjoint and their union is $\{1,\dots,|\mathcal V_{\mathrm{txt}}|+K\}=\mathcal V$, so $\iota$ is a bijection. Set $\mathbf E[\iota(c,x),:]\defeq\mathbf E_c[x,:]+\mathbf m_c$: then the modality embedding $\mathbf E_{c_t}[x_t,:]+\mathbf m_{c_t}+\mathbf P[t,:]$ equals $\mathbf E[\iota(c_t,x_t),:]+\mathbf P[t,:]$, one lookup in $\mathbf E$ — precisely <XRef id="def-tf1-token-embedding" /> over $\mathcal V$. Set $\mathbf W^{\mathrm{out}}$'s text and image column blocks to $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}$ and $\mathbf W^{\mathrm{out}}_{\mathrm{img}}$; then $\softmax(\mathbf h_t\mathbf W^{\mathrm{out}})$ is a categorical over $\mathcal V$, the next-token head of <XRef id="def-tf6-autoregressive-lm" />. The body is unchanged, so the unified model is the training-chapter transformer with $|\mathcal V|=|\mathcal V_{\mathrm{txt}}|+K$. $\qquad\blacksquare$
 
 </SolutionBox>
 
