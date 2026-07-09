@@ -194,11 +194,11 @@ The first term is constant in the parameters, so the gradient of the cross-entro
 An attention weight matrix has one defining property: every row is a probability distribution. That single property forces each attention output to be an average — a convex combination — of the value vectors, never an extrapolation beyond them.
 
 <Theorem kind="definition" name="Row-stochastic matrix" id="def-row-stochastic">
-A matrix $\mathbf A\in\R^{n\times n}$ is **row-stochastic** if it is entrywise nonnegative and each row sums to one: $\mathbf A \ge \mathbf 0$ and $\mathbf A\mathbf 1 = \mathbf 1$.
+A matrix $\mathbf A\in\R^{m\times n}$ is **row-stochastic** if it is entrywise nonnegative and each row sums to one: $\mathbf A \ge \mathbf 0$ and $\mathbf A\mathbf 1 = \mathbf 1$. (Attention weight matrices are the square case $m = n$; a single probability row vector is the case $m = 1$.)
 </Theorem>
 
 <Theorem kind="proposition" name="Row-stochastic times values is a convex combination" id="prop-row-stochastic-convex">
-If $\mathbf A\in\R^{n\times n}$ is row-stochastic and $\mathbf V\in\R^{n\times d_v}$ holds value vectors in its rows, then each row of $\mathbf A\mathbf V$ is a convex combination of the rows of $\mathbf V$:
+If $\mathbf A\in\R^{m\times n}$ is row-stochastic and $\mathbf V\in\R^{n\times d_v}$ holds value vectors in its rows, then each row of $\mathbf A\mathbf V$ is a convex combination of the rows of $\mathbf V$:
 $$
 [\mathbf A\mathbf V]_{i,:} = \sum_{j=1}^{n} A_{ij}\,\mathbf v_j, \qquad A_{ij}\ge 0,\ \ \sum_j A_{ij} = 1.
 $$
