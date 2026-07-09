@@ -1,23 +1,24 @@
 ---
 title: "Connectors and Resamplers"
 slug: connectors-resamplers
-chapter: 10
+chapter: 15
+part: 5
 description: "The vision-encoder-to-language-model bridge as a distinct architectural pattern: the connector as a map producing soft visual tokens at the embedding interface, the position-wise projector versus the learned-query resampler, the fixed-length convex-hull and cost properties of cross-attention with parameter queries, a data-processing bound showing the connector is an information bottleneck, and Flamingo's gated cross-attention as an identity-at-initialization that preserves the pretrained language model."
 last_verified: 2026-06-28
 rigor_level: rigorous
 prerequisites: [notation, input-representations, attention, architecture-composition, training-optimizations, inference-optimizations]
 notation_introduced: ['g_\phi', 'd_{\mathrm{vis}}', '\mathbf Q_{\mathrm{lat}}', '\operatorname{CA}', '\gamma', 'I(\cdot\,;\cdot)']
-theorems: ['def-tf10-connector', 'def-tf10-projector', 'def-tf10-resampler', 'prop-tf10-resampler-convex', 'prop-tf10-resampler-cost', 'def-tf10-mutual-information', 'prop-tf10-bottleneck', 'def-tf10-gated-xattn', 'thm-tf10-gated-identity', 'rem-tf10-lora-analogy']
+theorems: ['def-tf15-connector', 'def-tf15-projector', 'def-tf15-resampler', 'prop-tf15-resampler-convex', 'prop-tf15-resampler-cost', 'def-tf15-mutual-information', 'prop-tf15-bottleneck', 'def-tf15-gated-xattn', 'thm-tf15-gated-identity', 'rem-tf15-lora-analogy']
 los:
-  - id: TF-10.1
+  - id: TF-15.1
     statement: "Define a connector as a map from frozen visual features to soft tokens in the language model's embedding space, and identify it as an instance of the embedding interface."
-  - id: TF-10.2
+  - id: TF-15.2
     statement: "Distinguish the position-wise projector from the learned-query resampler, and prove the resampler emits a fixed number of outputs that are convex combinations of the visual values and invariant to input order."
-  - id: TF-10.3
+  - id: TF-15.3
     statement: "Account for the compute and key-value-cache cost of a resampler and state when compressing to m soft tokens is favorable over a one-token-per-patch projector."
-  - id: TF-10.4
+  - id: TF-15.4
     statement: "Prove via the data-processing inequality that the connector output upper-bounds the image information available to the model, so a compressing connector must learn a task-relevant code."
-  - id: TF-10.5
+  - id: TF-15.5
     statement: "Define Flamingo's tanh-gated cross-attention and prove that at zero-initialized gate the augmented model equals the base language model, with gradient flowing first to the gate."
 ---
 
@@ -31,13 +32,13 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Connectors and Resamplers
 
-**Where we are.** A vision encoder (a Vision Transformer, <XRef id="rem-tf5-vit" />) turns an image into $n$ contextual feature vectors; a language model (a decoder-only transformer, <XRef id="def-tf5-decoder-only" />) consumes a sequence of $d$-dimensional embeddings. The two were trained separately and speak different dimensions. The **connector** is the bridge: a small learned module that maps the visual features into the language model's embedding space so they can be read as ordinary tokens through the embedding interface (<XRef id="def-tf1-embedding-interface" />). This is the genuinely new architectural piece of a generative vision-language model — everything on either side of it we have already built. This chapter treats the connector as its own object. We meet two designs: the **projector**, a position-wise map that keeps one soft token per patch, and the **learned-query resampler**, a cross-attention block with a fixed set of parameter queries that compresses any number of patches to a fixed few. We prove the resampler's outputs are convex averages of the visual evidence (so it can select and pool but not fabricate), account for its compute and cache cost, and show via the data-processing inequality that whatever the connector discards is gone for good — it is an information bottleneck. We close with Flamingo's gated cross-attention, an alternative coupling that begins life as the identity map so a frozen language model is preserved exactly at the start of training. We write $g_\phi$ for a connector, $d_{\mathrm{vis}}$ for the visual feature width, $m$ for the number of soft tokens it emits, $\mathbf Q_{\mathrm{lat}}$ for its latent queries, and $\gamma$ for a gate.
+**Where we are.** A vision encoder (a Vision Transformer, <XRef id="rem-tf7-vit" />) turns an image into $n$ contextual feature vectors; a language model (a decoder-only transformer, <XRef id="def-tf7-decoder-only" />) consumes a sequence of $d$-dimensional embeddings. The two were trained separately and speak different dimensions. The **connector** is the bridge: a small learned module that maps the visual features into the language model's embedding space so they can be read as ordinary tokens through the embedding interface (<XRef id="def-tf1-embedding-interface" />). This is the genuinely new architectural piece of a generative vision-language model — everything on either side of it we have already built. This chapter treats the connector as its own object. We meet two designs: the **projector**, a position-wise map that keeps one soft token per patch, and the **learned-query resampler**, a cross-attention block with a fixed set of parameter queries that compresses any number of patches to a fixed few. We prove the resampler's outputs are convex averages of the visual evidence (so it can select and pool but not fabricate), account for its compute and cache cost, and show via the data-processing inequality that whatever the connector discards is gone for good — it is an information bottleneck. We close with Flamingo's gated cross-attention, an alternative coupling that begins life as the identity map so a frozen language model is preserved exactly at the start of training. We write $g_\phi$ for a connector, $d_{\mathrm{vis}}$ for the visual feature width, $m$ for the number of soft tokens it emits, $\mathbf Q_{\mathrm{lat}}$ for its latent queries, and $\gamma$ for a gate.
 
 ## The connector as an embedding interface
 
 The picture to hold is a pipeline with a seam. On the left, a frozen vision encoder has already produced $n$ feature vectors of width $d_{\mathrm{vis}}$. On the right, a language model expects embeddings of width $d$. The connector is exactly the adapter that crosses this seam, and crossing it is nothing more than a fresh instance of the embedding map of <XRef id="def-tf1-embedding-interface" />: a unit — here a visual feature vector rather than a token id — is sent to a vector in $\R^{d}$ and dropped into the sequence the transformer reads.
 
-<Theorem kind="definition" name="Connector" id="def-tf10-connector">
+<Theorem kind="definition" name="Connector" id="def-tf15-connector">
 Let a frozen vision encoder produce visual features $\mathbf V \in \R^{n\times d_{\mathrm{vis}}}$ with rows $\mathbf v_1,\dots,\mathbf v_n$ (one per patch). A **connector** is a learned map
 $$
 g_\phi:\R^{n\times d_{\mathrm{vis}}}\longrightarrow \R^{m\times d},
@@ -59,7 +60,7 @@ Two design choices now fork. Either keep every patch — map each visual feature
 
 The simplest connector is position-wise: apply the *same* small network to each visual feature independently, with no mixing across patches. There is one soft token per patch, so $m=n$, and the only thing learned is the per-position map from $\R^{d_{\mathrm{vis}}}$ to $\R^{d}$.
 
-<Theorem kind="definition" name="Projector" id="def-tf10-projector">
+<Theorem kind="definition" name="Projector" id="def-tf15-projector">
 A **projector** is a connector applied row-wise by a shared map $h_\phi:\R^{d_{\mathrm{vis}}}\to\R^{d}$,
 $$
 g_\phi(\mathbf V)_i = h_\phi(\mathbf v_i),\qquad i=1,\dots,n,\qquad m=n,
@@ -67,20 +68,20 @@ $$
 with no interaction between positions. The two standard instances are the **linear projector** $h_\phi(\mathbf v)=\mathbf v\,\mathbf W + \mathbf b$ with $\mathbf W\in\R^{d_{\mathrm{vis}}\times d}$, and the **MLP projector** $h_\phi(\mathbf v)=\sigma(\mathbf v\,\mathbf W_1 + \mathbf b_1)\mathbf W_2 + \mathbf b_2$ with a pointwise nonlinearity $\sigma$.<Sidenote>The linear projector is the original LLaVA connector <Cite key="liu2023llava" />; the two-layer MLP is its LLaVA-1.5 refinement <Cite key="liu2023improvedllava" />. Both are deliberately the lightest possible bridge, pushing all alignment work onto the language model.</Sidenote>
 </Theorem>
 
-A projector preserves the patch grid one-for-one: the language model receives $n$ visual tokens and may attend over all of them at every layer. This is faithful — no visual information is pooled away before the model decides what matters — but it is expensive, because those $n$ tokens occupy the sequence (and the key–value cache, <XRef id="def-tf9-kv-cache" />) at every one of the language model's layers and decoding steps. When $n$ is large (a high-resolution image can produce many hundreds of patches), one looks for a connector that hands the language model only a handful of tokens.
+A projector preserves the patch grid one-for-one: the language model receives $n$ visual tokens and may attend over all of them at every layer. This is faithful — no visual information is pooled away before the model decides what matters — but it is expensive, because those $n$ tokens occupy the sequence (and the key–value cache, <XRef id="def-tf12-kv-cache" />) at every one of the language model's layers and decoding steps. When $n$ is large (a high-resolution image can produce many hundreds of patches), one looks for a connector that hands the language model only a handful of tokens.
 
 ## The learned-query resampler
 
 The resampler replaces "one token per patch" with "a fixed budget of tokens, filled by attention." It carries a small set of $m$ *learned* query vectors — parameters, not functions of the input — and lets them attend over the visual features. Each query pulls a weighted summary of the patches; the $m$ summaries are the soft tokens. Because the queries are fixed in number, the output length is $m$ no matter how many patches come in.
 
-<Theorem kind="definition" name="Learned-query resampler" id="def-tf10-resampler">
-Fix $m$ **latent queries** $\mathbf Q_{\mathrm{lat}}\in\R^{m\times d}$, learned parameters independent of the input. A (single-layer) **resampler** is the cross-attention map (<XRef id="def-tf5-cross-attention" />) of the latent queries against the visual features as keys and values,
+<Theorem kind="definition" name="Learned-query resampler" id="def-tf15-resampler">
+Fix $m$ **latent queries** $\mathbf Q_{\mathrm{lat}}\in\R^{m\times d}$, learned parameters independent of the input. A (single-layer) **resampler** is the cross-attention map (<XRef id="def-tf7-cross-attention" />) of the latent queries against the visual features as keys and values,
 $$
 g_\phi(\mathbf V) \;=\; \operatorname{CA}(\mathbf Q_{\mathrm{lat}},\mathbf V)\;=\;\mathbf A\,(\mathbf V\mathbf W^V),
 \qquad
 \mathbf A = \softmax\!\Big(\tfrac{(\mathbf Q_{\mathrm{lat}}\mathbf W^Q)(\mathbf V\mathbf W^K)^{\top}}{\sqrt{d_k}}\Big)\in\R^{m\times n},
 $$
-with projections $\mathbf W^Q,\mathbf W^K,\mathbf W^V$ and the softmax taken row-wise; $\operatorname{CA}$ abbreviates the cross-attention of <XRef id="def-tf5-cross-attention" /> with *parameter* queries. A deep resampler stacks $L_r$ such blocks (each a cross-attention plus a feed-forward sublayer); the output is always $m$ rows.<Sidenote>The learned-query cross-attention resampler is the Perceiver's mechanism <Cite key="jaegle2021perceiver" />, the Flamingo Perceiver Resampler <Cite key="alayrac2022flamingo" />, and the BLIP-2 Q-Former <Cite key="li2023blip2" />.</Sidenote>
+with projections $\mathbf W^Q,\mathbf W^K,\mathbf W^V$ and the softmax taken row-wise; $\operatorname{CA}$ abbreviates the cross-attention of <XRef id="def-tf7-cross-attention" /> with *parameter* queries. A deep resampler stacks $L_r$ such blocks (each a cross-attention plus a feed-forward sublayer); the output is always $m$ rows.<Sidenote>The learned-query cross-attention resampler is the Perceiver's mechanism <Cite key="jaegle2021perceiver" />, the Flamingo Perceiver Resampler <Cite key="alayrac2022flamingo" />, and the BLIP-2 Q-Former <Cite key="li2023blip2" />.</Sidenote>
 </Theorem>
 
 <Figure
@@ -92,8 +93,8 @@ with projections $\mathbf W^Q,\mathbf W^K,\mathbf W^V$ and the softmax taken row
 
 The funnel is the whole point: the visual side may grow without bound, while the language side always receives $m$ tokens. We now make precise what those $m$ tokens can and cannot be.
 
-<Theorem kind="proposition" name="Resampler outputs are fixed in number, convex, and order-invariant" id="prop-tf10-resampler-convex">
-For the resampler of <XRef id="def-tf10-resampler" />, with values $\tilde{\mathbf v}_j \defeq \mathbf v_j\mathbf W^V$:
+<Theorem kind="proposition" name="Resampler outputs are fixed in number, convex, and order-invariant" id="prop-tf15-resampler-convex">
+For the resampler of <XRef id="def-tf15-resampler" />, with values $\tilde{\mathbf v}_j \defeq \mathbf v_j\mathbf W^V$:
 1. **Fixed length.** The output has exactly $m$ rows for every $n$.
 2. **Convexity.** Each output row $g_\phi(\mathbf V)_i = \sum_{j=1}^{n} A_{ij}\,\tilde{\mathbf v}_j$ is a convex combination of the projected values $\{\tilde{\mathbf v}_j\}$, hence lies in their convex hull (<XRef id="prop-row-stochastic-convex" />). A resampler can select and average visual evidence; it cannot place a soft token outside the hull of what the encoder produced.
 3. **Order invariance.** If no positional information is added to $\mathbf V$, then permuting the patches leaves every output row unchanged: the resampler is invariant to patch order.
@@ -107,23 +108,23 @@ For the resampler of <XRef id="def-tf10-resampler" />, with values $\tilde{\math
 
 The convexity clause is the resampler's analogue of the pooling and attention bounds we proved for encoders and cross-attention: a softmax-weighted readout is always a convex average, so it can emphasize and combine but never invent. The cost clause is what makes the design worthwhile.
 
-<Theorem kind="proposition" name="Resampler cost and cache savings" id="prop-tf10-resampler-cost">
-A resampler of $L_r$ layers with $m$ queries over $n$ patches at width $d$ costs $\Theta(L_r\,n\,d\,(m + d))$ arithmetic — $\Theta(mnd)$ for scores and readout plus $\Theta(nd^2)$ for the key/value projections, the latter dominating when $d > m$ — paid **once** when the image is encoded. Downstream, the language model of depth $N$ holds the connector's output in its key–value cache (<XRef id="def-tf9-kv-cache" />, <XRef id="prop-tf9-kv-memory" />), costing $\Theta(N\,m\,d)$ memory for the visual tokens. Replacing a projector ($m=n$) by a resampler with $m\ll n$ therefore shrinks the visual cache by the factor $n/m$ and removes $\Theta(n-m)$ tokens from every language-model layer and decode step, at the one-time price of the cross-attention above. The trade is favorable when the language model is deep (large $N$) or autoregressive decoding is long, and $n\gg m$.
+<Theorem kind="proposition" name="Resampler cost and cache savings" id="prop-tf15-resampler-cost">
+A resampler of $L_r$ layers with $m$ queries over $n$ patches at width $d$ costs $\Theta(L_r\,n\,d\,(m + d))$ arithmetic — $\Theta(mnd)$ for scores and readout plus $\Theta(nd^2)$ for the key/value projections, the latter dominating when $d > m$ — paid **once** when the image is encoded. Downstream, the language model of depth $N$ holds the connector's output in its key–value cache (<XRef id="def-tf12-kv-cache" />, <XRef id="prop-tf12-kv-memory" />), costing $\Theta(N\,m\,d)$ memory for the visual tokens. Replacing a projector ($m=n$) by a resampler with $m\ll n$ therefore shrinks the visual cache by the factor $n/m$ and removes $\Theta(n-m)$ tokens from every language-model layer and decode step, at the one-time price of the cross-attention above. The trade is favorable when the language model is deep (large $N$) or autoregressive decoding is long, and $n\gg m$.
 </Theorem>
 
 <Theorem kind="proof">
-One resampler layer forms $\mathbf A\in\R^{m\times n}$ — an $m\times n$ array each of whose entries is an inner product of width $d_k=\Theta(d)$ — and the readout $\mathbf A(\mathbf V\mathbf W^V)$, also $\Theta(mnd)$; projecting the $n$ values through $\mathbf W^K, \mathbf W^V$ adds $\Theta(nd^2)$, which dominates when $d > m$ (typical: $d \gtrsim 10^3$, $m \lesssim 10^2$). Over $L_r$ layers this is $\Theta(L_r\,nd(m+d))$, evaluated a single time per image. The cache claim is <XRef id="prop-tf9-kv-memory" /> with sequence length equal to the number of visual tokens: $m$ for the resampler versus $n$ for the projector, over $N$ layers, giving $\Theta(Nmd)$ versus $\Theta(Nnd)$ and a ratio $n/m$. The per-layer and per-step token counts drop by $n-m$ identically. $\qquad\blacksquare$
+One resampler layer forms $\mathbf A\in\R^{m\times n}$ — an $m\times n$ array each of whose entries is an inner product of width $d_k=\Theta(d)$ — and the readout $\mathbf A(\mathbf V\mathbf W^V)$, also $\Theta(mnd)$; projecting the $n$ values through $\mathbf W^K, \mathbf W^V$ adds $\Theta(nd^2)$, which dominates when $d > m$ (typical: $d \gtrsim 10^3$, $m \lesssim 10^2$). Over $L_r$ layers this is $\Theta(L_r\,nd(m+d))$, evaluated a single time per image. The cache claim is <XRef id="prop-tf12-kv-memory" /> with sequence length equal to the number of visual tokens: $m$ for the resampler versus $n$ for the projector, over $N$ layers, giving $\Theta(Nmd)$ versus $\Theta(Nnd)$ and a ratio $n/m$. The per-layer and per-step token counts drop by $n-m$ identically. $\qquad\blacksquare$
 </Theorem>
 
 ## The connector is an information bottleneck
 
 Compression is not free. A resampler that turns $n$ patches into $m<n$ soft tokens must throw something away, and the discarded information is not recoverable downstream: the language model never sees the image, only the connector's output. The data-processing inequality makes this exact. It says that post-processing cannot create information about the source, so whatever the answer can know about the image is capped by what the connector chose to keep.
 
-<Theorem kind="definition" name="Mutual information" id="def-tf10-mutual-information">
+<Theorem kind="definition" name="Mutual information" id="def-tf15-mutual-information">
 For random variables $X,Z$, the **mutual information** is $I(X;Z) \defeq H(X) - H(X\mid Z)$, the reduction in uncertainty about $X$ from observing $Z$; it is symmetric, nonnegative, and satisfies $I(X;Z)\le H(Z)$ when $Z$ is discrete, with $H$ the (Shannon) entropy — <XRef id="def-entropy" /> extended in the standard way to joint distributions, with conditional entropy $H(X\mid Z) \defeq \E_{z}\big[H(X\mid Z=z)\big]$; for continuous $X$ read all statements over a fine discretization of $X$, which is all the bound below uses.<Sidenote>The information-bottleneck reading of a learned representation is due to <Cite key="tishby1999information" /> and was applied to deep networks by <Cite key="tishby2015deeplearning" />.</Sidenote>
 </Theorem>
 
-<Theorem kind="proposition" name="Connector capacity bounds image information (data-processing)" id="prop-tf10-bottleneck">
+<Theorem kind="proposition" name="Connector capacity bounds image information (data-processing)" id="prop-tf15-bottleneck">
 Let $X$ be the image (or the full visual features), $\mathbf S = g_\phi(\mathbf V)$ the connector output, and $\hat Y$ the model's prediction. Because $\hat Y$ depends on $X$ only through $\mathbf S$, the three form a Markov chain $X \to \mathbf S \to \hat Y$, and
 $$
 I(X;\hat Y)\;\le\; I(X;\mathbf S).
@@ -149,14 +150,14 @@ The bound is the rigorous statement of an intuition: a connector is a lossy summ
 
 ## Gated cross-attention: coupling without disturbing the base model
 
-The connectors above inject visual tokens at the embedding interface and otherwise leave the language model untouched. An alternative couples vision through new cross-attention blocks *inside* the language model (Interface (3), <XRef id="def-tf5-cross-attention" />). The danger is obvious: inserting fresh, randomly initialized blocks into a carefully pretrained — often frozen — language model would corrupt its behavior on the first forward pass. Flamingo's fix is a gate. Each inserted block is multiplied by $\tanh(\gamma)$ for a learnable scalar $\gamma$ initialized to zero, so the block contributes nothing at the start and the language model is preserved exactly.
+The connectors above inject visual tokens at the embedding interface and otherwise leave the language model untouched. An alternative couples vision through new cross-attention blocks *inside* the language model (Interface (3), <XRef id="def-tf7-cross-attention" />). The danger is obvious: inserting fresh, randomly initialized blocks into a carefully pretrained — often frozen — language model would corrupt its behavior on the first forward pass. Flamingo's fix is a gate. Each inserted block is multiplied by $\tanh(\gamma)$ for a learnable scalar $\gamma$ initialized to zero, so the block contributes nothing at the start and the language model is preserved exactly.
 
-<Theorem kind="definition" name="Gated cross-attention" id="def-tf10-gated-xattn">
+<Theorem kind="definition" name="Gated cross-attention" id="def-tf15-gated-xattn">
 Let $\mathbf h\in\R^{T\times d}$ be a language-model hidden state and $\mathbf V$ the visual features. A **gated cross-attention** layer augments the stream by
 $$
 \mathbf h \;\leftarrow\; \mathbf h + \tanh(\gamma)\,\operatorname{CA}(\mathbf h,\mathbf V),
 $$
-with a learnable **gate** $\gamma\in\R$ (initialized $\gamma=0$) and cross-attention $\operatorname{CA}$ (<XRef id="def-tf5-cross-attention" />) whose parameters we collect as $\theta$. A paired gated feed-forward sublayer is defined identically with its own gate.<Sidenote>The $\tanh$-gated cross-attention layers interleaved into a frozen language model are the Flamingo coupling <Cite key="alayrac2022flamingo" />.</Sidenote>
+with a learnable **gate** $\gamma\in\R$ (initialized $\gamma=0$) and cross-attention $\operatorname{CA}$ (<XRef id="def-tf7-cross-attention" />) whose parameters we collect as $\theta$. A paired gated feed-forward sublayer is defined identically with its own gate.<Sidenote>The $\tanh$-gated cross-attention layers interleaved into a frozen language model are the Flamingo coupling <Cite key="alayrac2022flamingo" />.</Sidenote>
 </Theorem>
 
 <Figure
@@ -166,8 +167,8 @@ with a learnable **gate** $\gamma\in\R$ (initialized $\gamma=0$) and cross-atten
   width="60%"
 />
 
-<Theorem kind="theorem" name="Gated cross-attention is the identity at initialization" id="thm-tf10-gated-identity">
-Let $f_{\mathrm{aug}}$ be the language model augmented with gated cross-attention layers (<XRef id="def-tf10-gated-xattn" />) and $f_{\mathrm{LM}}$ the base model. At initialization $\gamma=0$:
+<Theorem kind="theorem" name="Gated cross-attention is the identity at initialization" id="thm-tf15-gated-identity">
+Let $f_{\mathrm{aug}}$ be the language model augmented with gated cross-attention layers (<XRef id="def-tf15-gated-xattn" />) and $f_{\mathrm{LM}}$ the base model. At initialization $\gamma=0$:
 1. **Identity.** $f_{\mathrm{aug}} = f_{\mathrm{LM}}$ as functions — the augmented model computes exactly the base model's output, for every input.
 2. **Gradient routing.** For any loss $\mathcal L$, the cross-attention parameters receive no gradient, $\partial\mathcal L/\partial\theta = 0$, while the gate generically does, $\partial\mathcal L/\partial\gamma \ne 0$. The gate moves first; once $\gamma\ne 0$ the $\theta$-gradient is no longer forced to zero by the gate, and the visual path opens.
 </Theorem>
@@ -184,23 +185,23 @@ $$
 At $\gamma=0$ the first prefactor $\tanh(0)=0$ kills $\partial\mathcal L/\partial\theta$ regardless of $c_\theta$, while the second prefactor $\operatorname{sech}^2(0)=1$ leaves $\partial\mathcal L/\partial\gamma=\langle\mathbf g, c_\theta\rangle$, which is nonzero whenever the upstream gradient $\mathbf g$ is not orthogonal to the (generically nonzero) cross-attention output $c_\theta$. Thus the first optimization step moves $\gamma$ off zero but not $\theta$; for $\gamma\ne0$, $\tanh(\gamma)\ne0$, so the gate no longer forces $\partial\mathcal L/\partial\theta$ to vanish and it is generically nonzero. $\qquad\blacksquare$
 </Theorem>
 
-<Theorem kind="remark" name="The same trick as LoRA" id="rem-tf10-lora-analogy">
-Identity-at-initialization is precisely the design of the low-rank adapter (<XRef id="def-tf8-lora" />): there the update $\mathbf B\mathbf A$ starts at zero because $\mathbf B$ is zero-initialized, so the adapted model equals the pretrained model until training pulls $\mathbf B$ off zero. Flamingo's $\tanh(\gamma)$ with $\gamma=0$ plays the role of the zero-initialized $\mathbf B$: a single learnable knob that begins closed, guarantees the powerful pretrained model is unharmed at step zero, and is opened gradually by gradient descent. Both are instances of *grafting new capacity onto a frozen network without a destructive cold start* — the gate, not the block, is what is learned first.
+<Theorem kind="remark" name="The same trick as LoRA" id="rem-tf15-lora-analogy">
+Identity-at-initialization is precisely the design of the low-rank adapter (<XRef id="def-tf11-lora" />): there the update $\mathbf B\mathbf A$ starts at zero because $\mathbf B$ is zero-initialized, so the adapted model equals the pretrained model until training pulls $\mathbf B$ off zero. Flamingo's $\tanh(\gamma)$ with $\gamma=0$ plays the role of the zero-initialized $\mathbf B$: a single learnable knob that begins closed, guarantees the powerful pretrained model is unharmed at step zero, and is opened gradually by gradient descent. Both are instances of *grafting new capacity onto a frozen network without a destructive cold start* — the gate, not the block, is what is learned first.
 </Theorem>
 
 ## Exercises
 
 Attempt each before expanding its solution.
 
-**Exercise 10.1 (Prove).** Show that a linear projector (<XRef id="def-tf10-projector" />) is the special case of a connector with $m=n$ and no cross-patch interaction, and that — unlike the resampler of <XRef id="prop-tf10-resampler-convex" /> — its output rows need *not* lie in the convex hull of the inputs. What does this say about the kinds of soft tokens each can produce?
+**Exercise 15.1 (Prove).** Show that a linear projector (<XRef id="def-tf15-projector" />) is the special case of a connector with $m=n$ and no cross-patch interaction, and that — unlike the resampler of <XRef id="prop-tf15-resampler-convex" /> — its output rows need *not* lie in the convex hull of the inputs. What does this say about the kinds of soft tokens each can produce?
 
 <SolutionBox>
 
-A linear projector sets $g_\phi(\mathbf V)_i=\mathbf v_i\mathbf W+\mathbf b$, a function of $\mathbf v_i$ alone, so $m=n$ and there is no interaction across positions — it is a connector (<XRef id="def-tf10-connector" />) whose map factors row-wise. Its output row is an affine image of a single input row, which is generally *outside* the convex hull of $\{\mathbf v_j\}$: an affine map can scale, rotate, shift, and leave the hull (e.g. $\mathbf W=2\mathbf I,\ \mathbf b=0$ doubles every vector). The resampler instead forms a softmax-convex average (<XRef id="prop-tf10-resampler-convex" />), so it is confined to the hull of the projected values. The projector can therefore reach soft tokens a resampler cannot, but only one-per-patch and without pooling; the resampler can summarize many patches into one token but only inside the convex hull of the (projected) evidence. $\qquad\blacksquare$
+A linear projector sets $g_\phi(\mathbf V)_i=\mathbf v_i\mathbf W+\mathbf b$, a function of $\mathbf v_i$ alone, so $m=n$ and there is no interaction across positions — it is a connector (<XRef id="def-tf15-connector" />) whose map factors row-wise. Its output row is an affine image of a single input row, which is generally *outside* the convex hull of $\{\mathbf v_j\}$: an affine map can scale, rotate, shift, and leave the hull (e.g. $\mathbf W=2\mathbf I,\ \mathbf b=0$ doubles every vector). The resampler instead forms a softmax-convex average (<XRef id="prop-tf15-resampler-convex" />), so it is confined to the hull of the projected values. The projector can therefore reach soft tokens a resampler cannot, but only one-per-patch and without pooling; the resampler can summarize many patches into one token but only inside the convex hull of the (projected) evidence. $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 10.2 (Prove).** Prove clause (3) of <XRef id="prop-tf10-resampler-convex" /> fails once a position-dependent vector is added to each visual feature: if $\mathbf v_j \mapsto \mathbf v_j + \mathbf p_j$ with distinct positions $\mathbf p_j$, exhibit a permutation that changes an output row. Conclude why resamplers add 2D positions (<XRef id="def-tf1-pe-2d" />) when spatial layout matters.
+**Exercise 15.2 (Prove).** Prove clause (3) of <XRef id="prop-tf15-resampler-convex" /> fails once a position-dependent vector is added to each visual feature: if $\mathbf v_j \mapsto \mathbf v_j + \mathbf p_j$ with distinct positions $\mathbf p_j$, exhibit a permutation that changes an output row. Conclude why resamplers add 2D positions (<XRef id="def-tf1-pe-2d" />) when spatial layout matters.
 
 <SolutionBox>
 
@@ -208,15 +209,15 @@ With positions added, the key for patch $j$ is $(\mathbf v_j+\mathbf p_j)\mathbf
 
 </SolutionBox>
 
-**Exercise 10.3 (Compute).** A vision encoder emits $n=576$ patch features. Compare the visual key–value cache (<XRef id="prop-tf9-kv-memory" />) carried through an $N=32$-layer language model under (a) an MLP projector ($m=n$) and (b) a resampler with $m=64$. By what factor does the resampler shrink the visual cache, and how many visual tokens does it remove from each layer?
+**Exercise 15.3 (Compute).** A vision encoder emits $n=576$ patch features. Compare the visual key–value cache (<XRef id="prop-tf12-kv-memory" />) carried through an $N=32$-layer language model under (a) an MLP projector ($m=n$) and (b) a resampler with $m=64$. By what factor does the resampler shrink the visual cache, and how many visual tokens does it remove from each layer?
 
 <SolutionBox>
 
-By <XRef id="prop-tf9-kv-memory" /> the visual cache scales as $\Theta(N\,m\,d)$ with $m$ the number of visual tokens. (a) Projector: $m=576$, cache $\propto 32\cdot 576\cdot d = 18432\,d$. (b) Resampler: $m=64$, cache $\propto 32\cdot 64\cdot d = 2048\,d$. The ratio is $576/64 = 9$, so the resampler shrinks the visual cache ninefold. It removes $576-64=512$ visual tokens from every one of the $32$ layers (and from each decode step), at the one-time cost of the resampler's $\Theta(L_r mnd)$ cross-attention (<XRef id="prop-tf10-resampler-cost" />). $\qquad\blacksquare$
+By <XRef id="prop-tf12-kv-memory" /> the visual cache scales as $\Theta(N\,m\,d)$ with $m$ the number of visual tokens. (a) Projector: $m=576$, cache $\propto 32\cdot 576\cdot d = 18432\,d$. (b) Resampler: $m=64$, cache $\propto 32\cdot 64\cdot d = 2048\,d$. The ratio is $576/64 = 9$, so the resampler shrinks the visual cache ninefold. It removes $576-64=512$ visual tokens from every one of the $32$ layers (and from each decode step), at the one-time cost of the resampler's $\Theta(L_r mnd)$ cross-attention (<XRef id="prop-tf15-resampler-cost" />). $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 10.4 (Prove).** From the Markov chain $X\to\mathbf S\to\hat Y$, prove the data-processing bound $I(X;\hat Y)\le I(X;\mathbf S)$ directly from the chain rule of mutual information, identifying exactly where the Markov property and nonnegativity are used. (This is the engine of <XRef id="prop-tf10-bottleneck" />.)
+**Exercise 15.4 (Prove).** From the Markov chain $X\to\mathbf S\to\hat Y$, prove the data-processing bound $I(X;\hat Y)\le I(X;\mathbf S)$ directly from the chain rule of mutual information, identifying exactly where the Markov property and nonnegativity are used. (This is the engine of <XRef id="prop-tf15-bottleneck" />.)
 
 <SolutionBox>
 
@@ -231,10 +232,10 @@ $$
 
 </SolutionBox>
 
-**Exercise 10.5 (Derive).** For the gated layer $\mathbf y=\mathbf h+\tanh(\gamma)\,c_\theta$ of <XRef id="def-tf10-gated-xattn" />, derive $\partial\mathcal L/\partial\gamma$ and $\partial\mathcal L/\partial\theta$ and evaluate both at $\gamma=0$, confirming <XRef id="thm-tf10-gated-identity" />. Then explain, using the same derivatives, why a *linear* gate $\gamma\,c_\theta$ (no $\tanh$) initialized at $\gamma=0$ would also start at identity but lacks the bounded-gate property of $\tanh$.
+**Exercise 15.5 (Derive).** For the gated layer $\mathbf y=\mathbf h+\tanh(\gamma)\,c_\theta$ of <XRef id="def-tf15-gated-xattn" />, derive $\partial\mathcal L/\partial\gamma$ and $\partial\mathcal L/\partial\theta$ and evaluate both at $\gamma=0$, confirming <XRef id="thm-tf15-gated-identity" />. Then explain, using the same derivatives, why a *linear* gate $\gamma\,c_\theta$ (no $\tanh$) initialized at $\gamma=0$ would also start at identity but lacks the bounded-gate property of $\tanh$.
 
 <SolutionBox>
 
-With $\mathbf g=\partial\mathcal L/\partial\mathbf y$ and $c_\theta=\operatorname{CA}_\theta(\mathbf h,\mathbf V)$, the chain rule gives $\partial\mathcal L/\partial\gamma=\langle\mathbf g,\partial_\gamma(\tanh(\gamma)c_\theta)\rangle=\operatorname{sech}^2(\gamma)\langle\mathbf g,c_\theta\rangle$ and $\partial\mathcal L/\partial\theta=\tanh(\gamma)\langle\mathbf g,\partial_\theta c_\theta\rangle$. At $\gamma=0$: $\tanh 0=0$ so $\partial\mathcal L/\partial\theta=0$; $\operatorname{sech}^2 0=1$ so $\partial\mathcal L/\partial\gamma=\langle\mathbf g,c_\theta\rangle$, generically nonzero — exactly <XRef id="thm-tf10-gated-identity" />. A linear gate $\gamma\,c_\theta$ has $\partial_\gamma=c_\theta$ and at $\gamma=0$ gives the same identity start and the same $\partial\mathcal L/\partial\gamma=\langle\mathbf g,c_\theta\rangle\ne0$. The difference is downstream: $\tanh$ saturates, so $|\tanh(\gamma)|<1$ bounds the visual contribution and keeps $\partial\mathcal L/\partial\theta=\tanh(\gamma)(\cdots)$ from exploding as $\gamma$ grows, whereas an unbounded linear gate places no ceiling on how large the injected block can become — the bounded gate is a smoother, self-limiting opening of the visual path. $\qquad\blacksquare$
+With $\mathbf g=\partial\mathcal L/\partial\mathbf y$ and $c_\theta=\operatorname{CA}_\theta(\mathbf h,\mathbf V)$, the chain rule gives $\partial\mathcal L/\partial\gamma=\langle\mathbf g,\partial_\gamma(\tanh(\gamma)c_\theta)\rangle=\operatorname{sech}^2(\gamma)\langle\mathbf g,c_\theta\rangle$ and $\partial\mathcal L/\partial\theta=\tanh(\gamma)\langle\mathbf g,\partial_\theta c_\theta\rangle$. At $\gamma=0$: $\tanh 0=0$ so $\partial\mathcal L/\partial\theta=0$; $\operatorname{sech}^2 0=1$ so $\partial\mathcal L/\partial\gamma=\langle\mathbf g,c_\theta\rangle$, generically nonzero — exactly <XRef id="thm-tf15-gated-identity" />. A linear gate $\gamma\,c_\theta$ has $\partial_\gamma=c_\theta$ and at $\gamma=0$ gives the same identity start and the same $\partial\mathcal L/\partial\gamma=\langle\mathbf g,c_\theta\rangle\ne0$. The difference is downstream: $\tanh$ saturates, so $|\tanh(\gamma)|<1$ bounds the visual contribution and keeps $\partial\mathcal L/\partial\theta=\tanh(\gamma)(\cdots)$ from exploding as $\gamma$ grows, whereas an unbounded linear gate places no ceiling on how large the injected block can become — the bounded gate is a smoother, self-limiting opening of the visual path. $\qquad\blacksquare$
 
 </SolutionBox>

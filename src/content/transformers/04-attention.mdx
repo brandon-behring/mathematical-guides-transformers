@@ -1,17 +1,18 @@
 ---
 title: "The Attention Mechanism"
 slug: attention
-chapter: 2
+chapter: 4
+part: 3
 description: "Scaled dot-product attention from first principles: softmax and its translation invariance, attention as a learned-kernel regression, and why the 1/sqrt(d_k) scaling is exactly the factor that restores unit variance."
 last_verified: 2026-05-27
 rigor_level: rigorous
 prerequisites: [notation]
 notation_introduced: ['\mathbf M', 'd_v']
-theorems: ['def-tf2-attention', 'def-tf2-causal-mask', 'thm-variance-preservation']
+theorems: ['def-tf4-attention', 'def-tf4-causal-mask', 'thm-variance-preservation']
 los:
-  - id: TF-2.1
+  - id: TF-4.1
     statement: "Define scaled dot-product attention and prove its weight matrix is row-stochastic."
-  - id: TF-2.3
+  - id: TF-4.3
     statement: "Prove the variance-preservation theorem: scaling logits by 1/sqrt(d_k) restores unit variance."
 ---
 
@@ -39,7 +40,7 @@ Softmax turns a vector of scores into a probability distribution: larger scores 
 
 Structurally, attention is **Nadaraya–Watson kernel regression with a learned kernel**: each output is a kernel-weighted average of the value vectors, where the weight value $j$ receives is proportional to $\exp(\inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k})$. The correspondence is exact — *kernel weights* ↦ *a softmax row*, *kernel-regression estimate* ↦ *the attention output* — and it breaks in exactly one place: the kernel is **learned**, so it need not be symmetric or positive-definite, and the classical kernel-smoothing guarantees do not transfer. We make the construction precise.
 
-<Theorem kind="definition" name="Scaled dot-product attention" id="def-tf2-attention">
+<Theorem kind="definition" name="Scaled dot-product attention" id="def-tf4-attention">
 Given queries $\mathbf Q\in\R^{n\times d_k}$, keys $\mathbf K\in\R^{n\times d_k}$, and values $\mathbf V\in\R^{n\times d_v}$,
 $$
 \operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V) \defeq \softmax\!\Big(\tfrac{\mathbf Q\mathbf K^\top}{\sqrt{d_k}}\Big)\,\mathbf V,
@@ -51,7 +52,7 @@ Because each softmax row is non-negative and sums to one (<XRef id="def-softmax"
 
 For language modeling, attention must additionally respect time: position $i$ may consult only positions $j \le i$. This is imposed not by changing the operator but by adding a fixed mask to the logits before the softmax.
 
-<Theorem kind="definition" name="Causal (masked) attention" id="def-tf2-causal-mask">
+<Theorem kind="definition" name="Causal (masked) attention" id="def-tf4-causal-mask">
 The **causal mask** $\mathbf M \in \R^{n\times n}$ has entries
 $$
 M_{ij} \defeq \begin{cases} 0 & j \le i,\\ -\infty & j > i,\end{cases}
@@ -109,7 +110,7 @@ So $1/\sqrt{d_k}$ is the unique scale that holds logit variance at $1$ as $d_k$ 
 
 Attempt each before expanding its solution.
 
-**Exercise 2.1 (Prove).** The weight matrix $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic (<XRef id="def-row-stochastic" />); conclude each attention output is a convex combination of the value rows.
+**Exercise 4.1 (Prove).** The weight matrix $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic (<XRef id="def-row-stochastic" />); conclude each attention output is a convex combination of the value rows.
 
 <SolutionBox>
 
@@ -117,7 +118,7 @@ Fix a query row $i$ and write the logits $\ell_{ij} = \inner{\mathbf q_i}{\mathb
 
 </SolutionBox>
 
-**Exercise 2.2 (Derive).** Without the $1/\sqrt{d_k}$ scaling, give $\Var(\inner{\mathbf q}{\mathbf k})$ and explain what happens to a softmax row as $d_k\to\infty$ (relate it to gradient saturation).
+**Exercise 4.2 (Derive).** Without the $1/\sqrt{d_k}$ scaling, give $\Var(\inner{\mathbf q}{\mathbf k})$ and explain what happens to a softmax row as $d_k\to\infty$ (relate it to gradient saturation).
 
 <SolutionBox>
 
@@ -125,7 +126,7 @@ By the variance-preservation theorem (unscaled case), $\Var(\inner{\mathbf q}{\m
 
 </SolutionBox>
 
-**Exercise 2.3 (Compute).** For $\mathbf z=(2,1,0)$, compute $\softmax(\mathbf z)$ and verify it is unchanged by $\mathbf z + 5\mathbf 1$.
+**Exercise 4.3 (Compute).** For $\mathbf z=(2,1,0)$, compute $\softmax(\mathbf z)$ and verify it is unchanged by $\mathbf z + 5\mathbf 1$.
 
 <SolutionBox>
 

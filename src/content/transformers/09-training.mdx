@@ -1,23 +1,24 @@
 ---
 title: "Training a Transformer"
 slug: training
-chapter: 6
+chapter: 9
+part: 3
 description: "The training objective from first principles: the cross-entropy / negative-log-likelihood loss as KL divergence to the data, the softmax-plus-cross-entropy logit gradient q - y, image captioning as the same loss with an enlarged conditioning set, teacher forcing and exposure bias, label smoothing as a uniform-KL penalty, and the warmup / inverse-square-root learning-rate schedule."
 last_verified: 2026-06-28
 rigor_level: rigorous
 prerequisites: [notation, attention]
 notation_introduced: ['p_\theta', 'p_{\text{data}}', '\mathcal L(\theta)', 'T', '\tilde{\mathbf y}', '\alpha', 't_{\text{warmup}}']
-theorems: ['def-tf6-autoregressive-lm', 'def-tf6-ce-loss', 'prop-tf6-ce-kl-training', 'prop-tf6-ce-logit-gradient', 'ex-tf6-captioning', 'def-tf6-teacher-forcing', 'def-tf6-label-smoothing', 'prop-tf6-label-smoothing-decomposition', 'def-tf6-lr-schedule', 'prop-tf6-warmup-rationale', 'def-tf6-xavier-init']
+theorems: ['def-tf9-autoregressive-lm', 'def-tf9-ce-loss', 'prop-tf9-ce-kl-training', 'prop-tf9-ce-logit-gradient', 'ex-tf9-captioning', 'def-tf9-teacher-forcing', 'def-tf9-label-smoothing', 'prop-tf9-label-smoothing-decomposition', 'def-tf9-lr-schedule', 'prop-tf9-warmup-rationale', 'def-tf9-xavier-init']
 los:
-  - id: TF-6.1
+  - id: TF-9.1
     statement: "Prove that minimizing the cross-entropy loss is equivalent to minimizing KL divergence from the data distribution."
-  - id: TF-6.2
+  - id: TF-9.2
     statement: "Derive the label-smoothing decomposition of cross-entropy into a standard term plus a uniform-distribution penalty."
-  - id: TF-6.3
+  - id: TF-9.3
     statement: "Explain the warmup rationale in terms of unreliable early Adam moment estimates and rapidly changing update scales."
-  - id: TF-6.4
+  - id: TF-9.4
     statement: "Compute the cross-entropy loss for a small example and compare it with the label-smoothed loss."
-  - id: TF-6.5
+  - id: TF-9.5
     statement: "Express image captioning as the existing autoregressive cross-entropy loss with an enlarged conditioning set, reusing the q − y gradient, teacher forcing, and label smoothing unchanged."
 ---
 
@@ -36,7 +37,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 A language model assigns a probability to a whole sequence, but it never has to compute one directly: the chain rule of probability factors any joint distribution into a product of next-token conditionals, and an autoregressive model parameterizes exactly those conditionals. The factorization is exact, not an approximation — there is no independence assumption hidden in it.
 
-<Theorem kind="definition" name="Autoregressive language model" id="def-tf6-autoregressive-lm">
+<Theorem kind="definition" name="Autoregressive language model" id="def-tf9-autoregressive-lm">
 An **autoregressive language model**<Sidenote>The decoder-only formulation underlying the GPT family <Cite key="radford2019language" />.</Sidenote> factorizes the joint probability of a token sequence $\mathbf x = (x_1,\dots,x_T)$ into a product of conditionals,
 $$
 p_\theta(\mathbf x) = \prod_{t=1}^{T} p_\theta(x_t \mid x_{<t}), \qquad x_{<t} \defeq (x_1,\dots,x_{t-1}),
@@ -53,7 +54,7 @@ $$
 
 Training minimizes one scalar per sequence: the average negative log-probability the model assigns to the tokens that actually occurred. This is the cross-entropy between a one-hot target and the model's predicted distribution at each position, averaged over the sequence — the maximum-likelihood objective written per token.
 
-<Theorem kind="definition" name="Cross-entropy loss for language modeling" id="def-tf6-ce-loss">
+<Theorem kind="definition" name="Cross-entropy loss for language modeling" id="def-tf9-ce-loss">
 For a training sequence $\mathbf x = (x_1,\dots,x_T)$, the **cross-entropy loss** is the average negative log-likelihood
 $$
 \mathcal L(\theta) \defeq -\frac{1}{T}\sum_{t=1}^{T} \log p_\theta(x_t \mid x_{<t}).
@@ -65,7 +66,7 @@ At each position $t$ this is the cross-entropy between the one-hot target $\math
 
 The objective is not arbitrary. The cross-entropy decomposition proved in the Notation chapter splits any cross-entropy into the target's own entropy plus the KL divergence to the model, and only the second piece depends on $\theta$. Applied across the data distribution, this fixes what training optimizes.
 
-<Theorem kind="proposition" name="Cross-entropy loss minimizes KL divergence" id="prop-tf6-ce-kl-training">
+<Theorem kind="proposition" name="Cross-entropy loss minimizes KL divergence" id="prop-tf9-ce-kl-training">
 Over the data distribution $p_{\text{data}}$, the expected loss satisfies
 $$
 \E_{\mathbf x \sim p_{\text{data}}}[\mathcal L(\theta)] = \tfrac{1}{T}\Big(H(p_{\text{data}}) + D_{\mathrm{KL}}(p_{\text{data}} \,\|\, p_\theta)\Big),
@@ -74,7 +75,7 @@ where $H$ and $D_{\mathrm{KL}}$ are taken over length-$T$ sequences (the loss ca
 </Theorem>
 
 <Theorem kind="proof">
-This is the sequence-level instance of the cross-entropy decomposition (<XRef id="prop-ce-kl" />). Each per-token loss $-\log p_\theta(x_t\mid x_{<t})$ is the cross-entropy $H(\mathbf e_{x_t}, \mathbf q_t)$ (<XRef id="def-tf6-ce-loss" />). Taking the expectation over $p_{\text{data}}$, summing over positions (the chain rule factorizes sequence-level cross-entropy into the per-position conditionals), and carrying the loss's $1/T$ average, the decomposition gives
+This is the sequence-level instance of the cross-entropy decomposition (<XRef id="prop-ce-kl" />). Each per-token loss $-\log p_\theta(x_t\mid x_{<t})$ is the cross-entropy $H(\mathbf e_{x_t}, \mathbf q_t)$ (<XRef id="def-tf9-ce-loss" />). Taking the expectation over $p_{\text{data}}$, summing over positions (the chain rule factorizes sequence-level cross-entropy into the per-position conditionals), and carrying the loss's $1/T$ average, the decomposition gives
 $$
 \E[\mathcal L] = \tfrac{1}{T}\Big(H(p_{\text{data}}) + D_{\mathrm{KL}}(p_{\text{data}} \,\|\, p_\theta)\Big),
 $$
@@ -85,7 +86,7 @@ The descent is driven entirely by one gradient, and it has a strikingly simple c
 
 <MarginNote variant="tip" label="Self-explanation">Before reading the proof: the loss is $-\log q_{x_t}$, a function of one coordinate of $\mathbf q$. The softmax Jacobian (Notation chapter) has the form $q_i(\delta_{ij}-q_j)$. Which factor do you expect to cancel?</MarginNote>
 
-<Theorem kind="proposition" name="Gradient of cross-entropy with respect to logits" id="prop-tf6-ce-logit-gradient">
+<Theorem kind="proposition" name="Gradient of cross-entropy with respect to logits" id="prop-tf9-ce-logit-gradient">
 Let $\mathbf z_t \defeq \mathbf h_t \mathbf W_{\text{out}}$ and $\mathbf q_t = \softmax(\mathbf z_t)$. For a one-hot target $\mathbf e_{x_t}$, the gradient of the per-token cross-entropy with respect to the logits is
 $$
 \frac{\partial H(\mathbf e_{x_t}, \mathbf q_t)}{\partial z_{t,k}} = q_{t,k} - [\mathbf e_{x_t}]_k, \qquad\text{i.e.}\qquad \nabla_{\mathbf z_t} \mathcal L_t = \mathbf q_t - \mathbf e_{x_t}.
@@ -118,25 +119,25 @@ The form $\mathbf q_t - \mathbf e_{x_t}$ is distribution matching read off direc
 
 Nothing in the objective above named what the sequence *is*. Conditioning on an image is the same loss with one extra symbol in the conditioning set.
 
-<Theorem kind="example" name="Image captioning is conditional autoregressive modeling" id="ex-tf6-captioning">
-A captioning model factorizes the caption $\mathbf y = (y_1,\dots,y_{T})$ conditioned on image features $\mathbf c = \operatorname{Enc}_{\text{img}}(\mathbf I)$ — a Vision Transformer output, or projected patch tokens prepended to the sequence (<XRef id="rem-tf5-multimodal-crossattn" />, <XRef id="rem-tf5-unified-sequence" />):
+<Theorem kind="example" name="Image captioning is conditional autoregressive modeling" id="ex-tf9-captioning">
+A captioning model factorizes the caption $\mathbf y = (y_1,\dots,y_{T})$ conditioned on image features $\mathbf c = \operatorname{Enc}_{\text{img}}(\mathbf I)$ — a Vision Transformer output, or projected patch tokens prepended to the sequence (<XRef id="rem-tf7-multimodal-crossattn" />, <XRef id="rem-tf7-unified-sequence" />):
 $$
 p_\theta(\mathbf y \mid \mathbf I) = \prod_{t=1}^{T} p_\theta(y_t \mid y_{<t},\,\mathbf c).
 $$
-The loss is the cross-entropy of <XRef id="def-tf6-ce-loss" /> verbatim, with the conditioning set enlarged from $y_{<t}$ to $(y_{<t},\mathbf c)$:
+The loss is the cross-entropy of <XRef id="def-tf9-ce-loss" /> verbatim, with the conditioning set enlarged from $y_{<t}$ to $(y_{<t},\mathbf c)$:
 $$
 \mathcal L(\theta) = -\frac{1}{T}\sum_{t=1}^{T} \log p_\theta(y_t \mid y_{<t},\,\mathbf c).
 $$
-The KL identity (<XRef id="prop-tf6-ce-kl-training" />), the logit gradient $\mathbf q_t - \mathbf e_{y_t}$ (<XRef id="prop-tf6-ce-logit-gradient" />), teacher forcing (<XRef id="def-tf6-teacher-forcing" />), and label smoothing (<XRef id="prop-tf6-label-smoothing-decomposition" />) all transfer with no change — only the conditioning variable is new. The image reaches the model through the embedding interface (prepended visual tokens) or through cross-attention (<XRef id="rem-tf5-multimodal-crossattn" />), both already defined. Read in either direction, this same conditional factorization is what lets one unified model both caption images and generate them (<XRef id="thm-tf12-any-to-any" />).<Sidenote>Conditional captioning as visual instruction tuning <Cite key="liu2023llava" />; cross-attended conditioning <Cite key="alayrac2022flamingo" />.</Sidenote>
+The KL identity (<XRef id="prop-tf9-ce-kl-training" />), the logit gradient $\mathbf q_t - \mathbf e_{y_t}$ (<XRef id="prop-tf9-ce-logit-gradient" />), teacher forcing (<XRef id="def-tf9-teacher-forcing" />), and label smoothing (<XRef id="prop-tf9-label-smoothing-decomposition" />) all transfer with no change — only the conditioning variable is new. The image reaches the model through the embedding interface (prepended visual tokens) or through cross-attention (<XRef id="rem-tf7-multimodal-crossattn" />), both already defined. Read in either direction, this same conditional factorization is what lets one unified model both caption images and generate them (<XRef id="thm-tf17-any-to-any" />).<Sidenote>Conditional captioning as visual instruction tuning <Cite key="liu2023llava" />; cross-attended conditioning <Cite key="alayrac2022flamingo" />.</Sidenote>
 </Theorem>
 
 <MarginNote variant="pattern" label="Same loss, bigger context">Captioning is next-token cross-entropy with $\mathbf c$ added to the conditioning set; the $\mathbf q - \mathbf e_{y_t}$ logit gradient is unchanged.</MarginNote>
 
 ## Teacher forcing
 
-The loss of <XRef id="def-tf6-ce-loss" /> conditions every position on the ground-truth prefix $x_{<t}$ — by construction, not as an approximation. The contrast is with *generation*, where each conditional is fed the model's own earlier outputs one step at a time. Conditioning training on the ground truth is called **teacher forcing**, and it is what lets all $T$ positions be scored in one parallel pass.
+The loss of <XRef id="def-tf9-ce-loss" /> conditions every position on the ground-truth prefix $x_{<t}$ — by construction, not as an approximation. The contrast is with *generation*, where each conditional is fed the model's own earlier outputs one step at a time. Conditioning training on the ground truth is called **teacher forcing**, and it is what lets all $T$ positions be scored in one parallel pass.
 
-<Theorem kind="definition" name="Teacher forcing" id="def-tf6-teacher-forcing">
+<Theorem kind="definition" name="Teacher forcing" id="def-tf9-teacher-forcing">
 During training, **teacher forcing** supplies the ground-truth token $x_t$ as the input at position $t+1$, rather than the model's own prediction $\hat x_t = \arg\max_k p_\theta(k\mid x_{<t})$. Because the inputs no longer depend on the outputs, all $T$ predictions are computed in one forward pass with causal masking.
 </Theorem>
 
@@ -148,9 +149,9 @@ At inference there are no gold tokens: the model must generate autoregressively,
 
 ## Label smoothing
 
-The one-hot target asks the model for an impossible optimum: by <XRef id="prop-tf6-ce-logit-gradient" /> the loss keeps falling as $q_{x_t}\to 1$, which requires the correct logit to run off to $+\infty$. Label smoothing tempers this by moving a small share of the target mass off the correct class and spreading it uniformly, so the target the model chases is itself a proper distribution with finite optimal logits.
+The one-hot target asks the model for an impossible optimum: by <XRef id="prop-tf9-ce-logit-gradient" /> the loss keeps falling as $q_{x_t}\to 1$, which requires the correct logit to run off to $+\infty$. Label smoothing tempers this by moving a small share of the target mass off the correct class and spreading it uniformly, so the target the model chases is itself a proper distribution with finite optimal logits.
 
-<Theorem kind="definition" name="Label smoothing" id="def-tf6-label-smoothing">
+<Theorem kind="definition" name="Label smoothing" id="def-tf9-label-smoothing">
 **Label smoothing**<Sidenote>Introduced for image classification <Cite key="szegedy2016rethinking" />; its calibration effect analyzed by <Cite key="muller2019labelsmoothing" />.</Sidenote> replaces the hard one-hot target $\mathbf y = \mathbf e_{x_t}$ with a mixture of the one-hot vector and the uniform distribution,
 $$
 \tilde{\mathbf y} \defeq (1-\alpha)\,\mathbf e_{x_t} + \frac{\alpha}{\lvert\mathcal V\rvert}\,\mathbf 1, \qquad \alpha\in[0,1),
@@ -160,7 +161,7 @@ where $\alpha$ is the smoothing parameter (typically $\alpha = 0.1$). The correc
 
 The picture to hold is two bar charts over the vocabulary: the one-hot target is a single spike of height $1$ on the correct class; the smoothed target lowers that spike to $1-\alpha+\alpha/\lvert\mathcal V\rvert$ and lifts every other bar from $0$ to the floor $\alpha/\lvert\mathcal V\rvert$, redistributing a total mass $\alpha$. The loss against this smoothed target splits into two recognizable pieces.
 
-<Theorem kind="proposition" name="Label-smoothing decomposition" id="prop-tf6-label-smoothing-decomposition">
+<Theorem kind="proposition" name="Label-smoothing decomposition" id="prop-tf9-label-smoothing-decomposition">
 With $\mathbf u = \mathbf 1/\lvert\mathcal V\rvert$ the uniform distribution, the cross-entropy against the label-smoothed target decomposes as
 $$
 H(\tilde{\mathbf y}, \mathbf q) = (1-\alpha)\,H(\mathbf e_{x_t}, \mathbf q) + \alpha\,H(\mathbf u, \mathbf q).
@@ -191,14 +192,14 @@ Finally $H(\mathbf u,\mathbf q) = H(\mathbf u) + D_{\mathrm{KL}}(\mathbf u\,\|\,
 <MarginNote variant="formula" label="Smoothed loss">$H(\tilde{\mathbf y},\mathbf q) = (1-\alpha)H(\mathbf e_{x_t},\mathbf q) + \alpha H(\mathbf u,\mathbf q)$: standard CE plus a uniform-KL penalty.</MarginNote>
 
 <Theorem kind="remark" name="Calibration view">
-The decomposition explains label smoothing through the logit gradient (<XRef id="prop-tf6-ce-logit-gradient" />). Swapping the one-hot target for $\tilde{\mathbf y}$ turns the logit gradient from $\mathbf q - \mathbf e_{x_t}$ into $\mathbf q - \tilde{\mathbf y}$: the correct class receives a smaller upward push and the incorrect classes less aggressive downward pushes. This caps the logit gaps the model can open — the same effect as adding a penalty that pulls $\mathbf q$ toward uniform — which is why label smoothing improves probability calibration and often generalization even when top-1 accuracy barely moves <Cite key="muller2019labelsmoothing" />.
+The decomposition explains label smoothing through the logit gradient (<XRef id="prop-tf9-ce-logit-gradient" />). Swapping the one-hot target for $\tilde{\mathbf y}$ turns the logit gradient from $\mathbf q - \mathbf e_{x_t}$ into $\mathbf q - \tilde{\mathbf y}$: the correct class receives a smaller upward push and the incorrect classes less aggressive downward pushes. This caps the logit gaps the model can open — the same effect as adding a penalty that pulls $\mathbf q$ toward uniform — which is why label smoothing improves probability calibration and often generalization even when top-1 accuracy barely moves <Cite key="muller2019labelsmoothing" />.
 </Theorem>
 
 ## Learning-rate schedule
 
 The optimizer needs a step size that is small while its own statistics are unreliable, then large enough to make progress, then decaying for convergence. The original transformer encodes exactly this shape in a closed-form schedule: a linear ramp up to a peak at step $t_{\text{warmup}}$, followed by an inverse-square-root decay.
 
-<Theorem kind="definition" name="Warmup with inverse-square-root decay" id="def-tf6-lr-schedule">
+<Theorem kind="definition" name="Warmup with inverse-square-root decay" id="def-tf9-lr-schedule">
 The original transformer <Cite key="vaswani2017attention" /> sets the learning rate at training step $t$ to
 $$
 \operatorname{lr}(t) = d^{-1/2}\cdot \min\!\big(t^{-1/2},\; t\cdot t_{\text{warmup}}^{-3/2}\big).
@@ -210,7 +211,7 @@ The curve to picture is a sharp triangle on the left — the linear warmup climb
 
 <MarginNote variant="formula" label="The schedule">Linear ramp for $t\le t_{\text{warmup}}$, then $t^{-1/2}$ decay; peak at $d^{-1/2}t_{\text{warmup}}^{-1/2}$.</MarginNote>
 
-<Theorem kind="remark" name="Warmup rationale" id="prop-tf6-warmup-rationale">
+<Theorem kind="remark" name="Warmup rationale" id="prop-tf9-warmup-rationale">
 The Adam optimizer<Sidenote>Adaptive moment estimation; the de facto transformer optimizer <Cite key="kingma2015adam" />.</Sidenote> forms bias-corrected first- and second-moment estimates $\hat m_t = m_t/(1-\beta_1^{t})$ and $\hat v_t = v_t/(1-\beta_2^{t})$, where $m_t$ and $v_t$ are exponential moving averages of the gradients and squared gradients ($\beta_1\approx 0.9$, $\beta_2\approx 0.999$), and applies the update ($\epsilon$ a small constant guarding the division)
 $$
 \Delta\theta_t \propto \frac{\operatorname{lr}(t)\,\hat m_t}{\sqrt{\hat v_t} + \epsilon}.
@@ -221,14 +222,14 @@ Early in training $\hat m_t$ and $\hat v_t$ are averaged over very few gradients
 <MarginNote variant="pattern" label="Why warmup">Few gradients early ⇒ noisy $\hat v_t$ ⇒ erratic update scale. A small early $\operatorname{lr}$ keeps steps bounded until the moment estimates settle.</MarginNote>
 
 <Theorem kind="remark" name="Modern variants">
-Production language models usually replace the inverse-square-root tail with a cosine decay from a peak to a small floor (commonly a tenfold drop), keep a warmup of many thousands of steps, and decouple weight decay from the adaptive step. The warmup *rationale* (<XRef id="prop-tf6-warmup-rationale" />) — small steps while the optimizer's moment estimates and the network's activation scales stabilize — is unchanged; only the shape of the decay differs.
+Production language models usually replace the inverse-square-root tail with a cosine decay from a peak to a small floor (commonly a tenfold drop), keep a warmup of many thousands of steps, and decouple weight decay from the adaptive step. The warmup *rationale* (<XRef id="prop-tf9-warmup-rationale" />) — small steps while the optimizer's moment estimates and the network's activation scales stabilize — is unchanged; only the shape of the decay differs.
 </Theorem>
 
 ## Weight initialization
 
 Warmup controls the optimizer at $t=0$; initialization controls the *network* at $t=0$. The aim is the same variance-preservation principle that motivated the $1/\sqrt{d_k}$ attention scaling: choose the initial weight scale so that activations and gradients neither shrink nor blow up as they pass through depth.
 
-<Theorem kind="definition" name="Xavier initialization" id="def-tf6-xavier-init">
+<Theorem kind="definition" name="Xavier initialization" id="def-tf9-xavier-init">
 For a weight matrix $\mathbf W\in\R^{d_{\text{in}}\times d_{\text{out}}}$, **Xavier (Glorot) initialization**<Sidenote>Derived to preserve activation and gradient variance across layers <Cite key="glorot2010understanding" />.</Sidenote> draws each entry independently as
 $$
 w_{ij} \sim \mathcal N\!\Big(0,\; \frac{2}{d_{\text{in}} + d_{\text{out}}}\Big).
@@ -244,13 +245,13 @@ $$
 holds the accumulated residual-stream variance at order one across depth. This depth-scaled initialization is the GPT-2 training recipe <Cite key="radford2019language" />; the original transformer paper prescribes no residual-depth scaling.
 </Theorem>
 
-These five choices are interlocking, not independent. The loss (<XRef id="prop-tf6-ce-kl-training" />) aligns the model with the data distribution; teacher forcing (<XRef id="def-tf6-teacher-forcing" />) makes that loss computable in parallel at the cost of exposure bias; label smoothing (<XRef id="prop-tf6-label-smoothing-decomposition" />) keeps the targets — and therefore the optimal logits — finite; warmup (<XRef id="prop-tf6-warmup-rationale" />) protects the optimizer while its statistics are unreliable; and scaled initialization (<XRef id="def-tf6-xavier-init" />) keeps the forward and backward signals at order one through depth. Removing any one degrades or destroys training: the trained transformer is a single coupled system, its architecture and its optimization co-designed.
+These five choices are interlocking, not independent. The loss (<XRef id="prop-tf9-ce-kl-training" />) aligns the model with the data distribution; teacher forcing (<XRef id="def-tf9-teacher-forcing" />) makes that loss computable in parallel at the cost of exposure bias; label smoothing (<XRef id="prop-tf9-label-smoothing-decomposition" />) keeps the targets — and therefore the optimal logits — finite; warmup (<XRef id="prop-tf9-warmup-rationale" />) protects the optimizer while its statistics are unreliable; and scaled initialization (<XRef id="def-tf9-xavier-init" />) keeps the forward and backward signals at order one through depth. Removing any one degrades or destroys training: the trained transformer is a single coupled system, its architecture and its optimization co-designed.
 
 ## Exercises
 
 Attempt each before expanding its solution.
 
-**Exercise 6.1 (Prove).** Show that minimizing the cross-entropy loss $H(p_{\text{data}}, p_\theta)$ over $\theta$ is equivalent to minimizing $D_{\mathrm{KL}}(p_{\text{data}}\,\|\,p_\theta)$, and identify the term that is constant in $\theta$.
+**Exercise 9.1 (Prove).** Show that minimizing the cross-entropy loss $H(p_{\text{data}}, p_\theta)$ over $\theta$ is equivalent to minimizing $D_{\mathrm{KL}}(p_{\text{data}}\,\|\,p_\theta)$, and identify the term that is constant in $\theta$.
 
 <SolutionBox>
 
@@ -262,7 +263,7 @@ The entropy $H(p_{\text{data}})$ is fixed by the data, so $\nabla_\theta H(p_{\t
 
 </SolutionBox>
 
-**Exercise 6.2 (Derive).** Starting from $\mathcal L_t = -\log q_{t,x_t}$ and the softmax Jacobian, derive the logit gradient $\nabla_{\mathbf z_t}\mathcal L_t = \mathbf q_t - \mathbf e_{x_t}$, and state how it changes for a general target distribution $\mathbf y$.
+**Exercise 9.2 (Derive).** Starting from $\mathcal L_t = -\log q_{t,x_t}$ and the softmax Jacobian, derive the logit gradient $\nabla_{\mathbf z_t}\mathcal L_t = \mathbf q_t - \mathbf e_{x_t}$, and state how it changes for a general target distribution $\mathbf y$.
 
 <SolutionBox>
 
@@ -270,7 +271,7 @@ With $\mathcal L_t = -\log q_{t,x_t}$, only the $x_t$-th coordinate of $\mathbf 
 
 </SolutionBox>
 
-**Exercise 6.3 (Derive).** Using linearity of cross-entropy in its first argument, prove the label-smoothing decomposition $H(\tilde{\mathbf y},\mathbf q) = (1-\alpha)H(\mathbf e_{x_t},\mathbf q) + \alpha H(\mathbf u,\mathbf q)$, and explain why the second term is a confidence penalty.
+**Exercise 9.3 (Derive).** Using linearity of cross-entropy in its first argument, prove the label-smoothing decomposition $H(\tilde{\mathbf y},\mathbf q) = (1-\alpha)H(\mathbf e_{x_t},\mathbf q) + \alpha H(\mathbf u,\mathbf q)$, and explain why the second term is a confidence penalty.
 
 <SolutionBox>
 
@@ -282,7 +283,7 @@ with $\mathbf u = \mathbf 1/\lvert\mathcal V\rvert$. Since $H(\mathbf u,\mathbf 
 
 </SolutionBox>
 
-**Exercise 6.4 (Compute).** For $\lvert\mathcal V\rvert = 5$, target token $x_t = 4$, and logits $\mathbf z = (2.0, 1.0, 0.5, 3.0, -1.0)$, compute the softmax $\mathbf q$, the standard cross-entropy $-\log q_4$, and the label-smoothed loss at $\alpha = 0.1$; confirm the smoothed loss exceeds the standard one.
+**Exercise 9.4 (Compute).** For $\lvert\mathcal V\rvert = 5$, target token $x_t = 4$, and logits $\mathbf z = (2.0, 1.0, 0.5, 3.0, -1.0)$, compute the softmax $\mathbf q$, the standard cross-entropy $-\log q_4$, and the label-smoothed loss at $\alpha = 0.1$; confirm the smoothed loss exceeds the standard one.
 
 <SolutionBox>
 
@@ -290,7 +291,7 @@ With $\mathbf z = (2,1,0.5,3,-1)$, the exponentials $(7.389,2.718,1.649,20.086,0
 
 </SolutionBox>
 
-**Exercise 6.5 (Construct).** Exhibit a one-token-vocabulary-of-three example with $\mathbf q = (0.80, 0.10, 0.10)$ and correct class $1$, give the standard logit gradient $\mathbf q - \mathbf e_1$ and the smoothed gradient $\mathbf q - \tilde{\mathbf y}$ at $\alpha = 0.1$, and verify the smoothed update is less aggressive on every coordinate.
+**Exercise 9.5 (Construct).** Exhibit a one-token-vocabulary-of-three example with $\mathbf q = (0.80, 0.10, 0.10)$ and correct class $1$, give the standard logit gradient $\mathbf q - \mathbf e_1$ and the smoothed gradient $\mathbf q - \tilde{\mathbf y}$ at $\alpha = 0.1$, and verify the smoothed update is less aggressive on every coordinate.
 
 <SolutionBox>
 

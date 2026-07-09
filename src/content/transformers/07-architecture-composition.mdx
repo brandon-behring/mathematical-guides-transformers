@@ -1,23 +1,24 @@
 ---
 title: "Architecture Composition"
 slug: architecture-composition
-chapter: 5
+chapter: 7
+part: 3
 description: "Stacking transformer blocks into encoders and decoders: bidirectional vs causal self-attention, cross-attention (and vision-language fusion as an instance of it), the three standard architectures, the Vision Transformer as an encoder over patch embeddings, the universal-approximation theorem and what depth buys, and the per-layer complexity that makes attention the quadratic bottleneck."
 last_verified: 2026-06-28
 rigor_level: rigorous
 prerequisites: [notation, input-representations, attention]
 notation_introduced: ['\operatorname{CrossAttn}', '\mathbf H^{(\ell)}', 'N', 'd_{\text{ff}}']
-theorems: ['rem-tf5-vit', 'thm-tf5-universal-approx', 'prop-tf5-complexity', 'prop-tf5-params', 'rem-tf5-multimodal-crossattn', 'rem-tf5-unified-sequence']
+theorems: ['rem-tf7-vit', 'thm-tf7-universal-approx', 'prop-tf7-complexity', 'prop-tf7-params', 'rem-tf7-multimodal-crossattn', 'rem-tf7-unified-sequence']
 los:
-  - id: TF-5.1
+  - id: TF-7.1
     statement: "Define the encoder, decoder, and encoder-decoder transformer architectures, and state what distinguishes them."
-  - id: TF-5.2
+  - id: TF-7.2
     statement: "State the universal-approximation theorem for transformers and explain its quantize-route-lookup proof strategy."
-  - id: TF-5.3
+  - id: TF-7.3
     statement: "Compute self-attention and feed-forward per-layer time and memory complexity and locate their crossover."
-  - id: TF-5.4
+  - id: TF-7.4
     statement: "Count the parameters of a concrete transformer configuration and identify the dominant scaling term."
-  - id: TF-5.5
+  - id: TF-7.5
     statement: "Recognize the Vision Transformer as the encoder over patch embeddings, and multimodal fusion as an instance of cross-attention or of a unified two-modality sequence, introducing no new core machinery."
 ---
 
@@ -36,7 +37,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 The starting picture is the simplest composition: feed the input through one block, then feed that output through another, $N$ times, with every block free to look at every position. Nothing is masked, so each layer produces a representation of one token informed by the whole sequence, and the stack deepens that contextualization.
 
-<Theorem kind="definition" name="Transformer encoder" id="def-tf5-encoder">
+<Theorem kind="definition" name="Transformer encoder" id="def-tf7-encoder">
 A **transformer encoder** is a stack of $N$ identical pre-norm blocks with **bidirectional** self-attention (no causal mask). Writing $\operatorname{Block}^{(\ell)}$ for the $\ell$-th block with its own learned parameters,
 $$
 \mathbf H^{(0)} = \mathbf X, \qquad
@@ -50,15 +51,15 @@ where $\mathbf X\in\R^{n\times d}$ is the input sequence of $n$ token representa
 
 The recursion is just function composition, $\mathbf H^{(N)} = \operatorname{Block}^{(N)}\circ\cdots\circ\operatorname{Block}^{(1)}(\mathbf X)$, but the consequence is structural: because no block masks any position, the map $\mathbf X\mapsto\mathbf H^{(N)}$ is bidirectional throughout. We will see in the next section that masking exactly one of the matrix products inside the block converts this into the causal map a decoder needs.
 
-<Theorem kind="remark" name="The Vision Transformer is this encoder" id="rem-tf5-vit">
-Feed the encoder of <XRef id="def-tf5-encoder" /> the patch embeddings of <XRef id="def-tf1-patch-embedding" /> together with a positional encoding over the patch index — the original model used a *learned 1D* table over the raster order, with axial 2D schemes (<XRef id="def-tf1-pe-2d" />) an alternative it found no better — prepending a learned $\texttt{[CLS]}$ slot (<XRef id="def-tf7-pooled-rep" />). The result is the **Vision Transformer** <Cite key="dosovitskiy2021vit" />: bidirectional self-attention over a patch grid, classified from the pooled slot exactly as the encoder-only classifier of <XRef id="def-tf7-encoder-classifier" />. Not one line of the block, the stack, or the universal-approximation argument changes — only $\mathbf X$ is sourced from patches rather than tokens. The modality lives entirely in the embedding interface of <XRef id="def-tf1-embedding-interface" />.
+<Theorem kind="remark" name="The Vision Transformer is this encoder" id="rem-tf7-vit">
+Feed the encoder of <XRef id="def-tf7-encoder" /> the patch embeddings of <XRef id="def-tf1-patch-embedding" /> together with a positional encoding over the patch index — the original model used a *learned 1D* table over the raster order, with axial 2D schemes (<XRef id="def-tf1-pe-2d" />) an alternative it found no better — prepending a learned $\texttt{[CLS]}$ slot (<XRef id="def-tf10-pooled-rep" />). The result is the **Vision Transformer** <Cite key="dosovitskiy2021vit" />: bidirectional self-attention over a patch grid, classified from the pooled slot exactly as the encoder-only classifier of <XRef id="def-tf10-encoder-classifier" />. Not one line of the block, the stack, or the universal-approximation argument changes — only $\mathbf X$ is sourced from patches rather than tokens. The modality lives entirely in the embedding interface of <XRef id="def-tf1-embedding-interface" />.
 </Theorem>
 
 ## Cross-attention and the decoder
 
-A decoder must do two things an encoder need not: respect causality (it generates one token at a time and may not peek at the future) and condition on a *separate* input sequence (in translation, the source sentence). The first is handled by the causal mask already developed for self-attention (<XRef id="def-tf2-causal-mask" />). The second needs one genuinely new operation. Cross-attention is the same scaled dot-product attention as before, with one asymmetry: the queries come from the sequence being generated, while the keys and values come from a fixed, already-encoded sequence.
+A decoder must do two things an encoder need not: respect causality (it generates one token at a time and may not peek at the future) and condition on a *separate* input sequence (in translation, the source sentence). The first is handled by the causal mask already developed for self-attention (<XRef id="def-tf4-causal-mask" />). The second needs one genuinely new operation. Cross-attention is the same scaled dot-product attention as before, with one asymmetry: the queries come from the sequence being generated, while the keys and values come from a fixed, already-encoded sequence.
 
-<Theorem kind="definition" name="Cross-attention" id="def-tf5-cross-attention">
+<Theorem kind="definition" name="Cross-attention" id="def-tf7-cross-attention">
 Let $\mathbf X_{\text{dec}}\in\R^{m\times d}$ be a decoder sequence and $\mathbf H_{\text{enc}}\in\R^{n\times d}$ an encoder output. **Cross-attention** projects queries from the decoder and keys and values from the encoder:
 $$
 \operatorname{CrossAttn}(\mathbf X_{\text{dec}},\mathbf H_{\text{enc}})
@@ -75,15 +76,15 @@ Each decoder query thereby attends over **all** $n$ encoder positions, condition
 
 Because cross-attention is an instance of scaled dot-product attention, the convexity guarantee carries over verbatim: each cross-attention weight row is row-stochastic, so every decoder output is a convex combination of the encoder value rows (<XRef id="prop-row-stochastic-convex" />). The decoder cannot manufacture content outside the span of the encoder's value vectors; it can only select and average over the encoded source. With this operation in hand, the decoder block has three sublayers: the encoder block's self-attention *masked*, the one genuinely new sublayer — cross-attention — and the feed-forward network.
 
-<Theorem kind="remark" name="Vision-language fusion is cross-attention" id="rem-tf5-multimodal-crossattn">
-The "separate input sequence" the decoder conditions on need not be text. Let $\mathbf H_{\text{img}}\in\R^{n_v\times d}$ be patch features from a Vision Transformer (<XRef id="rem-tf5-vit" />) and $\mathbf X_{\text{txt}}\in\R^{m\times d}$ a text stream. Conditioning text generation on the image is exactly <XRef id="def-tf5-cross-attention" /> with the encoder stream taken to be vision:
+<Theorem kind="remark" name="Vision-language fusion is cross-attention" id="rem-tf7-multimodal-crossattn">
+The "separate input sequence" the decoder conditions on need not be text. Let $\mathbf H_{\text{img}}\in\R^{n_v\times d}$ be patch features from a Vision Transformer (<XRef id="rem-tf7-vit" />) and $\mathbf X_{\text{txt}}\in\R^{m\times d}$ a text stream. Conditioning text generation on the image is exactly <XRef id="def-tf7-cross-attention" /> with the encoder stream taken to be vision:
 $$
 \operatorname{CrossAttn}(\mathbf X_{\text{txt}},\mathbf H_{\text{img}}) = \operatorname{Attn}\!\big(\mathbf X_{\text{txt}}\mathbf W^Q,\ \mathbf H_{\text{img}}\mathbf W^K,\ \mathbf H_{\text{img}}\mathbf W^V\big).
 $$
-The convexity guarantee above carries over unchanged: each fused text position is a convex combination of the image value rows, so the language model **selects and averages** visual evidence and cannot fabricate content outside its span. This is the core of cross-attention fusion. Flamingo's *gated* variant <Cite key="alayrac2022flamingo" /> refines it twice — the vision features first pass through a learned-query resampler (<XRef id="def-tf10-resampler" />), and the cross-attention enters through a $\tanh$ gate that starts closed (<XRef id="def-tf10-gated-xattn" />).
+The convexity guarantee above carries over unchanged: each fused text position is a convex combination of the image value rows, so the language model **selects and averages** visual evidence and cannot fabricate content outside its span. This is the core of cross-attention fusion. Flamingo's *gated* variant <Cite key="alayrac2022flamingo" /> refines it twice — the vision features first pass through a learned-query resampler (<XRef id="def-tf15-resampler" />), and the cross-attention enters through a $\tanh$ gate that starts closed (<XRef id="def-tf15-gated-xattn" />).
 </Theorem>
 
-<Theorem kind="definition" name="Transformer decoder block" id="def-tf5-decoder-block">
+<Theorem kind="definition" name="Transformer decoder block" id="def-tf7-decoder-block">
 A **decoder block** applies three sublayers in order, each with its own pre-norm and residual connection:
 $$
 \begin{aligned}
@@ -97,24 +98,24 @@ The masked self-attention lets position $i$ attend only to decoder positions $j\
 
 <MarginNote variant="pattern" label="Decoder block">Three sublayers, not two: masked self-attention, then cross-attention, then FFN — each pre-normed and residual.</MarginNote>
 
-Stacking the encoder of <XRef id="def-tf5-encoder" /> against a stack of these blocks gives the original architecture.
+Stacking the encoder of <XRef id="def-tf7-encoder" /> against a stack of these blocks gives the original architecture.
 
-<Theorem kind="definition" name="Encoder-decoder transformer" id="def-tf5-enc-dec">
+<Theorem kind="definition" name="Encoder-decoder transformer" id="def-tf7-enc-dec">
 An **encoder-decoder transformer** <Cite key="vaswani2017attention" /> pairs:
 <Sidenote>This is the architecture of the original "Attention Is All You Need," and of sequence-to-sequence models such as T5 <Cite key="raffel2020t5" />.</Sidenote>
-- an **encoder** (<XRef id="def-tf5-encoder" />) that maps the input sequence to $\mathbf H_{\text{enc}} = \mathbf H^{(N)}$, computed **once**; and
-- a **decoder**, a stack of $N$ decoder blocks (<XRef id="def-tf5-decoder-block" />) sharing that single $\mathbf H_{\text{enc}}$, that generates output tokens autoregressively, each step conditioned on $\mathbf H_{\text{enc}}$ and on all previously generated tokens.
+- an **encoder** (<XRef id="def-tf7-encoder" />) that maps the input sequence to $\mathbf H_{\text{enc}} = \mathbf H^{(N)}$, computed **once**; and
+- a **decoder**, a stack of $N$ decoder blocks (<XRef id="def-tf7-decoder-block" />) sharing that single $\mathbf H_{\text{enc}}$, that generates output tokens autoregressively, each step conditioned on $\mathbf H_{\text{enc}}$ and on all previously generated tokens.
 </Theorem>
 
 When the task does not have a separate input to condition on — language modeling, where the model continues its own text — the encoder and the cross-attention it feeds are both unnecessary. Removing them leaves a single causal stack.
 
-<Theorem kind="definition" name="Decoder-only transformer" id="def-tf5-decoder-only">
+<Theorem kind="definition" name="Decoder-only transformer" id="def-tf7-decoder-only">
 A **decoder-only transformer** is a single stack of $N$ blocks with causal self-attention and **no** cross-attention. Input and output share one sequence: given tokens $x_1,\dots,x_{t-1}$, the model predicts the next token $x_t$. This is the architecture of GPT <Cite key="radford2018improving" /> and LLaMA <Cite key="touvron2023llama" />, and of most modern large language models.
 </Theorem>
 
 <MarginNote variant="tip" label="Conditioning">A decoder-only model has no encoder to inject context, so conditioning happens inside the sequence itself — the prompt. In-context learning replaces explicit cross-attention.</MarginNote>
 
-<Theorem kind="remark" name="The three architectures as design choices" id="rem-tf5-three-archs">
+<Theorem kind="remark" name="The three architectures as design choices" id="rem-tf7-three-archs">
 The three standard architectures are three settings of two binary switches — is self-attention bidirectional or causal, and is cross-attention present?
 
 | Architecture | Self-attention | Cross-attention | Typical use |
@@ -126,15 +127,15 @@ The three standard architectures are three settings of two binary switches — i
 An encoder-only model typically adds a learned summary position (a $\texttt{[CLS]}$ token) and trains a small head on that position's final hidden state. The remaining switch — "is there an encoder?" — is implied: an encoder exists exactly when cross-attention is present to consume its output.
 </Theorem>
 
-<Theorem kind="remark" name="Two fusion routes are two switch settings" id="rem-tf5-unified-sequence">
-A generative vision-language model couples the two modalities by one of two routes, and they are the two settings of the cross-attention switch in <XRef id="rem-tf5-three-archs" />. **Cross-attention present:** a decoder attends to a separate image stream (<XRef id="rem-tf5-multimodal-crossattn" />) — the encoder-decoder pattern with a vision encoder in place of a text one. **Cross-attention absent:** project the image features — in practice a frozen vision encoder's output features, as in LLaVA, not raw patch embeddings — into the token space and **concatenate** them with the text tokens into one sequence $\mathbf X = [\,\mathbf X_{\text{img}};\,\mathbf X_{\text{txt}}\,]$, processed by a single decoder-only stack (<XRef id="def-tf5-decoder-only" />) — the embedding interface of <XRef id="def-tf1-embedding-interface" /> used twice, with no new operation <Cite key="liu2023llava" />. The "is there an encoder?" switch decides between them. Both routes are built out in full later: the projector and learned-query resampler that fill the concatenation route (<XRef id="def-tf10-connector" />), and the single interleaved stream that subsumes both into one decoder (<XRef id="def-tf12-interleaved" />).
+<Theorem kind="remark" name="Two fusion routes are two switch settings" id="rem-tf7-unified-sequence">
+A generative vision-language model couples the two modalities by one of two routes, and they are the two settings of the cross-attention switch in <XRef id="rem-tf7-three-archs" />. **Cross-attention present:** a decoder attends to a separate image stream (<XRef id="rem-tf7-multimodal-crossattn" />) — the encoder-decoder pattern with a vision encoder in place of a text one. **Cross-attention absent:** project the image features — in practice a frozen vision encoder's output features, as in LLaVA, not raw patch embeddings — into the token space and **concatenate** them with the text tokens into one sequence $\mathbf X = [\,\mathbf X_{\text{img}};\,\mathbf X_{\text{txt}}\,]$, processed by a single decoder-only stack (<XRef id="def-tf7-decoder-only" />) — the embedding interface of <XRef id="def-tf1-embedding-interface" /> used twice, with no new operation <Cite key="liu2023llava" />. The "is there an encoder?" switch decides between them. Both routes are built out in full later: the projector and learned-query resampler that fill the concatenation route (<XRef id="def-tf15-connector" />), and the single interleaved stream that subsumes both into one decoder (<XRef id="def-tf17-interleaved" />).
 </Theorem>
 
 ## Universal approximation
 
 A composition of blocks is only worth stacking if depth and width buy representational power. The classical universal-approximation theorems concern a single-hidden-layer network approximating a continuous function on a compact set; they say nothing about *sequence-to-sequence* maps or about the specific attention-plus-FFN architecture. The theorem below supplies the missing statement, and — more useful for intuition — its proof strategy says *why* the architecture is expressive: attention routes information across positions while the FFN stores function values, so together they implement an approximate quantize-route-lookup pipeline.
 
-<Theorem kind="theorem" name="Universal approximation for transformers" id="thm-tf5-universal-approx">
+<Theorem kind="theorem" name="Universal approximation for transformers" id="thm-tf7-universal-approx">
 Fix a sequence length $n$ and a compact domain $K\subset\R^{n\times d}$. There exist transformers approximating, on $K$ in entrywise $L^p$ distance ($1 \le p < \infty$) to arbitrary accuracy:
 <Sidenote>Both statements are due to <Cite key="yun2020transformers" />, proved for a residual attention-plus-FFN class *without* layer normalization, and in $L^p$ rather than uniform distance. They are *representation* theorems: parameters realizing the approximation exist for the fixed-length problem.</Sidenote>
 1. **Without positional encoding** — any continuous **permutation-equivariant** map $f:K\to\R^{n\times d}$;
@@ -153,11 +154,11 @@ We do not reproduce the full construction; we name the three structural facts it
 **Positional encodings supply the asymmetry.** Plain self-attention is permutation-equivariant, so without position information the best achievable target class is exactly the permutation-equivariant maps — statement (1). Adding positional encodings makes position part of the representation, breaking the symmetry and extending the reach to arbitrary continuous maps — statement (2). See <Cite key="yun2020transformers" /> for the construction. $\qquad\blacksquare$
 </Theorem>
 
-<Theorem kind="remark" name="Why depth helps: iterative refinement" id="rem-tf5-depth">
+<Theorem kind="remark" name="Why depth helps: iterative refinement" id="rem-tf7-depth">
 The construction needs contextual coordinates, and one layer provides exactly one round of context-mixing (attention) followed by one round of pointwise processing (FFN). Stacking layers therefore builds those coordinates progressively: a later layer can route over summaries that earlier layers already computed. The analogy to numerical iteration is precise — each layer is one step of a message-passing scheme that refines the representation, and <Cite key="geshkovski2023mathematical" /> make it literal by reading the layers as discrete steps of a gradient flow on an interacting-particle system.
 </Theorem>
 
-<Theorem kind="remark" name="Existence is not optimization" id="rem-tf5-existence">
+<Theorem kind="remark" name="Existence is not optimization" id="rem-tf7-existence">
 The theorem is **existential**: it guarantees that a sufficiently deep, wide transformer *exists* realizing any target to the desired accuracy. It is silent on whether gradient descent will *find* such parameters, and on how the solution generalizes off the training set. Expressivity, optimization, and generalization are three separate questions; only the first is settled here.
 </Theorem>
 
@@ -165,7 +166,7 @@ The theorem is **existential**: it guarantees that a sufficiently deep, wide tra
 
 Expressivity says depth is worth having; cost says where the bill is paid. We count, per layer, the time and the activation memory of the two dominant operations — self-attention and the FFN — and locate the sequence length at which the quadratic attention term overtakes the linear-in-$n$ FFN term.
 
-<Theorem kind="proposition" name="Per-layer complexity" id="prop-tf5-complexity">
+<Theorem kind="proposition" name="Per-layer complexity" id="prop-tf7-complexity">
 For sequence length $n$, model dimension $d$, value dimension $d_v$, and feed-forward hidden dimension $d_{\text{ff}}$, one block costs:
 
 | Component | Time | Memory |
@@ -194,7 +195,7 @@ Two operations, each counted by the matrix products it performs.
 
 The complexity table treats the attention map as a fixed cost, but the two terms can be attacked separately — one by changing the operator, one by changing only the algorithm.
 
-<Theorem kind="remark" name="Linear attention changes the operator" id="rem-tf5-linear-attention">
+<Theorem kind="remark" name="Linear attention changes the operator" id="rem-tf7-linear-attention">
 If the softmax kernel is replaced by an explicit feature map $\phi:\R^{d_k}\to\R^{D}$, the output at query $i$ becomes
 $$
 \text{output}_i = \frac{\phi(\mathbf q_i)^\top\sum_{j}\phi(\mathbf k_j)\mathbf v_j^\top}{\phi(\mathbf q_i)^\top\sum_{j}\phi(\mathbf k_j)}.
@@ -202,7 +203,7 @@ $$
 The matrix $\sum_j\phi(\mathbf k_j)\mathbf v_j^\top\in\R^{D\times d_v}$ — with $\phi(\mathbf k_j)$ and $\mathbf v_j$ treated as column vectors here, so each summand is a $D\times d_v$ outer product — is computed **once** and shared across queries, so each output costs $O(D d_v)$ and the total is $O(n D d_v)$ — *linear* in $n$ <Cite key="katharopoulos2020transformers" />. This is a different function: with the standard choice $\phi(x) = \operatorname{elu}(x)+1 > 0$ the weights remain non-negative and row-normalized, so convexity survives; what is given up is the exponential kernel's temperature-controlled sharpness, trading approximation quality for the asymptotic gain.
 </Theorem>
 
-<Theorem kind="remark" name="FlashAttention changes only the algorithm" id="rem-tf5-flash-attention">
+<Theorem kind="remark" name="FlashAttention changes only the algorithm" id="rem-tf7-flash-attention">
 The $O(n^2)$ **memory** of materializing the attention matrix can be removed without altering the result. FlashAttention <Cite key="dao2022flashattention" /> tiles the computation into blocks that fit in fast on-chip memory and accumulates the softmax in a numerically stable online pass, never storing the full $n\times n$ matrix; the additional activation memory drops from quadratic to linear in $n$ at fixed head dimension. The output is **exact** — the function computed is identical to scaled dot-product attention. This is an algorithmic optimization, not a mathematical one.
 </Theorem>
 
@@ -210,7 +211,7 @@ The $O(n^2)$ **memory** of materializing the attention matrix can be removed wit
 
 The asymptotics above hide constants that matter in practice. We count the parameters of one standard block explicitly, then assemble a full model, and read off the dominant scaling term — the quantity that governs how parameter count grows with width and depth.
 
-<Theorem kind="proposition" name="Dominant block parameter count" id="prop-tf5-params">
+<Theorem kind="proposition" name="Dominant block parameter count" id="prop-tf7-params">
 For a pre-norm block with $d_k = d_v = d/h$ and feed-forward width $d_{\text{ff}}$, the multi-head attention contributes about $4d^2$ parameters (the four projections $\mathbf W^Q,\mathbf W^K,\mathbf W^V$ and the output projection, each $\R^{d\times d}$) and the FFN contributes $2 d\, d_{\text{ff}}$ (the two dense maps). Layer-norm scales and shifts are lower order. Hence one block has dominant count
 $$
 4d^2 + 2 d\, d_{\text{ff}},
@@ -218,23 +219,23 @@ $$
 and with $d_{\text{ff}} = 4d$ this is $4d^2 + 8d^2 = 12 d^2$ per block, so $N$ blocks contribute $\approx 12 N d^2$.
 </Theorem>
 
-<Theorem kind="example" name="Parameter count for a concrete model" id="ex-tf5-param-count">
+<Theorem kind="example" name="Parameter count for a concrete model" id="ex-tf7-param-count">
 Take $d=512$, $h=8$, $d_k=d_v=64$, $d_{\text{ff}}=2048$, $N=6$, $|\mathcal V| = 32{,}000$.
 
 **Embedding.** $\mathbf E\in\R^{|\mathcal V|\times d}$: $32{,}000\times 512 = 16{,}384{,}000 \approx 16.4\text{M}$.
 
-**Per block** (<XRef id="prop-tf5-params" />). MHA $4d^2 = 4\cdot 512^2 = 1{,}048{,}576$; FFN $2 d\, d_{\text{ff}} = 2\cdot 512\cdot 2048 = 2{,}097{,}152$; two layer-norms $2\cdot 2d = 2{,}048$. Block total $\approx 3{,}147{,}776 \approx 3.15\text{M}$.
+**Per block** (<XRef id="prop-tf7-params" />). MHA $4d^2 = 4\cdot 512^2 = 1{,}048{,}576$; FFN $2 d\, d_{\text{ff}} = 2\cdot 512\cdot 2048 = 2{,}097{,}152$; two layer-norms $2\cdot 2d = 2{,}048$. Block total $\approx 3{,}147{,}776 \approx 3.15\text{M}$.
 
 **Model.** Embedding $16.4\text{M}$, plus $N=6$ blocks at $3.15\text{M}$ giving $18.9\text{M}$, plus an output projection of $0$ when tied to the embedding. **Total $\approx 35.3\text{M}$ parameters.**
 
-**Forward FLOPs at $n=1024$.** Per block, the two quadratic attention products (<XRef id="prop-tf5-complexity" />) cost $2n^2 d$ each — $\mathbf Q\mathbf K^\top$ and $\mathbf A\mathbf V$ — totalling $4n^2 d = 4\cdot 1024^2\cdot 512 \approx 2.15\times 10^9$, and the FFN $\approx 4 n\, d\, d_{\text{ff}} = 4\cdot 1024\cdot 512\cdot 2048 \approx 4.29\times 10^9$ (Q/K/V/O projections excluded, as in the complexity table), so $\approx 6.4\times 10^9$ per block and $\approx 39$ GFLOPs over $N=6$. Here $n = 1024 < d_{\text{ff}} = 2048$, so the FFN dominates FLOPs ($\sim 67\%$); attention takes over time only past the crossover $n\approx d_{\text{ff}}$ (<XRef id="prop-tf5-complexity" />), while its $O(n^2)$ memory pressure persists at every length.
+**Forward FLOPs at $n=1024$.** Per block, the two quadratic attention products (<XRef id="prop-tf7-complexity" />) cost $2n^2 d$ each — $\mathbf Q\mathbf K^\top$ and $\mathbf A\mathbf V$ — totalling $4n^2 d = 4\cdot 1024^2\cdot 512 \approx 2.15\times 10^9$, and the FFN $\approx 4 n\, d\, d_{\text{ff}} = 4\cdot 1024\cdot 512\cdot 2048 \approx 4.29\times 10^9$ (Q/K/V/O projections excluded, as in the complexity table), so $\approx 6.4\times 10^9$ per block and $\approx 39$ GFLOPs over $N=6$. Here $n = 1024 < d_{\text{ff}} = 2048$, so the FFN dominates FLOPs ($\sim 67\%$); attention takes over time only past the crossover $n\approx d_{\text{ff}}$ (<XRef id="prop-tf7-complexity" />), while its $O(n^2)$ memory pressure persists at every length.
 </Theorem>
 
 ## Exercises
 
 Attempt each before expanding its solution.
 
-**Exercise 5.1 (Prove).** Show that the decoder cross-attention output of <XRef id="def-tf5-cross-attention" /> is, in every row, a convex combination of the encoder value rows; conclude it cannot lie outside their convex hull.
+**Exercise 7.1 (Prove).** Show that the decoder cross-attention output of <XRef id="def-tf7-cross-attention" /> is, in every row, a convex combination of the encoder value rows; conclude it cannot lie outside their convex hull.
 
 <SolutionBox>
 
@@ -242,7 +243,7 @@ Cross-attention is $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ with $\m
 
 </SolutionBox>
 
-**Exercise 5.2 (Construct).** Specify the two binary switches — self-attention causal vs bidirectional, cross-attention present vs absent — and exhibit the setting that yields each of the encoder-only, encoder-decoder, and decoder-only architectures.
+**Exercise 7.2 (Construct).** Specify the two binary switches — self-attention causal vs bidirectional, cross-attention present vs absent — and exhibit the setting that yields each of the encoder-only, encoder-decoder, and decoder-only architectures.
 
 <SolutionBox>
 
@@ -250,7 +251,7 @@ The switches are (a) self-attention causal vs bidirectional and (b) cross-attent
 
 </SolutionBox>
 
-**Exercise 5.3 (Compute).** For $d = 1024$, $d_{\text{ff}} = 4096$, find the sequence length at which self-attention overtakes the FFN in time, and explain why FlashAttention does not move that crossover.
+**Exercise 7.3 (Compute).** For $d = 1024$, $d_{\text{ff}} = 4096$, find the sequence length at which self-attention overtakes the FFN in time, and explain why FlashAttention does not move that crossover.
 
 <SolutionBox>
 
@@ -258,7 +259,7 @@ Per layer, attention is $O(n^2 d)$ and the FFN is $O(n\,d\,d_{\text{ff}})$. Sett
 
 </SolutionBox>
 
-**Exercise 5.4 (Compute).** Using $4d^2 + 2 d\, d_{\text{ff}}$ per block with $d_{\text{ff}} = 4d$, derive the $\approx 12 N d^2$ block-parameter scaling, and state which model component the embedding term $|\mathcal V|\, d$ instead governs.
+**Exercise 7.4 (Compute).** Using $4d^2 + 2 d\, d_{\text{ff}}$ per block with $d_{\text{ff}} = 4d$, derive the $\approx 12 N d^2$ block-parameter scaling, and state which model component the embedding term $|\mathcal V|\, d$ instead governs.
 
 <SolutionBox>
 
@@ -266,7 +267,7 @@ Per block, MHA contributes $4d^2$ and the FFN $2 d\,d_{\text{ff}}$ (layer-norm s
 
 </SolutionBox>
 
-**Exercise 5.5 (Derive).** Explain why plain self-attention is permutation-equivariant and why this forces statement (1) of <XRef id="thm-tf5-universal-approx" /> in the absence of positional encodings; give a single target function it therefore cannot approximate.
+**Exercise 7.5 (Derive).** Explain why plain self-attention is permutation-equivariant and why this forces statement (1) of <XRef id="thm-tf7-universal-approx" /> in the absence of positional encodings; give a single target function it therefore cannot approximate.
 
 <SolutionBox>
 
