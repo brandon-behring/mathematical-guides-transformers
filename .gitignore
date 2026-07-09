@@ -15,3 +15,7 @@ public/pagefind/
 # OS / editor
 .DS_Store
 *.swp
+
+# Private reference material (copyrighted source PDFs + extracted derivatives).
+# Never commit; never reference from published guide content.
+reference-material/
