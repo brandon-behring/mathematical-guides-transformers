@@ -1,0 +1,505 @@
+---
+title: "Linear Recurrences and State Space Models"
+slug: state-space-models
+chapter: 3
+part: 2
+description: "What survives when the recurrent network's nonlinearity is removed: the continuous-time LTI state space model and its exact zero-order-hold discretization, the equivalence of recurrent, convolutional, and parallel-scan evaluation with the ceil(log2 n)-round scan, closed-form gradients whose timescales are dialed by the spectrum of A, the HiPPO-LegS derivation of an optimal memory matrix from the Legendre generating function and its normal-plus-low-rank structure, and the proof that linear time invariance forbids content-dependent selection — the obstruction that attention and selective state spaces each escape."
+last_verified: 2026-07-09
+rigor_level: rigorous
+prerequisites: [notation, input-representations, recurrent-networks]
+notation_introduced: ['d_s', '\statevec', '\statemat', '\inputmat', '\outputmat', '\feedmat', '\Delta', '\discA', '\discB', '\kappa_j', '\bullet']
+theorems: ['def-tf3-ssm', 'thm-tf3-zoh', 'thm-tf3-conv-recurrence', 'def-tf3-scan-op', 'prop-tf3-scan', 'ex-tf3-impulse-trace', 'prop-tf3-gradient-timescale', 'lem-tf3-legendre', 'thm-tf3-hippo-legs', 'prop-tf3-legs-nplr', 'prop-tf3-lti-obstruction', 'rem-tf3-toward-selectivity']
+los:
+  - id: TF-3.1
+    statement: "Define the continuous-time linear state space model and prove the zero-order-hold discretization formulas Ā = e^{ΔA} and B̄ = A^{-1}(e^{ΔA} - I)B."
+  - id: TF-3.2
+    statement: "Prove that the recurrent, convolutional, and prefix-scan evaluations of the discrete SSM compute the same map, and derive the ceil(log2 n)-round parallel scan from associativity of the scan operator."
+  - id: TF-3.3
+    statement: "Derive the state-to-state Jacobian Ā^{T-t} and analyze how the spectrum of A and the step size Δ set controlled gradient timescales, in contrast to the nonlinear recurrent bound."
+  - id: TF-3.4
+    statement: "Prove the HiPPO-LegS coefficient dynamics from the Legendre generating function and state the normal-plus-low-rank decomposition of the LegS state matrix."
+  - id: TF-3.5
+    statement: "Construct an explicit selective-copy witness proving that no linear time-invariant system performs content-dependent selection."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import SolutionBox from '../../components/SolutionBox.astro';
+
+# Linear Recurrences and State Space Models
+
+**Where we are.** The recurrent network of the previous chapter carries a state through time and pays for it twice: the gradient bound (<XRef id="thm-tf2-gradient-bound" />) transports gradients through a product of data-dependent Jacobians that neither the designer nor the optimizer controls, and the nonlinear recurrence admits no evaluation other than one step after another. This chapter deletes the nonlinearity and studies what remains. The linear recurrence that survives — the discrete face of a **state space model** — is exactly solvable in every direction we need. We define the continuous-time model and discretize it exactly (<XRef id="thm-tf3-zoh" />); prove that the resulting recurrence, a causal convolution, and a parallel prefix scan compute the *same* map, the scan finishing in $\lceil\log_2 n\rceil$ rounds (<XRef id="thm-tf3-conv-recurrence" />, <XRef id="prop-tf3-scan" />); differentiate the recurrence in closed form, so that gradient timescales become a dial set by the spectrum of the state matrix rather than an accident of training (<XRef id="prop-tf3-gradient-timescale" />); derive from the Legendre generating function the HiPPO answer to what that matrix *should* be (<XRef id="lem-tf3-legendre" />, <XRef id="thm-tf3-hippo-legs" />) together with the structure that makes it practical (<XRef id="prop-tf3-legs-nplr" />); and close by proving what all this exactness costs — a linear time-invariant system cannot select by content (<XRef id="prop-tf3-lti-obstruction" />). The remark that ends the chapter names the two known escapes from that obstruction; the remainder of the book is the story of both.
+
+## The continuous-time model
+
+Strip the recurrent cell (<XRef id="def-tf2-rnn" />) to its skeleton: replace the activation $\varphi$ by the identity, and let time flow continuously rather than in token steps. What is left is a vector of $d_s$ numbers — the **state** — whose instantaneous motion is a fixed linear function of itself plus a fixed linear injection of the input, with the output read off by a fixed linear functional. Every coefficient is frozen: the same dynamics act at every time and on every input. This is the classical state space model of control theory.<Sidenote>The state space formulation of filtering and prediction is due to <Cite key="kalman1960filtering" />.</Sidenote>
+
+<Theorem kind="definition" name="Linear time-invariant state space model" id="def-tf3-ssm">
+A (single-input, single-output) **linear time-invariant state space model** with state dimension $d_s$ is the pair of equations
+$$
+\dot{\statevec}(t) = \statemat\,\statevec(t) + \inputmat\,u(t),
+\qquad
+y(t) = \outputmat\,\statevec(t) + \feedmat\,u(t),
+$$
+where $u:\R_{\ge 0}\to\R$ is the input signal, $\statevec(t)\in\R^{d_s}$ is the state, $y(t)\in\R$ is the output, and the parameters are $\statemat\in\R^{d_s\times d_s}$, $\inputmat\in\R^{d_s\times 1}$, $\outputmat\in\R^{1\times d_s}$, $\feedmat\in\R$. **Time-invariant** means the quadruple $(\statemat,\inputmat,\outputmat,\feedmat)$ does not depend on $t$; **linear** means it does not depend on $u$ or $\statevec$.
+</Theorem>
+
+<MarginNote variant="pattern" label="Per channel">A width-$d$ model runs $d$ independent copies of this scalar-in, scalar-out system — one per channel of the embedded sequence $\hat{\mathbf X}$.</MarginNote>
+
+Three conventions hold for this chapter. The state $\statevec$ is a **column** vector acted on by left multiplication — the same stated departure from the row convention that the notation chapter made for the softmax Jacobian. The symbol $u$ denotes the scalar input signal, a chapter-local reading distinct from the raw *units* $u_t$ of the notation chapter's modality table; when the model consumes an embedded sequence, $u_t$ is one channel of the $t$-th row of $\hat{\mathbf X}\in\R^{n\times d}$ (<XRef id="def-tf1-embedding-interface" />). And $\Delta > 0$ denotes the discretization step size fixed below.
+
+## Exact discretization: zero-order hold
+
+Tokens do not arrive continuously; they arrive as $n$ samples $u_0, u_1, \dots, u_{n-1}$. The standard bridge holds each sample constant for one interval of length $\Delta$ — a *zero-order hold* — and solves the ODE exactly across that interval. Because the dynamics are linear with constant coefficients, "exactly" is available in closed form: the scalar solution $h(t+\Delta) = e^{a\Delta}h(t) + \frac{e^{a\Delta}-1}{a}\,b\,\bar u$ promotes verbatim to matrices, with the matrix exponential replacing $e^{a\Delta}$.
+
+<MarginNote variant="tip" label="Self-explanation">Solve $\dot h = ah + b\bar u$ with $\bar u$ constant by hand first. Which of your two integration steps needs $a \ne 0$ — and what should replace division by $a$ when $a$ becomes a matrix?</MarginNote>
+
+<Theorem kind="theorem" name="Zero-order-hold discretization" id="thm-tf3-zoh">
+Let $\statevec$ solve $\dot{\statevec}(s) = \statemat\statevec(s) + \inputmat u(s)$ on an interval of length $\Delta$ on which the input is held constant, $u \equiv \bar u$. Then the state at the end of the interval is an exact linear function of the state at its start and the held sample:
+$$
+\statevec(\text{end}) = \discA\,\statevec(\text{start}) + \discB\,\bar u,
+\qquad
+\discA \defeq e^{\Delta\statemat},
+\qquad
+\discB \defeq \statemat^{-1}\big(e^{\Delta\statemat} - \mathbf I\big)\inputmat,
+$$
+the second formula valid when $\statemat$ is invertible (the series form in Step 4 is valid always).
+</Theorem>
+
+<Theorem kind="proof">
+Take the interval to be $[0,\Delta]$ without loss of generality.
+
+**Step 1 (The matrix exponential).** For $\mathbf M\in\R^{d_s\times d_s}$ define $e^{\mathbf M} \defeq \sum_{k\ge 0}\mathbf M^k/k!$; the series converges absolutely since $\norm{\mathbf M^k/k!}\le\norm{\mathbf M}^k/k!$ in any submultiplicative norm. As a power series in $s$ with infinite radius of convergence, $e^{s\statemat}$ may be differentiated term by term:
+$$
+\frac{d}{ds}\,e^{s\statemat} = \sum_{k\ge 1}\frac{s^{k-1}\statemat^{k}}{(k-1)!} = \statemat\,e^{s\statemat} = e^{s\statemat}\statemat,
+$$
+the last equality because every partial sum commutes with $\statemat$. For commuting matrices $\mathbf M\mathbf N = \mathbf N\mathbf M$, the Cauchy product of the two series gives $e^{\mathbf M}e^{\mathbf N} = e^{\mathbf M + \mathbf N}$ (the binomial theorem needs commutativity — the identity fails without it); in particular $e^{s\statemat}$ is invertible with inverse $e^{-s\statemat}$, and $e^{\Delta\statemat}e^{-s\statemat} = e^{(\Delta-s)\statemat}$.
+
+**Step 2 (Integrating factor).** By the product rule and Step 1,
+$$
+\frac{d}{ds}\Big(e^{-s\statemat}\statevec(s)\Big)
+= e^{-s\statemat}\big(\dot{\statevec}(s) - \statemat\statevec(s)\big)
+= e^{-s\statemat}\inputmat\,u(s).
+$$
+
+**Step 3 (Integrate across the step; hold the input).** Integrating from $0$ to $\Delta$ with $u\equiv\bar u$ and applying the fundamental theorem of calculus,
+$$
+e^{-\Delta\statemat}\statevec(\Delta) - \statevec(0) = \int_0^{\Delta} e^{-s\statemat}\,ds\;\inputmat\,\bar u.
+$$
+Multiplying on the left by $e^{\Delta\statemat}$ and substituting $\sigma = \Delta - s$ inside the integral,
+$$
+\statevec(\Delta) = e^{\Delta\statemat}\statevec(0) + \int_0^{\Delta} e^{\sigma\statemat}\,d\sigma\;\inputmat\,\bar u.
+$$
+
+**Step 4 (Term-by-term integration).** On the compact interval $[0,\Delta]$ the exponential series converges uniformly (Weierstrass, with majorant $\Delta^k\norm{\statemat}^k/k!$), so the integral passes inside the sum:
+$$
+\int_0^{\Delta} e^{\sigma\statemat}\,d\sigma
+= \sum_{k\ge 0}\frac{\Delta^{k+1}\statemat^{k}}{(k+1)!}.
+$$
+When $\statemat$ is invertible the sum telescopes against the exponential: $\statemat^{-1}(e^{\Delta\statemat}-\mathbf I) = \statemat^{-1}\sum_{k\ge 1}\Delta^k\statemat^k/k! = \sum_{k\ge 1}\Delta^k\statemat^{k-1}/k!$, which is the same series after the index shift $k\mapsto k+1$. Hence $\statevec(\Delta) = \discA\statevec(0) + \discB\bar u$ with $\discA, \discB$ as stated. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="formula" label="ZOH">$\discA = e^{\Delta\statemat}$, $\discB = \statemat^{-1}(e^{\Delta\statemat}-\mathbf I)\inputmat$; for singular $\statemat$, $\discB = \sum_{k\ge0}\frac{\Delta^{k+1}\statemat^k}{(k+1)!}\inputmat$.</MarginNote>
+
+Applying the theorem step after step — hold sample $u_t$ for the $t$-th interval, read the state at its end — produces the **discrete SSM**: with the empty-prefix convention $\statevec_{-1} = \mathbf 0$,
+$$
+\statevec_t = \discA\,\statevec_{t-1} + \discB\,u_t,
+\qquad
+y_t = \outputmat\,\statevec_t + \feedmat\,u_t,
+\qquad t = 0,1,\dots,n-1.
+$$
+This is the recurrence of <XRef id="def-tf2-rnn" /> with the activation removed and the weights tied to a continuous-time parent through $\Delta$ — a tie we will exploit when we read timescales off eigenvalues. First, the payoff of linearity: two more ways to evaluate the same equations.
+
+## Three faces of one map
+
+Unroll the recurrence by hand for three steps: $\statevec_0 = \discB u_0$, then $\statevec_1 = \discA\discB u_0 + \discB u_1$, then $\statevec_2 = \discA^2\discB u_0 + \discA\discB u_1 + \discB u_2$. Each state is a weighted sum of *all* past inputs, with the weight of an input decaying through powers of $\discA$ as it recedes. The output is therefore a fixed pattern — a **kernel** — slid across the input: a causal convolution whose coefficients enumerate powers of $\discA$.
+
+<Theorem kind="theorem" name="The recurrence is a causal convolution" id="thm-tf3-conv-recurrence">
+For the discrete SSM with $\statevec_{-1}=\mathbf 0$, define the **impulse-response kernel** $\kappa_j \defeq \outputmat\,\discA^{j}\,\discB \in \R$ for $j \ge 0$. Then for every input sequence and every $t$,
+$$
+\statevec_t = \sum_{j=0}^{t}\discA^{j}\discB\,u_{t-j},
+\qquad
+y_t = \feedmat\,u_t + \sum_{j=0}^{t}\kappa_j\,u_{t-j} = \feedmat\,u_t + (\kappa * u)_t .
+$$
+</Theorem>
+
+<Theorem kind="proof">
+It suffices to prove the state formula; applying $\outputmat$ and adding $\feedmat u_t$ gives the output formula by linearity. We induct on $t$.
+
+**Base case ($t=0$).** $\statevec_0 = \discA\statevec_{-1} + \discB u_0 = \discB u_0$, which is the $j=0$ term.
+
+**Inductive step.** Assume the formula at $t-1$. Then
+$$
+\statevec_t = \discA\,\statevec_{t-1} + \discB u_t
+= \sum_{j=0}^{t-1}\discA^{j+1}\discB\,u_{t-1-j} + \discB u_t
+= \sum_{i=1}^{t}\discA^{i}\discB\,u_{t-i} + \discB u_t,
+$$
+reindexing $i = j+1$; the last two terms assemble to $\sum_{i=0}^{t}\discA^i\discB u_{t-i}$. $\qquad\blacksquare$
+</Theorem>
+
+<Sidenote>Materializing $\kappa_0,\dots,\kappa_{n-1}$ once turns training — where the whole input is known — into a single length-$n$ convolution, computable in $O(n\log n)$ by the fast Fourier transform <Cite key="cooley1965fft" />; this is how S4 trains <Cite key="gu2022s4" />.</Sidenote>
+
+The convolution face evaluates all $n$ outputs at once when the whole input is known in advance, and the recurrence face emits one output per step with $O(d_s)$ state when it is not — training and decoding, respectively. The third face is subtler. The recurrence *looks* inherently sequential: $\statevec_t$ needs $\statevec_{t-1}$. But each step acts on the state as an **affine map** $\statevec\mapsto a\statevec + \mathbf b$, and affine maps compose. If composition is associative — it is — the chain of $n$ compositions can be regrouped into a balanced tree of depth $\lceil\log_2 n\rceil$.
+
+<Theorem kind="definition" name="Scan operator" id="def-tf3-scan-op">
+On pairs $(a, \mathbf b)$ with $a\in\R^{d_s\times d_s}$ and $\mathbf b\in\R^{d_s}$ — the pair $(a,\mathbf b)$ encoding the affine map $\statevec\mapsto a\statevec + \mathbf b$, written lowercase to keep generic per-step data distinct from the fixed $\statemat$ — define the **scan operator**
+$$
+(a_2, \mathbf b_2)\bullet(a_1, \mathbf b_1) \defeq \big(a_2 a_1,\; a_2\mathbf b_1 + \mathbf b_2\big),
+$$
+the composition "first apply $(a_1,\mathbf b_1)$, then $(a_2,\mathbf b_2)$": indeed $a_2(a_1\statevec + \mathbf b_1) + \mathbf b_2 = a_2a_1\statevec + a_2\mathbf b_1 + \mathbf b_2$.
+</Theorem>
+
+<Theorem kind="proposition" name="Associativity and the log-depth scan" id="prop-tf3-scan">
+Let $p_t \defeq (a_t, \mathbf b_t)$, $t = 0,\dots,n-1$, be **arbitrary** pairs — the matrices $a_t$ need not be equal across steps. Then:
+
+1. $\bullet$ is associative, with identity element $(\mathbf I, \mathbf 0)$.
+2. The inclusive prefix composites $P_t \defeq p_t \bullet p_{t-1}\bullet\cdots\bullet p_0$ satisfy $P_t = (a_t a_{t-1}\cdots a_0,\ \statevec_t)$, where $\statevec_t$ is the solution of the recurrence $\statevec_t = a_t\statevec_{t-1} + \mathbf b_t$ with $\statevec_{-1} = \mathbf 0$.
+3. All $n$ prefix composites $P_0,\dots,P_{n-1}$ can be computed in $\lceil\log_2 n\rceil$ parallel rounds, each round performing at most $n$ independent $\bullet$-applications.
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Associativity, by direct computation).** For any three pairs,
+$$
+\big((a_3,\mathbf b_3)\bullet(a_2,\mathbf b_2)\big)\bullet(a_1,\mathbf b_1)
+= (a_3a_2,\ a_3\mathbf b_2 + \mathbf b_3)\bullet(a_1,\mathbf b_1)
+= (a_3a_2a_1,\ a_3a_2\mathbf b_1 + a_3\mathbf b_2 + \mathbf b_3),
+$$
+$$
+(a_3,\mathbf b_3)\bullet\big((a_2,\mathbf b_2)\bullet(a_1,\mathbf b_1)\big)
+= (a_3,\mathbf b_3)\bullet(a_2a_1,\ a_2\mathbf b_1 + \mathbf b_2)
+= (a_3a_2a_1,\ a_3a_2\mathbf b_1 + a_3\mathbf b_2 + \mathbf b_3).
+$$
+The two agree, using only associativity of matrix multiplication and distributivity — equivalently, $\bullet$ is composition of affine maps, and composition of maps is associative. That $(\mathbf I,\mathbf 0)$ is an identity is immediate. We record what the computation did **not** use: at no point were the three matrices required to be equal. Associativity holds for arbitrary per-step pairs $(a_t, \mathbf b_t)$ — this chapter's time-invariant systems do not need that generality, but Chapter 13's input-dependent systems will inherit this proof verbatim.
+
+**Step 2 (The prefixes realize the recurrence).** Induct on $t$. For $t=0$, $P_0 = (a_0, \mathbf b_0)$ and $\statevec_0 = a_0\mathbf 0 + \mathbf b_0 = \mathbf b_0$. For the step, write $P_{t-1} = (a_{t-1}\cdots a_0,\ \statevec_{t-1})$ by hypothesis; then
+$$
+P_t = p_t \bullet P_{t-1} = \big(a_t\,(a_{t-1}\cdots a_0),\ a_t\statevec_{t-1} + \mathbf b_t\big) = (a_t\cdots a_0,\ \statevec_t).
+$$
+
+**Step 3 (Doubling).** Set $P^{(0)}_t \defeq p_t$, and pad with the identity pair at negative indices. In round $r = 1,\dots,\lceil\log_2 n\rceil$, every position computes in parallel $P^{(r)}_t = P^{(r-1)}_t \bullet P^{(r-1)}_{t-2^{r-1}}$. By induction on $r$, $P^{(r)}_t$ is the composite of $p_s$ over $s\in[\max(t-2^r+1,0),\,t]$: the two operands cover the abutting ranges $[t-2^{r-1}+1,\,t]$ and $[t-2^{r}+1,\,t-2^{r-1}]$ (truncated at $0$), and associativity makes the regrouped product equal the flat composite. After $\lceil\log_2 n\rceil$ rounds, $2^r \ge n$, so every position holds its full prefix. $\qquad\blacksquare$
+</Theorem>
+
+<Sidenote>The doubling scheme performs $O(n\log n)$ total $\bullet$-work; work-efficient $O(n)$ scans exist <Cite key="blelloch1990prefix" />, with the depth/size trade mapped by <Cite key="ladner1980parallel" />. The scan is the evaluation mode of the S5 layer <Cite key="smith2023s5" />.</Sidenote>
+
+For the discrete SSM the per-step pair is $p_t = (\discA,\ \discB u_t)$: all first components happen to coincide, and part 2 of the proposition returns exactly the states of <XRef id="thm-tf3-conv-recurrence" />.
+
+<MarginNote variant="pattern" label="Three regimes">Recurrence: $O(1)$ state per emitted token (decode). Convolution: one FFT pass over a known input (train). Scan: $\lceil\log_2 n\rceil$ parallel rounds (train, without materializing $\kappa$).</MarginNote>
+
+<Figure
+  src="/figures/ssm-three-faces.svg"
+  caption="One discrete SSM, three evaluation schedules. The recurrence steps through time with O(1) state per token; the convolution slides the impulse-response kernel κ_j = C Ā^j B̄ across the whole input at once; the parallel scan regroups the same affine steps into a balanced tree of depth ceil(log2 n). The three compute identical outputs (thm-tf3-conv-recurrence, prop-tf3-scan)."
+  id="fig-ssm-three-faces"
+  width="85%"
+/>
+
+The three faces are one map. We verify this concretely on a system small enough to trace by hand — and large enough to show two different memory timescales at work, a preview of the next section.
+
+<Theorem kind="example" name="Impulse response, computed both ways" id="ex-tf3-impulse-trace">
+Take $d_s = 2$, $\statemat = \operatorname{diag}(-1, -0.1)$, $\inputmat = (1, 1)^\top$, $\outputmat = (1, 1)$, $\feedmat = 0$, and $\Delta = 0.5$; we carry full precision and display four decimals. Because $\statemat$ is diagonal, <XRef id="thm-tf3-zoh" /> acts per coordinate:
+$$
+\discA = \operatorname{diag}\big(e^{-0.5},\,e^{-0.05}\big) = \operatorname{diag}(0.6065,\ 0.9512),
+\qquad
+\discB = \begin{pmatrix}1 - e^{-0.5}\\ 10\,(1 - e^{-0.05})\end{pmatrix} = \begin{pmatrix}0.3935\\ 0.4877\end{pmatrix}.
+$$
+Feed the impulse $u = (1, 0, 0)$.
+
+**Face one: the recurrence.** With $\statevec_{-1} = \mathbf 0$,
+$$
+\begin{aligned}
+\statevec_0 &= \discB\cdot 1 = (0.3935,\ 0.4877)^\top, & y_0 &= 0.3935 + 0.4877 = 0.8812,\\
+\statevec_1 &= \discA\statevec_0 = (0.2387,\ 0.4639)^\top, & y_1 &= 0.2387 + 0.4639 = 0.7026,\\
+\statevec_2 &= \discA\statevec_1 = (0.1447,\ 0.4413)^\top, & y_2 &= 0.1447 + 0.4413 = 0.5860.
+\end{aligned}
+$$
+
+**Face two: the kernel.** On an impulse, $y_t = \kappa_t$ directly, and with $\discA^2 = \operatorname{diag}(0.3679, 0.9048)$:
+$$
+\begin{aligned}
+\kappa_0 &= \outputmat\discB = 0.3935 + 0.4877 = 0.8812,\\
+\kappa_1 &= \outputmat\discA\discB = 0.6065\cdot 0.3935 + 0.9512\cdot 0.4877 = 0.2387 + 0.4639 = 0.7026,\\
+\kappa_2 &= \outputmat\discA^2\discB = 0.3679\cdot 0.3935 + 0.9048\cdot 0.4877 = 0.1447 + 0.4413 = 0.5860.
+\end{aligned}
+$$
+The two computations agree to every digit carried, as <XRef id="thm-tf3-conv-recurrence" /> demands: $y \approx (0.8812,\ 0.7026,\ 0.5860)$. Note the two channels forgetting at different rates: the fast mode ($\lambda = -1$) retains the factor $0.6065$ per step, the slow mode ($\lambda = -0.1$) retains $0.9512$ — after a few steps the response is carried almost entirely by the slow channel.
+</Theorem>
+
+## Gradients and controlled timescales
+
+In the nonlinear recurrence, the Jacobian from $\statevec_t$ to $\statevec_T$ was a product of $T-t$ *different*, data-dependent factors, and the best available statement was an inequality — the bound of <XRef id="thm-tf2-gradient-bound" /> — whose base $\sigma_{\max}(\mathbf W_h)\cdot\sup\lvert\varphi'\rvert$ the designer can only crudely influence. Linearity replaces the inequality by an equality, and the product of unknowable factors by the power of one known matrix.
+
+<Theorem kind="proposition" name="Gradients flow through powers; eigenvalues set timescales" id="prop-tf3-gradient-timescale">
+For the discrete SSM:
+
+1. $\dfrac{\partial \statevec_T}{\partial \statevec_t} = \discA^{\,T-t}$ for all $t \le T$ — an exact identity, not a bound.
+2. If $(\lambda, \mathbf v)$ is an eigenpair of $\statemat$, then $(e^{\Delta\lambda}, \mathbf v)$ is an eigenpair of $\discA = e^{\Delta\statemat}$, and its modulus is $\lvert e^{\Delta\lambda}\rvert = e^{\Delta\operatorname{Re}\lambda}$.
+3. If $\statemat$ is diagonalizable, a perturbation of $\statevec_t$ with eigenexpansion $\boldsymbol\delta = \sum_i c_i\mathbf v_i$ reaches $\statevec_T$ as $\sum_i c_i\,e^{(T-t)\Delta\lambda_i}\,\mathbf v_i$: each mode is scaled by exactly $e^{(T-t)\Delta\lambda_i}$, a factor of modulus $e^{(T-t)\Delta\operatorname{Re}\lambda_i}$. With $\operatorname{Re}\lambda_i < 0$, mode $i$ forgets on the continuous timescale $\tau_i = 1/\lvert\operatorname{Re}\lambda_i\rvert$, i.e. it decays by the factor $e^{-1}$ every $\tau_i/\Delta$ steps.
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Unroll and differentiate).** Unrolling the recurrence from time $t$ (as in the proof of <XRef id="thm-tf3-conv-recurrence" />), $\statevec_T = \discA^{T-t}\statevec_t + \sum_{j=t+1}^{T}\discA^{T-j}\discB\,u_j$. The inputs do not depend on $\statevec_t$, so the map $\statevec_t\mapsto\statevec_T$ is affine with linear part $\discA^{T-t}$; its Jacobian is that linear part.
+
+**Step 2 (Spectral mapping).** From $\statemat\mathbf v = \lambda\mathbf v$ we get $\statemat^k\mathbf v = \lambda^k\mathbf v$ for every $k$, hence, summing the exponential series termwise, $e^{\Delta\statemat}\mathbf v = \sum_k \frac{\Delta^k\lambda^k}{k!}\mathbf v = e^{\Delta\lambda}\mathbf v$.
+
+**Step 3 (Modulus).** Writing $\lambda = \operatorname{Re}\lambda + i\operatorname{Im}\lambda$, $\lvert e^{\Delta\lambda}\rvert = e^{\Delta\operatorname{Re}\lambda}\,\lvert e^{i\Delta\operatorname{Im}\lambda}\rvert = e^{\Delta\operatorname{Re}\lambda}$.
+
+**Step 4 (Timescales).** For diagonalizable $\statemat$, expand $\boldsymbol\delta$ in the eigenbasis and apply parts 1–2: $\discA^{T-t}\boldsymbol\delta = \sum_i c_i e^{(T-t)\Delta\lambda_i}\mathbf v_i$. The magnitude of mode $i$ falls to $e^{-1}$ of its initial value when $(T-t)\Delta\operatorname{Re}\lambda_i = -1$, i.e. after $(T-t) = 1/(\Delta\lvert\operatorname{Re}\lambda_i\rvert) = \tau_i/\Delta$ steps. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="formula" label="One dial">$\lvert\mu\rvert = e^{\Delta\operatorname{Re}\lambda}$. The step size $\Delta$ rescales every timescale at once; the spectrum of $\statemat$ sets their ratios.</MarginNote>
+
+<MarginNote variant="warning" label="Non-normal transients">The spectrum controls only asymptotics: for non-normal $\discA$, $\norm{\discA^k}$ can grow enormously before decaying even with all $\lvert\mu_i\rvert < 1$ (Exercise 3.5).</MarginNote>
+
+The contrast with the previous chapter is the point. There, gradient magnitude over a horizon was an *emergent* property of trained weights passed through a pessimistic bound — vanishing or exploding by accident. Here it is a design parameter: choose $\operatorname{Re}\lambda_i$ (and $\Delta$) and you have *chosen* the memory horizon of each mode, exactly. The gating mechanisms of the LSTM bought a controllable additive gradient path architecturally (<XRef id="prop-tf2-cec" />); the SSM gets a stronger version for free, because there is no nonlinearity for the gradient to fight. What linearity does **not** decide is which timescales are worth having — the eigenvalues are still hyperparameters. The next section replaces that guess with a derivation.
+
+## HiPPO: deriving the state matrix from optimal memory
+
+Reverse the question. Instead of asking what a given $(\statemat, \inputmat)$ remembers, prescribe what the state *should be* and solve for the dynamics. The prescription: at every time $t$, the $d_s$ numbers in $\statevec(t)$ should be the coefficients of the **best degree-$(d_s{-}1)$ polynomial approximation of the entire history** $u\vert_{[0,t]}$, best in the $L^2$ sense under the uniform measure on $[0,t]$. If the state is an optimal compressed transcript of everything seen so far, then whatever the downstream readout needs, no other $d_s$-number summary serves it better in that norm.<Sidenote>The HiPPO framework of <Cite key="gu2020hippo" />; the measure family here is the "scaled Legendre" instance LegS.</Sidenote> Remarkably, this optimal summary does not need to be recomputed from scratch as $t$ advances: it evolves by a linear ODE of exactly the form we have been studying, with a specific, derivable $(\statemat, \inputmat)$.
+
+The tool is the family of Legendre polynomials — the orthogonal polynomials of the uniform measure — and the single object that encodes everything we need about them is their generating function. All three facts the derivation uses fall out of it by elementary calculus.
+
+For $\lvert z\rvert < 1$ and $x\in[-1,1]$, the function $G(x,z) \defeq (1 - 2xz + z^2)^{-1/2}$ expands as a power series in $z$; expanding the binomial series in powers of $z(2x - z)$ shows the coefficient of $z^m$ is a polynomial in $x$ of degree $m$. These coefficients are the **Legendre polynomials** $P_m$:
+$$
+\frac{1}{\sqrt{1 - 2xz + z^2}} = \sum_{m\ge 0} P_m(x)\,z^m,
+\qquad
+P_0 = 1,\quad P_1 = x,\quad P_2 = \tfrac{3x^2 - 1}{2},\ \dots
+$$
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: both sides of each identity are coefficient sequences of some function of $z$. Which single function should you integrate or differentiate to compare them all at once?</MarginNote>
+
+<Theorem kind="lemma" name="Legendre identities from the generating function" id="lem-tf3-legendre">
+For all degrees $m, k \ge 0$:
+
+1. **(Orthogonality)** $\displaystyle\int_{-1}^{1} P_m(x)P_k(x)\,dx = \frac{2}{2m+1}\,\delta_{mk}$.
+2. **(Endpoint)** $P_m(1) = 1$.
+3. **(Boundary derivative expansion)** $\displaystyle(1+x)\,P_m'(x) = m\,P_m(x) + \sum_{k=0}^{m-1}(2k+1)\,P_k(x)$.
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Endpoint).** Set $x = 1$: $G(1,z) = ((1-z)^2)^{-1/2} = \frac{1}{1-z} = \sum_m z^m$. Matching coefficients against $\sum_m P_m(1)z^m$ gives $P_m(1) = 1$.
+
+**Step 2 (Orthogonality).** Fix $z, w \in (0,1)$ and integrate the product of two generating functions. Writing $f(x) = 1-2xz+z^2$ and $g(x) = 1-2xw+w^2$, differentiation verifies in one line that $-\frac{1}{\sqrt{zw}}\ln\!\big(\sqrt{w f(x)} + \sqrt{z g(x)}\big)$ is an antiderivative of $(f(x)g(x))^{-1/2}$. At the endpoints, $f(1) = (1-z)^2$ and $f(-1) = (1+z)^2$ (likewise for $g$), and the evaluations factor:
+$$
+\sqrt{w}(1-z) + \sqrt{z}(1-w) = (\sqrt z + \sqrt w)(1 - \sqrt{zw}),
+\qquad
+\sqrt{w}(1+z) + \sqrt{z}(1+w) = (\sqrt z + \sqrt w)(1 + \sqrt{zw}).
+$$
+The common factor $\sqrt z + \sqrt w$ cancels in the difference of logarithms, leaving
+$$
+\int_{-1}^{1} G(x,z)G(x,w)\,dx
+= \frac{1}{\sqrt{zw}}\,\ln\frac{1+\sqrt{zw}}{1-\sqrt{zw}}
+= \sum_{m\ge 0}\frac{2\,(zw)^m}{2m+1},
+$$
+the last step the Taylor series of $\ln\frac{1+v}{1-v} = 2\sum_m \frac{v^{2m+1}}{2m+1}$ at $v = \sqrt{zw}$. The left side is $\sum_{m,k}z^m w^k\int_{-1}^1 P_mP_k\,dx$; matching the coefficient of $z^mw^k$ gives $0$ for $m\ne k$ and $\frac{2}{2m+1}$ for $m = k$.
+
+**Step 3 (The expansion).** Encode both sides of the claim as series in $z$ and compare closed forms. With $Q \defeq (1-2xz+z^2)^{-3/2}$, direct differentiation gives $\partial_x G = zQ$ and $z\,\partial_z G = z(x-z)Q$. The left side of the claim is the coefficient sequence of $(1+x)\partial_x G$. For the right side, $\sum_m mP_m z^m = z\partial_zG$, and, summing the inner sum by exchanging the order of summation,
+$$
+\sum_{m\ge 0}\Big(\sum_{k<m}(2k+1)P_k\Big)z^m
+= \sum_{k\ge 0}(2k+1)P_k\,\frac{z^{k+1}}{1-z}
+= \frac{z}{1-z}\big(2z\,\partial_z + 1\big)G .
+$$
+It remains to check the closed-form identity $(1+x)zQ = z(x-z)Q + \frac{z}{1-z}\big(2z(x-z)Q + G\big)$. Substituting $G = (1-2xz+z^2)Q$, the bracket becomes $\big(2zx - 2z^2 + 1 - 2xz + z^2\big)Q = (1-z^2)Q$, so the right side is $z(x-z)Q + z(1+z)Q = z(1+x)Q$ — the left side. Matching coefficients of $z^m$ proves the claim. $\qquad\blacksquare$
+</Theorem>
+
+Now fix $t > 0$ and set up the projection. Equip $[0,t]$ with the uniform probability measure and inner product $\inner{f}{g}_t \defeq \frac{1}{t}\int_0^t f(s)g(s)\,ds$, and rescale the Legendre family onto the window: $g^{(t)}_m(s) \defeq \sqrt{2m+1}\,P_m\big(\tfrac{2s}{t}-1\big)$. Substituting $x = \frac{2s}{t}-1$ in part 1 of the lemma shows $\{g^{(t)}_m\}_{m\ge 0}$ is **orthonormal** for $\inner{\cdot}{\cdot}_t$. By the standard Hilbert-space projection theorem, the best approximation of the history in the span of $g^{(t)}_0,\dots,g^{(t)}_{d_s-1}$ has coefficients $\inner{u}{g^{(t)}_m}_t$ — so those coefficients are what the state must store.
+
+<MarginNote variant="tip" label="Self-explanation">As $t$ advances two things happen at once: new signal enters at the right endpoint, and the window $[0,t]$ stretches, sliding every basis function under the old signal. Which term of the derivative below captures each effect?</MarginNote>
+
+<Theorem kind="theorem" name="HiPPO-LegS coefficient dynamics" id="thm-tf3-hippo-legs">
+Let $u:[0,\infty)\to\R$ be continuous and define, for $t > 0$ and $m = 0,\dots,d_s-1$,
+$$
+h_m(t) \defeq \inner{u}{g^{(t)}_m}_t = \frac{\sqrt{2m+1}}{t}\int_0^t u(s)\,P_m\!\Big(\frac{2s}{t}-1\Big)\,ds,
+$$
+the coefficients of the $L^2$-optimal degree-$(d_s{-}1)$ approximation of the history $u\vert_{[0,t]}$. Then $\statevec(t) = (h_0(t),\dots,h_{d_s-1}(t))^\top$ satisfies, for every $t>0$, the linear time-varying dynamics
+$$
+\dot{\statevec}(t) = -\frac{1}{t}\,\statemat\,\statevec(t) + \frac{1}{t}\,\inputmat\,u(t),
+\qquad
+\statemat_{mk} =
+\begin{cases}
+\sqrt{(2m+1)(2k+1)} & k < m,\\
+m+1 & k = m,\\
+0 & k > m,
+\end{cases}
+\qquad
+\inputmat_m = \sqrt{2m+1}.
+$$
+</Theorem>
+
+<Theorem kind="proof">
+Throughout, $x = x(s,t) \defeq \frac{2s}{t}-1$, and all degree indices run over $0,\dots,d_s-1$ ($m$ and $k$ are polynomial degrees here, not positions).
+
+**Step 1 (Isolate the $t$-dependence).** Write $h_m(t) = \sqrt{2m+1}\,\frac{1}{t}J_m(t)$ with $J_m(t) \defeq \int_0^t u(s)P_m(x(s,t))\,ds$. The integrand is continuous in $(s,t)$ and continuously differentiable in $t$, so the Leibniz rule applies to $J_m$.
+
+**Step 2 (Differentiate: boundary term plus stretch term).** By the Leibniz rule, using $P_m(x(t,t)) = P_m(1)$ and $\partial_t x = -\frac{2s}{t^2}$,
+$$
+J_m'(t) = u(t)\,P_m(1) - \int_0^t u(s)\,P_m'(x)\,\frac{2s}{t^2}\,ds ,
+$$
+and therefore
+$$
+\frac{d}{dt}\Big(\frac{J_m}{t}\Big) = -\frac{1}{t^2}J_m + \frac{1}{t}J_m'
+= \frac{u(t)P_m(1)}{t} - \frac{1}{t^2}\int_0^t u(s)\Big[P_m(x) + \frac{2s}{t}\,P_m'(x)\Big]ds .
+$$
+The boundary term is the new sample entering at the right endpoint; the integral is the stretching window sliding the basis under the old signal. Since $\frac{2s}{t} = 1 + x$, the bracket is $P_m(x) + (1+x)P_m'(x)$.
+
+**Step 3 (Apply the Legendre identities).** By part 2 of <XRef id="lem-tf3-legendre" />, $P_m(1) = 1$. By part 3,
+$$
+P_m(x) + (1+x)P_m'(x) = (m+1)\,P_m(x) + \sum_{k<m}(2k+1)\,P_k(x).
+$$
+
+**Step 4 (Recognize the coefficients; assemble the ODE).** For every degree $k$, $\frac{1}{t}\int_0^t u(s)P_k(x)\,ds = h_k(t)/\sqrt{2k+1}$ by definition. Multiplying Step 2 by $\sqrt{2m+1}$ and substituting Step 3 termwise,
+$$
+\dot h_m(t)
+= \frac{\sqrt{2m+1}}{t}\,u(t)
+- \frac{1}{t}\Big[(m+1)\,h_m(t) + \sum_{k<m}\sqrt{(2m+1)(2k+1)}\;h_k(t)\Big],
+$$
+which is row $m$ of the stated system. Because $\statemat$ is lower triangular, $\dot h_m$ involves only $h_k$ with $k\le m$: the first $d_s$ coefficients form a **closed** subsystem, so the truncation to $d_s$ modes is exact, not an approximation. $\qquad\blacksquare$
+</Theorem>
+
+The dynamics are linear but time-varying — the $1/t$ reflects the ever-stretching window, so the system has no fixed timescale to prefer (its memory is scale-equivariant by construction). Practice transplants the derived matrices into the time-invariant template of <XRef id="def-tf3-ssm" />: S4 initializes $\statemat$ (up to sign) to the LegS matrix and learns all of $(\statemat, \Delta, \inputmat, \outputmat, \feedmat)$ from there — the state matrix at a reduced learning rate — discretizing by <XRef id="thm-tf3-zoh" />.<Sidenote>S4 <Cite key="gu2022s4" />; its diagonal simplification S4D <Cite key="gu2022s4d" />; the scan-based diagonal MIMO variant S5 <Cite key="smith2023s5" />.</Sidenote> What makes that computationally viable is a hidden symmetry of the LegS matrix: it misses being a *normal* matrix — unitarily diagonalizable, powers and exponentials computable in a stable eigenbasis — by exactly a rank-one term.
+
+<Theorem kind="proposition" name="LegS is normal plus low-rank" id="prop-tf3-legs-nplr">
+Let $\statemat$, $\inputmat$ be the HiPPO-LegS matrices of <XRef id="thm-tf3-hippo-legs" />. Then
+$$
+-\statemat + \tfrac{1}{2}\,\inputmat\inputmat^\top = -\tfrac{1}{2}\mathbf I + \mathbf T,
+\qquad \mathbf T^\top = -\mathbf T,
+$$
+i.e. $-\statemat = \big({-\tfrac12}\mathbf I + \mathbf T\big) - \tfrac12\inputmat\inputmat^\top$: a normal matrix (skew-symmetric plus a scalar multiple of $\mathbf I$) minus a rank-one term.
+</Theorem>
+
+<Theorem kind="proof">
+Compute the $(m,k)$ entry of $\mathbf S \defeq -\statemat + \tfrac12\inputmat\inputmat^\top$, using $(\inputmat\inputmat^\top)_{mk} = \sqrt{(2m+1)(2k+1)}$, in three cases.
+
+**Below the diagonal ($k < m$).** $\;-\sqrt{(2m+1)(2k+1)} + \tfrac12\sqrt{(2m+1)(2k+1)} = -\tfrac12\sqrt{(2m+1)(2k+1)}$.
+
+**On the diagonal ($k = m$).** $\;-(m+1) + \tfrac12(2m+1) = -\tfrac12$.
+
+**Above the diagonal ($k > m$).** $\;0 + \tfrac12\sqrt{(2m+1)(2k+1)}$.
+
+So $\mathbf S = -\tfrac12\mathbf I + \mathbf T$ with $\mathbf T_{mk} = \tfrac12\sqrt{(2m+1)(2k+1)}\cdot\operatorname{sign}(k-m)$, which satisfies $\mathbf T_{km} = -\mathbf T_{mk}$. A skew-symmetric matrix commutes with its transpose, and adding $-\tfrac12\mathbf I$ preserves that, so $-\tfrac12\mathbf I + \mathbf T$ is normal. $\qquad\blacksquare$
+</Theorem>
+
+Unitarily diagonalizing the normal part turns $-\statemat$ into a *diagonal-plus-low-rank* matrix, which is what lets S4 evaluate the kernel $\kappa$ of <XRef id="thm-tf3-conv-recurrence" /> quickly and stably; dropping the rank-one term altogether — leaving a purely diagonal $\statemat$, as in our worked example — loses little, an observation due to <Cite key="gupta2022dss" /> that S4D turns into principled diagonal parameterizations, and S5 pairs diagonal dynamics with the scan of <XRef id="prop-tf3-scan" />. In all three, the memory structure derived here is the initialization, not an accident of training.
+
+<Figure
+  src="/figures/hippo-projection.svg"
+  caption="HiPPO-LegS: the state as an online optimal summary. The history u restricted to [0,t] is projected, in L2 of the uniform measure on the window, onto the first d_s rescaled Legendre basis functions; the coefficient vector is the SSM state. As t advances, the new sample enters at the boundary and the stretching window slides the basis — together producing the linear dynamics of thm-tf3-hippo-legs."
+  id="fig-hippo-projection"
+  width="80%"
+/>
+
+## The price of linearity
+
+Everything in this chapter — exact discretization, three interchangeable evaluation schedules, gradients read off a spectrum, a derivable optimal memory — followed from two properties of <XRef id="def-tf3-ssm" />: the map from input sequence to output sequence is *linear*, and it is *time-invariant* (the kernel $\kappa_j$ of <XRef id="thm-tf3-conv-recurrence" /> depends on the offset $j$ only, never on the position $t$ or the data). We now prove precisely what those two properties forbid. The test is the simplest task that requires reading the data to decide what to keep: **selective copying** — remember the token that is marked, ignore the ones that are not.
+
+For this section we allow vector inputs, $u_t\in\R^2$ with $\inputmat\in\R^{d_s\times 2}$ and $\feedmat\in\R^{1\times 2}$; the unrolled formula of <XRef id="thm-tf3-conv-recurrence" /> holds verbatim, with matrix-valued kernel entries.
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: superposition says the response to a sum of inputs is the sum of responses. Can a map with that property give the marker channel *veto power* over the value channel?</MarginNote>
+
+<Theorem kind="proposition" name="No LTI system selects by content" id="prop-tf3-lti-obstruction">
+Consider the **selective-copy specification**: inputs are length-$2$ sequences of pairs $u_t = (v_t, m_t)\in\R^2$ with exactly one marked position ($m_{t^\ast} = 1$, the other $0$), and the required final output is the marked value, $y_1 = v_{t^\ast}$. No discrete LTI state space model — of any state dimension $d_s$ and any parameters $(\discA, \discB, \outputmat, \feedmat)$ — meets this specification on the four inputs displayed in the proof. More strongly, no map whose final output is additive in the input sequence does.
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (LTI outputs are additive).** By <XRef id="thm-tf3-conv-recurrence" />, the final output of any discrete SSM is $y_1 = \feedmat u_1 + \sum_{j=0}^{1}\outputmat\discA^{j}\discB\,u_{1-j}$, a fixed linear — in particular additive — function $F$ of the input sequence $(u_0, u_1)$: $F(\mathbf x + \mathbf x') = F(\mathbf x) + F(\mathbf x')$.
+
+**Step 2 (Four well-formed task instances).** Each of the following inputs has exactly one marked position, so the specification assigns each a target:
+$$
+\begin{aligned}
+\mathbf x^{(1)} &= \big((3,1),\,(7,0)\big)\ \mapsto\ 3,
+\qquad &
+\mathbf x^{(2)} &= \big((5,1),\,(7,0)\big)\ \mapsto\ 5,\\
+\mathbf x^{(3)} &= \big((3,0),\,(7,1)\big)\ \mapsto\ 7,
+\qquad &
+\mathbf x^{(4)} &= \big((5,0),\,(7,1)\big)\ \mapsto\ 7.
+\end{aligned}
+$$
+
+**Step 3 (Additivity forces $2 = 0$).** The two column-wise differences coincide:
+$$
+\mathbf x^{(2)} - \mathbf x^{(1)} = \mathbf x^{(4)} - \mathbf x^{(3)} = \big((2,0),\,(0,0)\big) \eqqcolon \mathbf w .
+$$
+If $F$ meets all four targets, additivity evaluates $F(\mathbf w)$ twice:
+$$
+F(\mathbf w) = F(\mathbf x^{(2)}) - F(\mathbf x^{(1)}) = 5 - 3 = 2,
+\qquad
+F(\mathbf w) = F(\mathbf x^{(4)}) - F(\mathbf x^{(3)}) = 7 - 7 = 0 .
+$$
+The same input $\mathbf w$ would need two different outputs; additivity fails numerically, and no additive $F$ — hence no LTI SSM — meets the specification. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="pattern" label="The failure mode">Marker at position $0$: changing $v_0$ must move the output one-for-one. Marker at position $1$: the same change must not move it at all. A fixed kernel cannot do both.</MarginNote>
+
+Linearity is the property the witness kills: selection is a *product* of marker and value — a bilinear interaction — and superposition admits no interactions. Time-invariance is independently obstructive: even granting nonlinearity downstream, a kernel whose weights depend only on the offset $j$ assigns position $t-j$ the same weight whether the marker landed there or not. The weight given to the past was fixed before the data arrived; selection requires weights computed *from* the data.
+
+<Theorem kind="remark" name="Toward selectivity: two escapes" id="rem-tf3-toward-selectivity">
+Two known modifications restore content-dependent selection, and they divide the rest of this book between them. **Escape one: recompute the weights from content, pairwise.** Abandon the fixed kernel and let the weight on position $s$ at query position $t$ be a learned function of the *data* at both positions. This is attention (<XRef id="def-tf4-attention" />, next chapter): it selects exactly, at the price of comparing all pairs — quadratic cost, and no fixed-size state (the memory grows with the sequence). **Escape two: keep the recurrence, let the dynamics read the input.** Make the step size and projection matrices functions of the current input, $(\Delta_t, \inputmat_t, \outputmat_t)$, so the system can dilate time around content it wants to keep and contract it around content it wants to forget. The system is then time-varying: the convolution face of <XRef id="thm-tf3-conv-recurrence" /> dies with $\kappa$, but the parallel scan survives untouched — the associativity proof of <XRef id="prop-tf3-scan" /> never used time-invariance, and it will be reused verbatim. These are the selective state space models of Chapter 13. The book now takes the first escape, and returns for the second.
+</Theorem>
+
+## Exercises
+
+Attempt each before expanding its solution.
+
+**Exercise 3.1 (Compute).** Discretize the scalar SSM $a = -2$, $b = c = 1$, $\feedmat = 0$ at $\Delta = 0.3$: give $\discA$ and $\discB$, then compute the impulse response $y_0, y_1, y_2$ twice — by stepping the recurrence and by evaluating the kernel $\kappa_j$ — and confirm agreement.
+
+<SolutionBox>
+
+By <XRef id="thm-tf3-zoh" />, $\discA = e^{-0.6} \approx 0.5488$ and $\discB = \frac{1 - e^{-0.6}}{2} \approx 0.2256$. Recurrence on $u = (1,0,0)$ with $h_{-1} = 0$: $h_0 = \discB \approx 0.2256 = y_0$; $h_1 = \discA h_0 \approx 0.1238 = y_1$; $h_2 = \discA h_1 \approx 0.0679 = y_2$. Kernel: $\kappa_j = \discA^{j}\discB$, so $\kappa_0 \approx 0.2256$, $\kappa_1 \approx 0.5488\cdot 0.2256 \approx 0.1238$, $\kappa_2 \approx 0.5488\cdot 0.1238 \approx 0.0679$. On an impulse $y_t = \kappa_t$, and the two traces agree, as <XRef id="thm-tf3-conv-recurrence" /> guarantees. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 3.2 (Prove).** Show that $\int_0^{\Delta} e^{\sigma\statemat}\,d\sigma = \sum_{k\ge 0}\frac{\Delta^{k+1}\statemat^{k}}{(k+1)!}$ for **every** $\statemat$, that this equals $\statemat^{-1}(e^{\Delta\statemat}-\mathbf I)$ when $\statemat$ is invertible, and that the series therefore defines $\discB$ even for singular $\statemat$. Evaluate it at $\statemat = \mathbf 0$.
+
+<SolutionBox>
+
+On $[0,\Delta]$ the series $\sum_k \sigma^k\statemat^k/k!$ is dominated termwise by the convergent constant series $\sum_k \Delta^k\norm{\statemat}^k/k!$, so it converges uniformly (Weierstrass) and integration passes inside: $\int_0^\Delta \sigma^k d\sigma = \frac{\Delta^{k+1}}{k+1}$ gives the stated sum, with no hypothesis on $\statemat$. Multiplying the sum by $\statemat$ telescopes into the exponential series: $\statemat\sum_{k\ge0}\frac{\Delta^{k+1}\statemat^{k}}{(k+1)!} = \sum_{j\ge 1}\frac{\Delta^{j}\statemat^{j}}{j!} = e^{\Delta\statemat} - \mathbf I$, so for invertible $\statemat$ the sum is $\statemat^{-1}(e^{\Delta\statemat}-\mathbf I)$. At $\statemat = \mathbf 0$ only the $k=0$ term survives: the integral is $\Delta\,\mathbf I$ and $\discB = \Delta\inputmat$ — the inverse formula is undefined there, the series is not. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 3.3 (Derive).** For the scan operator (<XRef id="def-tf3-scan-op" />): (a) verify that $(\mathbf I, \mathbf 0)$ is a two-sided identity; (b) from $P_t = p_t\bullet P_{t-1}$ derive the closed form $P_t = (a_t\cdots a_0,\ \statevec_t)$; (c) for $n = 8$, list which composite each position holds after each of the $\lceil\log_2 8\rceil = 3$ doubling rounds.
+
+<SolutionBox>
+
+(a) $(a,\mathbf b)\bullet(\mathbf I,\mathbf 0) = (a\mathbf I,\ a\mathbf 0 + \mathbf b) = (a,\mathbf b)$ and $(\mathbf I,\mathbf 0)\bullet(a,\mathbf b) = (\mathbf I a,\ \mathbf I\mathbf b + \mathbf 0) = (a,\mathbf b)$. (b) Induction: $P_0 = p_0 = (a_0, \mathbf b_0)$ and $\statevec_0 = \mathbf b_0$; if $P_{t-1} = (a_{t-1}\cdots a_0, \statevec_{t-1})$ then $P_t = p_t\bullet P_{t-1} = (a_t\cdots a_0,\ a_t\statevec_{t-1} + \mathbf b_t) = (a_t\cdots a_0,\ \statevec_t)$. (c) Write $[s..t]$ for the composite of $p_s$ through $p_t$. After round 1 (offset 1): position $t$ holds $[\max(t{-}1,0)..t]$, i.e. $[0..0], [0..1], [1..2], \dots, [6..7]$. After round 2 (offset 2): $[\max(t{-}3,0)..t]$, i.e. $[0..0], [0..1], [0..2], [0..3], [1..4], \dots, [4..7]$. After round 3 (offset 4): $[\max(t{-}7,0)..t] = [0..t]$ for every $t$ — all eight prefixes, in 3 rounds. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 3.4 (Compute).** Write out the HiPPO-LegS matrices $\statemat$ and $\inputmat$ of <XRef id="thm-tf3-hippo-legs" /> for $d_s = 3$ numerically, and verify the NPLR identity of <XRef id="prop-tf3-legs-nplr" /> entrywise: compute $-\statemat + \tfrac12\inputmat\inputmat^\top$ and exhibit the skew-symmetric $\mathbf T$.
+
+<SolutionBox>
+
+With degrees $m,k\in\{0,1,2\}$: diagonal $m+1 = 1,2,3$; below-diagonal entries $\sqrt{3}\approx 1.7321$, $\sqrt{5}\approx 2.2361$, $\sqrt{15}\approx 3.8730$; $\inputmat = (1, \sqrt3, \sqrt5)^\top$:
+$$
+\statemat = \begin{pmatrix} 1 & 0 & 0\\ 1.7321 & 2 & 0\\ 2.2361 & 3.8730 & 3\end{pmatrix},
+\qquad
+\tfrac12\inputmat\inputmat^\top = \begin{pmatrix} 0.5 & 0.8660 & 1.1180\\ 0.8660 & 1.5 & 1.9365\\ 1.1180 & 1.9365 & 2.5\end{pmatrix}.
+$$
+Then
+$$
+-\statemat + \tfrac12\inputmat\inputmat^\top
+= \begin{pmatrix} -0.5 & 0.8660 & 1.1180\\ -0.8660 & -0.5 & 1.9365\\ -1.1180 & -1.9365 & -0.5\end{pmatrix}
+= -\tfrac12\mathbf I + \mathbf T,
+\quad
+\mathbf T = \begin{pmatrix} 0 & 0.8660 & 1.1180\\ -0.8660 & 0 & 1.9365\\ -1.1180 & -1.9365 & 0\end{pmatrix},
+$$
+and $\mathbf T^\top = -\mathbf T$ by inspection ($0.8660 \approx \tfrac{\sqrt3}{2}$, $1.1180 \approx \tfrac{\sqrt5}{2}$, $1.9365 \approx \tfrac{\sqrt{15}}{2}$), confirming <XRef id="prop-tf3-legs-nplr" />. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 3.5 (Construct).** Construct a $2\times 2$ matrix $\discA$ with spectral radius $0.9$ whose powers transiently **grow**: exhibit an entry of $\discA^k$ that exceeds $38$ for some $k$ before decaying to $0$, and locate the peak. Conclude that part 3 of <XRef id="prop-tf3-gradient-timescale" /> genuinely needs its diagonalizability hypothesis read with care for non-normal matrices.
+
+<SolutionBox>
+
+Take $\discA = \begin{pmatrix}0.9 & 10\\ 0 & 0.9\end{pmatrix}$: both eigenvalues are $0.9$, so the spectral radius is $0.9 < 1$. By induction, $\discA^k = \begin{pmatrix}0.9^k & 10k\,(0.9)^{k-1}\\ 0 & 0.9^k\end{pmatrix}$ (the step: the new corner entry is $0.9^k\cdot 10 + 10k(0.9)^{k-1}\cdot 0.9 = 10(k{+}1)(0.9)^{k}$). The corner $f(k) = 10k(0.9)^{k-1}$ satisfies $f(k{+}1)/f(k) = 0.9\,\frac{k+1}{k} \ge 1$ iff $k \le 9$, so it rises to its peak $f(9) = f(10) = 90\cdot 0.9^{8} \approx 38.74$ before the geometric factor wins and drives it to $0$. A perturbation along $(1,0)^\top$'s complement is thus amplified nearly $39\times$ over ten steps despite every eigenvalue promising decay — the spectrum controls asymptotics only; for non-normal $\discA$ (here, a Jordan-type block) the transient is governed by $\norm{\discA^k}$, not the spectral radius. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 3.6 (Construct).** In the pattern of <XRef id="prop-tf3-lti-obstruction" />, construct a numeric additivity witness proving that no LTI system (indeed no additive map) computes the running maximum $y = \max_t u_t$ over length-$2$ scalar sequences.
+
+<SolutionBox>
+
+Take $\mathbf x^{(1)} = (1, 0)$ and $\mathbf x^{(2)} = (0, 1)$: the specification assigns $F(\mathbf x^{(1)}) = \max(1,0) = 1$ and $F(\mathbf x^{(2)}) = 1$. Additivity forces $F\big((1,1)\big) = F(\mathbf x^{(1)}) + F(\mathbf x^{(2)}) = 2$, but the specification demands $\max(1,1) = 1 \ne 2$. The schema is the same as in the chapter: two inputs whose targets do not add. The maximum, like selective copying, is a content-dependent decision — which entry wins depends on the data — and superposition admits no such decisions. $\qquad\blacksquare$
+
+</SolutionBox>
