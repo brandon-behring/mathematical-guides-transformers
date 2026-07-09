@@ -35,4 +35,19 @@ const mathematicalGuidesFamilyStyle = defineStyle({
 export default await defineBookConfig({
   styles: [researchPortfolioStyle, mathematicalGuidesFamilyStyle],
   base: '/transformers/',
+  title: 'Transformer Mathematics',
+  description:
+    'From recurrent networks and state space models through attention and transformers to hybrid architectures and vision-language models — a rigorous Definition–Theorem–Proof treatment.',
+  // SSM semantic macros in \mathbf typography (consumer wins over the
+  // scaffold-injected ssmMacros; \stepsize (Δ) and \scanop (⊕) inherit —
+  // typography-neutral). See scaffold issue #177 for the ssmMacros export.
+  katexMacros: {
+    '\\statevec': '\\mathbf{h}',
+    '\\statemat': '\\mathbf{A}',
+    '\\inputmat': '\\mathbf{B}',
+    '\\outputmat': '\\mathbf{C}',
+    '\\feedmat': '\\mathbf{D}',
+    '\\discA': '\\bar{\\mathbf{A}}',
+    '\\discB': '\\bar{\\mathbf{B}}',
+  },
 });
