@@ -1,0 +1,41 @@
+name: Deploy
+
+# Production deploy to Cloudflare Workers via the reusable workflow
+# (brandon-behring/deploy-workflows) — the account-wide standard (Workers Builds
+# retired per deploy-workflows#4). This is the CHILD guide worker
+# (brandon-behring-mathematical-transformers); the family hub
+# (brandon-behring-mathematical) proxies /transformers/* here via a service
+# binding, so deploy THIS worker before the hub.
+#
+# One-time setup (manual, Cloudflare dashboard):
+#   gh secret set CLOUDFLARE_API_TOKEN && gh secret set CLOUDFLARE_ACCOUNT_ID
+#   No custom domain needed on this worker — it is reached through the hub proxy.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'astro.config.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'wrangler.toml'
+      - 'bibliography.bib'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+  actions: read
+  pull-requests: write   # required by the deploy-workflows reusable @v2.0.2 (preview-comment step)
+
+jobs:
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    uses: brandon-behring/deploy-workflows/.github/workflows/deploy-astro-worker.yml@v2.0.2
+    secrets: inherit
+    with:
+      working-directory: .
+      validate-command: validate

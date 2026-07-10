@@ -1,0 +1,11 @@
+# Workers static assets redirects (same syntax as the old Pages _redirects).
+#
+# The site builds with base=/transformers/ (its mount path on the family hub
+# domain), but Astro emits files at the dist root. So: send the bare root to the
+# canonical base path, normalize the slashless base path, and rewrite (200, no
+# redirect) base-prefixed URLs onto the real asset paths at the dist root.
+# (Mirrors guides-ai-engineering/public/_redirects; scaffold nav links are
+# base-aware as of book-scaffold-astro v4.24.0, #140/#141.)
+/ /transformers/ 302
+/transformers /transformers/ 302
+/transformers/* /:splat 200
