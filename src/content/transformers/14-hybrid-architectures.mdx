@@ -1,0 +1,368 @@
+---
+title: "Modern Recurrent Models and Hybrid Architectures"
+slug: hybrid-architectures
+chapter: 14
+part: 4
+description: "Modern recurrent models as matrix-state machines and the hybrid synthesis: RWKV's WKV recurrence and xLSTM's mLSTM cell proven to be decayed and gated linear attention, the delta rule proven to be exact online gradient descent on a key-value reconstruction loss, a pigeonhole lower bound showing any fixed-size decode state must fail exact recall beyond a capacity floor, and the sliding-window hybrid stack with its decode-state accounting M = N[f·2wd + (1-f)·d_s·d]·b priced against the production design space."
+last_verified: 2026-07-09
+rigor_level: rigorous
+prerequisites: [notation, recurrent-networks, state-space-models, attention, architecture-composition, encoder-decoder-families, inference-optimizations, selective-state-spaces]
+notation_introduced: ['\operatorname{wkv}_t', '\boldsymbol\gamma, \boldsymbol\mu (RWKV decay and bonus)', '\mathbf s_t, \mathbf z_t (WKV state pair)', '\mathbf C_t (mLSTM cell state)', 'i_t, f_t (mLSTM gates)', '\beta_t (write strength)', 'w (attention window)', 'f (attention layer fraction)', 'M (decode-state bytes)']
+theorems: ['def-tf14-rwkv', 'prop-tf14-rwkv-linattn', 'def-tf14-mlstm', 'prop-tf14-mlstm-gated-state', 'def-tf14-delta', 'thm-tf14-delta-descent', 'cor-tf14-gated-deltanet', 'prop-tf14-state-recall', 'def-tf14-swa', 'def-tf14-hybrid-stack', 'prop-tf14-decode-state', 'rem-tf14-design-space']
+los:
+  - id: TF-14.1
+    statement: "Define the RWKV and mLSTM recurrences and prove that each is a decayed or gated instance of the matrix-state recurrence of causal linear attention."
+  - id: TF-14.2
+    statement: "Prove that the delta rule is exact online gradient descent on the key-value reconstruction loss at rate beta_t, and derive the Gated DeltaNet update as a decay composed with a delta step."
+  - id: TF-14.3
+    statement: "Derive the pigeonhole lower bound K log2|V| on the decode-state bits required for exact K-pair associative recall, and compare fixed-state models against the KV-cache."
+  - id: TF-14.4
+    statement: "Define sliding-window attention and the hybrid stack, derive the decode-state accounting M = N[f·2wd + (1-f)·d_s·d]·b, and compare production hybrid designs."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import SolutionBox from '../../components/SolutionBox.astro';
+
+# Modern Recurrent Models and Hybrid Architectures
+
+**Where we are.** The previous chapter proved the duality this chapter spends: causal linear attention *is* a matrix-state recurrence (<XRef id="thm-tf13-linattn-rnn" />), and a selective state space model *is* masked linear attention (<XRef id="thm-tf13-ssd" />). Here we close the arc. First we show that two production recurrent families are that one machine wearing different gates: RWKV's WKV recurrence is decayed linear attention run per channel (<XRef id="prop-tf14-rwkv-linattn" />), and xLSTM's mLSTM cell is the same matrix state under data-dependent scalar gates (<XRef id="prop-tf14-mlstm-gated-state" />). Second we upgrade the *write* itself: the delta rule of DeltaNet is exact online gradient descent on a key–value reconstruction loss at rate $\beta_t$ (<XRef id="thm-tf14-delta-descent" />), with Gated DeltaNet as the corollary that composes a decay with the descent step. Third we prove what no gate can evade: a pigeonhole bound shows that exact $K$-pair recall needs at least $K\log_2\lvert\mathcal V\rvert$ bits of decode state (<XRef id="prop-tf14-state-recall" />) — the fixed-vector bottleneck of <XRef id="prop-tf2-bottleneck" /> returning as the arc's closing symmetry. Finally we price the trade: sliding-window attention (<XRef id="def-tf14-swa" />) and the hybrid stack (<XRef id="def-tf14-hybrid-stack" />) yield the decode-state accounting $M = N[f\cdot 2wd + (1-f)\,d_s d]\,b$ (<XRef id="prop-tf14-decode-state" />), and the production design space (<XRef id="rem-tf14-design-space" />) shows where Jamba, Griffin, Samba, and Zamba set the dial.
+
+Throughout this chapter $\mathbf k_t, \mathbf q_t\in\R^{d_k}$ and $\mathbf v_t\in\R^{d_v}$ are **column** vectors — the same stated departure from the row convention as the softmax Jacobian in the Notation chapter — so that $\mathbf v_t\mathbf k_t^\top$ is a $d_v\times d_k$ outer product and a state matrix acts on a query as $\mathbf S\mathbf q$. Our states are the transposes of the state in <XRef id="thm-tf13-linattn-rnn" />; nothing else changes.
+
+## RWKV: attention as decayed running averages
+
+Attention weights are exponentials of scores, normalized. RWKV keeps the exponentials and the normalization but deletes the query–key comparison against *every* past position: instead, each past token's weight simply *ages* — it decays geometrically with the token's distance into the past — while the newest token receives a learned bonus. Per channel, the whole mechanism is a pair of running sums: a decayed numerator that accumulates value mass and a decayed denominator that accumulates weight mass.
+
+<Theorem kind="definition" name="RWKV time mixing (WKV)" id="def-tf14-rwkv">
+Fix per-channel key and value sequences $\mathbf k_t, \mathbf v_t\in\R^{d}$, a learned **per-channel decay** $\boldsymbol\gamma\in(0,1)^{d}$, and a learned **current-token bonus** $\boldsymbol\mu\in\R^{d}$. The **WKV recurrence** maintains a numerator state $\mathbf s_t\in\R^{d}$ and a denominator state $\mathbf z_t\in\R^{d}$, initialized $\mathbf s_0 = \mathbf z_0 = \mathbf 0$:<Sidenote>The receptance-weighted key-value mechanism of RWKV <Cite key="peng2023rwkv" />, which writes the decay as $e^{w}$ with $w\le 0$ and the bonus as $u$; we write $\boldsymbol\gamma$ and $\boldsymbol\mu$ to keep $w$ for the attention window and $u_t$ for input units.</Sidenote>
+$$
+\mathbf s_t \defeq \boldsymbol\gamma\odot\mathbf s_{t-1} + e^{\mathbf k_t}\odot\mathbf v_t,
+\qquad
+\mathbf z_t \defeq \boldsymbol\gamma\odot\mathbf z_{t-1} + e^{\mathbf k_t},
+$$
+with $e^{\mathbf k_t}$ elementwise. The output at step $t$ reads the *previous* states plus a bonus-weighted current token, channel by channel:
+$$
+[\operatorname{wkv}_t]_c \defeq \frac{s_{t-1,c} + e^{\mu_c + k_{t,c}}\,v_{t,c}}{z_{t-1,c} + e^{\mu_c + k_{t,c}}},
+\qquad c = 1,\dots,d.
+$$
+</Theorem>
+
+<MarginNote variant="formula" label="Two scalars per channel">Each channel carries exactly $(s, z)$ — the numerator and denominator of one attention average. The whole layer's state is $2d$ numbers, constant in $n$.</MarginNote>
+
+The full RWKV block wraps $\operatorname{wkv}_t$ in a sigmoid *receptance* gate and alternates this time-mixing layer with a channel-mixing (feed-forward) layer; the mathematical core is the WKV operator, and it is an instance of machinery we already own. The next proposition makes the identification exact: per channel, WKV is the $\gamma$-decay matrix-state pair of <XRef id="thm-tf13-linattn-rnn" /> with feature map $\varphi = \exp$ and a trivial query — the weights depend on keys and age, not on a query comparison — except at the newest token: relative to that readout at index $t$ (past weights $\gamma^{\,t-i}e^{k_i}$, newest weight $e^{k_t}$), WKV's newest-token weight works out to $\gamma\,e^{\mu + k_t}$ — the learned bonus composed with one step of decay, because WKV reads the *previous* state.
+
+<MarginNote variant="tip" label="Self-explanation">Unroll $\mathbf s_t$ two steps by hand before reading the proof: what weight does $v_{t-2,c}$ carry inside $s_{t,c}$? And inside $[\operatorname{wkv}_t]_c$?</MarginNote>
+
+<Theorem kind="proposition" name="RWKV is decayed linear attention, channel-wise" id="prop-tf14-rwkv-linattn">
+Fix a channel $c$ and abbreviate $\gamma = \gamma_c$, $\mu = \mu_c$, $k_i = k_{i,c}$, $v_i = v_{i,c}$. Then for every $t\ge 1$,
+$$
+[\operatorname{wkv}_t]_c
+= \frac{\sum_{i=1}^{t-1} \gamma^{\,t-1-i}\,e^{k_i}\,v_i \;+\; e^{\mu + k_t}\,v_t}
+       {\sum_{i=1}^{t-1} \gamma^{\,t-1-i}\,e^{k_i} \;+\; e^{\mu + k_t}}
+= \sum_{i=1}^{t} \omega_{t,i}\, v_i,
+$$
+where the weights $\omega_{t,i}$ are positive and sum to $1$. Moreover $(s_{t,c},\, z_{t,c})$ coincides, for every $t$, with the $\gamma$-decay matrix-state pair $(S_t, z_t)$ of <XRef id="thm-tf13-linattn-rnn" /> in the scalar case $D = d_v = 1$ with feature map $\varphi = \exp$ and unit query feature. In particular each channel of RWKV is decayed linear attention in which, relative to the index-$t$ decayed readout of <XRef id="thm-tf13-linattn-rnn" />(2), the newest token's weight is $\gamma\,e^{\mu+k_t}$ in place of $e^{k_t}$ — re-weighted by $\gamma e^{\mu}$, a learned bonus composed with one decay step.
+</Theorem>
+
+<Theorem kind="proof">
+We unroll both recurrences and match them term by term.
+
+**Step 1 (Unroll the WKV states).** We claim $s_{t,c} = \sum_{i=1}^{t}\gamma^{\,t-i}e^{k_i}v_i$ for all $t\ge 0$ (empty sum at $t=0$), by induction. The base case $t=0$ is $\mathbf s_0 = \mathbf 0$. For the step, the recurrence and the inductive hypothesis give
+$$
+s_{t,c} = \gamma\,s_{t-1,c} + e^{k_t}v_t
+= \gamma\sum_{i=1}^{t-1}\gamma^{\,t-1-i}e^{k_i}v_i + e^{k_t}v_t
+= \sum_{i=1}^{t}\gamma^{\,t-i}e^{k_i}v_i,
+$$
+absorbing the $i=t$ term with $\gamma^{0}=1$. The identical induction with $v_i$ deleted gives $z_{t,c} = \sum_{i=1}^{t}\gamma^{\,t-i}e^{k_i}$.
+
+**Step 2 (Unroll the decayed matrix-state pair).** In the scalar case the $\gamma$-decay variant of <XRef id="thm-tf13-linattn-rnn" /> maintains $S_t = \gamma S_{t-1} + \varphi(k_t)\,v_t$ and $z_t = \gamma z_{t-1} + \varphi(k_t)$. With $\varphi = \exp$ these are *literally* the recurrences of Step 1, so $S_t = s_{t,c}$ and $z_t = z_{t,c}$ for every $t$ — the two machines have equal states, not merely equal outputs.
+
+**Step 3 (Substitute and normalize).** Substituting Step 1 at index $t-1$ into the readout of <XRef id="def-tf14-rwkv" /> yields the displayed ratio. Its weights,
+$$
+\omega_{t,i} = \frac{\gamma^{\,t-1-i}e^{k_i}}{Z_t}\ (i<t),
+\qquad
+\omega_{t,t} = \frac{e^{\mu+k_t}}{Z_t},
+\qquad
+Z_t = \sum_{i=1}^{t-1}\gamma^{\,t-1-i}e^{k_i} + e^{\mu+k_t},
+$$
+are positive with $\sum_{i\le t}\omega_{t,i} = 1$ by construction, so $[\operatorname{wkv}_t]_c$ is a convex combination of the values (<XRef id="prop-row-stochastic-convex" /> in the $1\times t$ case). Comparing against the index-$t$ decayed-pair readout with unit query feature (weights $\gamma^{\,t-i}e^{k_i}$): rescaling WKV's numerator and denominator by the common factor $\gamma$ aligns every past term exactly, leaving the sole difference at $i=t$ — weight $\gamma\,e^{\mu+k_t}$ in place of $e^{k_t}$. The bonus re-weights the current token, by $\gamma e^{\mu}$, and nothing else. $\qquad\blacksquare$
+</Theorem>
+
+The identification explains RWKV's efficiency profile without further work: by <XRef id="thm-tf13-linattn-rnn" /> the decode cost is $O(1)$ per token with a state of $2d$ numbers, and by <XRef id="thm-tf13-ssd" /> the per-channel scalar decay makes the value-to-output map masked linear attention with a $1$-semiseparable decay mask — $d$ independent scalar-decay channels in parallel.<Sidenote>Retention <Cite key="sun2023retnet" /> is the special case of a single *fixed* scalar decay with a genuine query — the $\gamma$-decay variant of <XRef id="thm-tf13-linattn-rnn" /> verbatim.</Sidenote>
+
+## The mLSTM: gates on a matrix state
+
+The LSTM of the recurrent-networks chapter guarded a *vector* cell state with scalar gates. The mLSTM — the matrix-memory cell of xLSTM — keeps the gates and upgrades the cell to a *matrix*: it stores key–value outer products, exactly the linear-attention state, and lets a data-dependent forget gate decide how fast old associations fade.
+
+<Theorem kind="definition" name="mLSTM cell" id="def-tf14-mlstm">
+The **mLSTM cell** maintains a matrix state $\mathbf C_t\in\R^{d_v\times d_k}$ and a normalizer state $\mathbf z_t\in\R^{d_k}$, initialized at $\mathbf 0$, updated with **scalar data-dependent gates** $i_t > 0$ (input) and $f_t > 0$ (forget; sigmoid parameterizations keep $f_t\in(0,1)$, exponential ones $f_t = e^{\tilde f_t}$ do not), both computed from the current input:<Sidenote>The matrix-memory member of the xLSTM family <Cite key="beck2024xlstm" />, with $i_t = \exp(\tilde\imath_t)$ exponential and $f_t$ sigmoid or exponential.</Sidenote>
+$$
+\mathbf C_t \defeq f_t\,\mathbf C_{t-1} + i_t\,\mathbf v_t\mathbf k_t^\top,
+\qquad
+\mathbf z_t \defeq f_t\,\mathbf z_{t-1} + i_t\,\mathbf k_t,
+$$
+with keys scaled $\mathbf k_t = \tfrac{1}{\sqrt{d_k}}\mathbf W^K\mathbf x_t$, and readout
+$$
+\mathbf h_t \defeq \frac{\mathbf C_t\,\mathbf q_t}{\max\!\big(\lvert\mathbf z_t^\top\mathbf q_t\rvert,\ 1\big)}.
+$$
+</Theorem>
+
+Setting both gates to constants must recover machines we know — and it does. The content of the next proposition is that the *only* thing the gates change in the unrolled sum is the decay profile: a constant $\gamma^{t-i}$ becomes a data-dependent product of forget gates.
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: in the unrolled sum $\mathbf C_t = \sum_i (\cdot)\,\mathbf v_i\mathbf k_i^\top$, which gates does the coefficient of the $i$-th outer product see — those before step $i$, or those after?</MarginNote>
+
+<Theorem kind="proposition" name="The mLSTM is a gated matrix state" id="prop-tf14-mlstm-gated-state">
+Unrolled from $\mathbf C_0 = \mathbf 0$, $\mathbf z_0 = \mathbf 0$, the mLSTM states are
+$$
+\mathbf C_t \;=\; \sum_{i=1}^{t}\Big(\prod_{s=i+1}^{t} f_s\Big)\, i_i\,\mathbf v_i\mathbf k_i^\top,
+\qquad
+\mathbf z_t \;=\; \sum_{i=1}^{t}\Big(\prod_{s=i+1}^{t} f_s\Big)\, i_i\,\mathbf k_i.
+$$
+Hence the mLSTM cell is the matrix-state recurrence of <XRef id="thm-tf13-linattn-rnn" /> (transposed, identity feature map) with the constant decay $\gamma^{\,t-i}$ of the retention variant replaced by the data-dependent cumulative gate $\prod_{s=i+1}^{t} f_s$ and per-token write strength $i_i$. With $f_t \equiv \gamma$ and $i_t \equiv 1$ it is retention; with $f_t \equiv 1$ and $i_t \equiv 1$ it is plain causal linear attention; with $f_t$ data-dependent it is selective in the mechanism-sense of <XRef id="prop-tf13-gate-equivalence" /> — a data-dependent scalar decay on the state — though with the write strength $i_t$ decoupled from the decay rather than convexly tied to it.
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Unroll by induction).** At $t=1$ the claim reads $\mathbf C_1 = i_1\mathbf v_1\mathbf k_1^\top$ (the empty product is $1$), which is the recurrence at $t=1$. Assume the display at $t-1$. Then by the recurrence and linearity,
+$$
+\mathbf C_t = f_t\sum_{i=1}^{t-1}\Big(\prod_{s=i+1}^{t-1} f_s\Big) i_i\,\mathbf v_i\mathbf k_i^\top + i_t\,\mathbf v_t\mathbf k_t^\top
+= \sum_{i=1}^{t}\Big(\prod_{s=i+1}^{t} f_s\Big) i_i\,\mathbf v_i\mathbf k_i^\top,
+$$
+since multiplying by $f_t$ extends each cumulative product by its $s=t$ factor and the $i=t$ term carries the empty product. The identical induction gives $\mathbf z_t$.
+
+**Step 2 (Identify the machine).** The unrolled state of the $\gamma$-decay variant of <XRef id="thm-tf13-linattn-rnn" /> is $\sum_i \gamma^{\,t-i}\varphi(\mathbf k_i)\mathbf v_i^\top$. Transposing orientations ($\mathbf C_t = \mathbf S_t^\top$) and taking $\varphi = \operatorname{id}$, the two displays differ only in the coefficient of the $i$-th outer product: $\gamma^{\,t-i}$ there, $\big(\prod_{s=i+1}^{t} f_s\big)\, i_i$ here. The three specializations follow by substituting the stated constants; and a scalar data-dependent gate deciding *what fraction of the past survives each step* is the selectivity mechanism isolated in <XRef id="prop-tf13-gate-equivalence" /> — there convexly tied to the write, here decoupled from it. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="formula" label="Cumulative gate">Coefficient of $\mathbf v_i\mathbf k_i^\top$ in $\mathbf C_t$: $\ i_i\prod_{s=i+1}^{t} f_s$ — write strength at entry, decay ever after. Constant gates collapse it to $\gamma^{\,t-i}$.</MarginNote>
+
+Through the readout, the coefficient of $\mathbf v_i$ in $\mathbf h_t$ is $\big(\prod_{s=i+1}^{t}f_s\big)\,i_i\,(\mathbf k_i^\top\mathbf q_t)$ — a cumulative-decay mask times a key–query score, which is the masked-linear-attention form of <XRef id="thm-tf13-ssd" /> with data-dependent scalar decay. One practical point deserves stating. With exponential gating ($i_t = e^{\tilde\imath_t}$, and optionally $f_t = e^{\tilde f_t}$), the cumulative products can overflow; xLSTM therefore tracks a running log-scale stabilizer $m_t = \max(\tilde f_t + m_{t-1},\, \tilde\imath_t)$ and uses the rescaled gates $i_t' = e^{\tilde\imath_t - m_t}$ and $f_t' = e^{\tilde f_t + m_{t-1} - m_t}$, which leaves the un-floored ratio $\mathbf C_t\mathbf q_t/(\mathbf z_t^\top\mathbf q_t)$ exactly unchanged — numerator and denominator carry the same factor; the floor in $\max(\lvert\mathbf z_t^\top\mathbf q_t\rvert, 1)$ is not invariant and must itself be rescaled for exactness — the same subtract-the-running-max repair as the online softmax of <XRef id="def-tf12-online-softmax" />.
+
+## The delta rule: writing by gradient descent
+
+Every update so far *adds*: new outer products pile onto the state, and at best a gate shrinks everything uniformly before the pile grows. Nothing so far can *revise* — overwrite the value stored at one key while leaving the rest of the state alone. The delta rule does exactly that: before writing, it reads the state's current answer for the incoming key and subtracts it. The result has a second, sharper description: it is a step of gradient descent on the state's own prediction error, taken online, one token at a time.
+
+<Theorem kind="definition" name="Delta rule (DeltaNet update)" id="def-tf14-delta">
+Given keys $\mathbf k_t\in\R^{d_k}$, values $\mathbf v_t\in\R^{d_v}$, and **write strengths** $\beta_t\in(0,1]$, the **delta rule** updates a fast-weight state $\mathbf S_t\in\R^{d_v\times d_k}$, $\mathbf S_0 = \mathbf 0$, by<Sidenote>The error-correcting fast-weight update of <Cite key="schlag2021fastweight" />; parallelized across the sequence, it is the DeltaNet layer of <Cite key="yang2024deltanet" />.</Sidenote>
+$$
+\mathbf S_t \defeq \mathbf S_{t-1}\big(\mathbf I - \beta_t\,\mathbf k_t\mathbf k_t^\top\big) + \beta_t\,\mathbf v_t\mathbf k_t^\top,
+$$
+with readout $\mathbf y_t = \mathbf S_t\,\mathbf q_t$. Expanding the product gives the equivalent read-modify-write form $\mathbf S_t = \mathbf S_{t-1} + \beta_t\big(\mathbf v_t - \mathbf S_{t-1}\mathbf k_t\big)\mathbf k_t^\top$: the state's current prediction $\mathbf S_{t-1}\mathbf k_t$ is subtracted before the new value is written.
+</Theorem>
+
+<MarginNote variant="tip" label="Self-explanation">The additive update $\mathbf S_{t-1} + \mathbf v_t\mathbf k_t^\top$ never forgets. What scalar loss in $\mathbf S$ would a single gradient step have to descend for the update to first *erase* the state's current answer at $\mathbf k_t$?</MarginNote>
+
+<Theorem kind="theorem" name="The delta rule is exact online gradient descent" id="thm-tf14-delta-descent">
+Define the per-token reconstruction loss
+$$
+L_t(\mathbf S) \defeq \tfrac12\,\norm{\mathbf S\mathbf k_t - \mathbf v_t}^2 .
+$$
+Then the delta rule of <XRef id="def-tf14-delta" /> is exactly one gradient-descent step on $L_t$ at learning rate $\beta_t$, started from the current state:
+$$
+\mathbf S_t \;=\; \mathbf S_{t-1} - \beta_t\,\nabla_{\mathbf S} L_t(\mathbf S_{t-1}).
+$$
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Gradient of the loss).** Write $L_t(\mathbf S) = \tfrac12\sum_{a=1}^{d_v}\big(\sum_{b} S_{ab}k_{t,b} - v_{t,a}\big)^2$. Differentiating in the entry $S_{ab}$ (chain rule on the $a$-th square; no other square contains $S_{ab}$),
+$$
+\frac{\partial L_t}{\partial S_{ab}} = \big(\mathbf S\mathbf k_t - \mathbf v_t\big)_a\, k_{t,b},
+\qquad\text{i.e.}\qquad
+\nabla_{\mathbf S} L_t(\mathbf S) = \big(\mathbf S\mathbf k_t - \mathbf v_t\big)\mathbf k_t^\top,
+$$
+a rank-one matrix: residual times key.
+
+**Step 2 (Take the descent step).** From $\mathbf S_{t-1}$ at rate $\beta_t$,
+$$
+\mathbf S_{t-1} - \beta_t\big(\mathbf S_{t-1}\mathbf k_t - \mathbf v_t\big)\mathbf k_t^\top
+= \mathbf S_{t-1} - \beta_t\,\mathbf S_{t-1}\mathbf k_t\mathbf k_t^\top + \beta_t\,\mathbf v_t\mathbf k_t^\top,
+$$
+by linearity of the outer product in its left factor.
+
+**Step 3 (Rearrange to the delta form).** Factoring $\mathbf S_{t-1}$ out of the first two terms on the right gives $\mathbf S_{t-1}\big(\mathbf I - \beta_t\mathbf k_t\mathbf k_t^\top\big) + \beta_t\mathbf v_t\mathbf k_t^\top$, which is precisely the update of <XRef id="def-tf14-delta" />. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="formula" label="Two writes, one key">$\mathbf k_1{=}\mathbf e_1$, $\mathbf v_1{=}(2,-1)^\top$, $\beta_1{=}1$: $\mathbf S_1\mathbf e_1 = (2,-1)^\top$. Then $\mathbf v_2{=}(0,3)^\top$, $\beta_2{=}\tfrac12$: $\mathbf S_2\mathbf e_1 = \tfrac12(2,-1)^\top + \tfrac12(0,3)^\top = (1,1)^\top$.</MarginNote>
+
+The theorem earns the name "learning to memorize at test time": the sequence dimension has become an optimization trajectory, with each token one step of stochastic gradient descent on the state's own retrieval error. Its operative consequence is *targeted* revision. For a unit-norm key, $\mathbf S_t\mathbf k_t = (1-\beta_t)\,\mathbf S_{t-1}\mathbf k_t + \beta_t\mathbf v_t$ — a convex interpolation from the old association to the new value, an exact overwrite at $\beta_t = 1$ — while for any key orthogonal to $\mathbf k_t$ the stored association is untouched (Exercise 14.3). Contrast the gates of the previous section, which scale the *whole* state uniformly.
+
+<Theorem kind="corollary" name="Gated DeltaNet is a decay composed with a delta step" id="cor-tf14-gated-deltanet">
+For decay gates $\alpha_t\in(0,1]$, the **Gated DeltaNet** update
+$$
+\mathbf S_t \defeq \alpha_t\,\mathbf S_{t-1}\big(\mathbf I - \beta_t\mathbf k_t\mathbf k_t^\top\big) + \beta_t\,\mathbf v_t\mathbf k_t^\top
+$$
+equals a uniform decay $\mathbf S_{t-1}\mapsto \alpha_t\mathbf S_{t-1}$ followed by one exact gradient-descent step on $L_t$ at rate $\beta_t$ from the decayed state.
+</Theorem>
+
+<Theorem kind="proof">
+Apply <XRef id="thm-tf14-delta-descent" /> with $\mathbf S_{t-1}$ replaced by $\alpha_t\mathbf S_{t-1}$: the descent step from the decayed state is $\alpha_t\mathbf S_{t-1}(\mathbf I - \beta_t\mathbf k_t\mathbf k_t^\top) + \beta_t\mathbf v_t\mathbf k_t^\top$, which is the displayed update. The two mechanisms compose without interference: the gate forgets uniformly (the mLSTM's move), the delta step revises at one key (this section's move). $\qquad\blacksquare$
+</Theorem>
+
+## The price of a fixed state: a recall lower bound
+
+Every model in this chapter decodes from a state whose size is fixed before the sequence arrives. A fixed-size state is a channel of fixed capacity, and counting is enough to find its breaking point. The task that breaks it is **associative recall**: the prompt presents $K$ key–value pairs and then asks for the value of one key. Attention with a KV-cache answers by content addressing over a lossless prefix; a fixed state must have already compressed the pairs into its bits.
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: there are $\lvert\mathcal V\rvert^K$ ways to assign values to $K$ keys, and only $2^m$ states. If two assignments collide in one state, what single query exposes the model?</MarginNote>
+
+<Theorem kind="proposition" name="Recall needs bits (pigeonhole)" id="prop-tf14-state-recall">
+Let $\mathcal V$ be a finite value alphabet. A prompt presents $K$ distinct keys $\kappa_1,\dots,\kappa_K$ paired with values $y_1,\dots,y_K\in\mathcal V$; the model then receives a queried key and must output its paired value. Suppose the model's answer is a function $A(\sigma, \kappa)$ of the query $\kappa$ and a **decode state** $\sigma\in\{0,1\}^m$ computed from the prompt — $m$ bits comprising *everything* the model retains (recurrent states, caches, normalizers). If the model answers every query correctly for every value assignment, then
+$$
+m \;\ge\; K\,\log_2\lvert\mathcal V\rvert .
+$$
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Distinct assignments demand distinct answers).** Fix the keys. Two value assignments $\mathbf y \ne \mathbf y'$ differ at some key $\kappa_j$, and the correct answers to the query $\kappa_j$ differ: $y_j \ne y_j'$.
+
+**Step 2 (The state screens off the prompt).** The answer depends on the prompt only through $\sigma$. If the two assignments induced the same state $\sigma$, then on query $\kappa_j$ the model would return the same value $A(\sigma,\kappa_j)$ for both — wrong on at least one, contradicting correctness. Hence the map from assignments to states is injective.
+
+**Step 3 (Count).** There are $\lvert\mathcal V\rvert^{K}$ assignments and $2^{m}$ states, so injectivity forces $2^{m}\ge \lvert\mathcal V\rvert^{K}$ (pigeonhole). Taking $\log_2$ gives $m\ge K\log_2\lvert\mathcal V\rvert$. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="computational-note" label="Floor, not ceiling">The bound is information-theoretic: necessary, never sufficient. Trained fixed-state models fail recall well before their bit budget is exhausted; the floor only says where success becomes *impossible*.</MarginNote>
+
+Now instantiate both sides of the arc. A fixed-state layer decodes from $d_s d$ numbers (<XRef id="def-tf13-selective-ssm" />; the matrix states of this chapter, with $h$ heads of width $d_k = d_v = d/h$, hold $h\cdot d_k d_v = d\,d_k$ — the same form with $d_s = d_k$), so a stack of $N$ such layers at $b$ bytes per element retains $m = 8\,N b\,d_s d$ bits *no matter how long the sequence is*: beyond $K^* = m/\log_2\lvert\mathcal V\rvert$ pairs, exact recall is impossible for any parameters and any training. The KV-cache, by contrast, holds $2Nndb$ bytes (<XRef id="prop-tf12-kv-memory" />) — memory that *grows* with the sequence, a lossless prefix at linear cost — and attention over it solves recall by content addressing at any $K\le n$; the separation is not hypothetical, since attention provably solves copying and recall tasks at lengths where every fixed-state model must fail.<Sidenote>The formal attention-versus-recurrence separation on copying is <Cite key="jelassi2024copying" />; the empirical recall-versus-throughput frontier across this design space is mapped by <Cite key="arora2024based" />.</Sidenote> This is the fixed-vector bottleneck of <XRef id="prop-tf2-bottleneck" /> returning with its scope enlarged: what pigeonhole did to the seq2seq encoder's single vector, it does verbatim to every gated, decayed, or delta-corrected state in this chapter. Gates choose *what* to forget; they cannot repeal *that* something must be forgotten.
+
+## Sliding windows and hybrid stacks
+
+If a fixed state cannot afford exact recall and a full cache grows without bound, the remaining design freedom is *composition*: spend the cache where content addressing pays, and the fixed state everywhere else. Two definitions make the composition precise. The first caps the cache of an attention layer by restricting how far back it may look.
+
+<Theorem kind="definition" name="Sliding-window attention" id="def-tf14-swa">
+For a **window size** $w\ge 1$, **sliding-window attention** is masked attention in which the mask $\mathbf M^{(w)}\in\{0,-\infty\}^{n\times n}$, added to the logits exactly as the causal mask of <XRef id="def-tf4-causal-mask" />, keeps only the most recent $w$ positions:
+$$
+M^{(w)}_{ij} \defeq
+\begin{cases}
+0 & 0 \le i - j < w,\\[2pt]
+-\infty & \text{otherwise.}
+\end{cases}
+$$
+Row $i$ attends to positions $\{\max(1,\, i-w+1),\dots,i\}$. At $w\ge n$ this is the causal mask; at $w = 1$ each position attends only to itself.
+</Theorem>
+
+<MarginNote variant="formula" label="Cache cap">Positions $j\le i-w$ are never read again, so the decode cache holds the last $w$ keys and values: $2wd$ elements per layer, constant in $n$.</MarginNote>
+
+Two properties follow directly. *Causality:* row $i$ of the output depends only on rows $j\le i$ of the input, so sliding-window attention is prefix-consistent in the sense of <XRef id="def-tf8-causal" />. *Reach:* one layer sees back $w-1$ positions, and information can travel at most $w-1$ positions per layer, so a depth-$N$ stack has receptive field $1 + N(w-1)$ — the window is a per-layer horizon, not a per-model one, and long-range influence survives only by hopping layer to layer. Sliding windows are the standard attention form inside recurrent hybrids <Cite key="de2024griffin" /><Cite key="ren2024samba" />.
+
+A hybrid stack literalizes the split at the layer level: a few attention layers, stationed where content addressing pays, interleaved among many fixed-state recurrent layers.
+
+<Theorem kind="definition" name="Hybrid stack" id="def-tf14-hybrid-stack">
+Fix $N$ layers and an **attention fraction** $f\in[0,1]$ with $fN$ an integer. A **hybrid stack** interleaves $fN$ attention blocks — sliding-window (<XRef id="def-tf14-swa" />) or full causal — among $(1-f)N$ fixed-state recurrent blocks (a selective SSM, <XRef id="def-tf13-selective-ssm" />, or a matrix-state cell of this chapter), each mixer wrapped in the standard residual block with its position-wise feed-forward layer. The fraction $f$ is a stack-level design constant — not the forget gate $f_t$ of <XRef id="def-tf14-mlstm" />.
+</Theorem>
+
+Because every constituent mixer is prefix-consistent and causality is closed under composition, position-wise maps, and residual connections (<XRef id="prop-tf8-causal-closure" />), the hybrid stack is causal — the causality theorems of the encoder–decoder chapter apply to it *verbatim*, having been proved for arbitrary sequence mixers precisely so that this definition could inherit them. In particular one forward pass yields all $n$ next-token conditionals during training (<XRef id="thm-tf8-one-pass" />), whatever the value of $f$.
+
+<Figure src="/figures/hybrid-interleave.svg" alt="A hybrid decoder stack interleaving one sliding-window attention block among seven recurrent blocks, with each layer's decode-state contribution shown beside it: 2wd elements for the attention layer, d_s d elements for each recurrent layer" caption="One period of a hybrid stack at f = 1/8: a sliding-window attention block among recurrent blocks. Each layer contributes a constant-in-n decode state — 2wd for the window, d_s d per fixed state — so the whole stack's decode memory is fixed while a full-attention stack's grows linearly in n." />
+
+What remains is the accounting. During decoding, an attention layer's state is its (windowed) KV-cache and a recurrent layer's state is its fixed matrix; the memory-bound decode regime of <XRef id="prop-tf12-memory-bound" /> makes these bytes the binding read of every step, so the sum below is, to first order, the price per token of the whole design.
+
+<Theorem kind="proposition" name="Hybrid decode state" id="prop-tf14-decode-state">
+For a hybrid stack of $N$ layers with attention fraction $f$, window size $w$, per-layer recurrent state $d_s d$ elements, and $b$ bytes per element, the per-request decode state occupies
+$$
+M \;=\; N\big[\, f\cdot 2wd \;+\; (1-f)\, d_s d \,\big]\, b \quad\text{bytes},
+$$
+independent of the context length $n$. A full-attention stack at context $n$ holds $M_{\text{full}} = 2Nndb$ bytes (<XRef id="prop-tf12-kv-memory" />).
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Attention layers).** Each of the $fN$ attention layers stores its windowed KV-cache. By <XRef id="def-tf14-swa" />, a decode step reads only the last $w$ positions, so the cache holds $\mathbf K,\mathbf V\in\R^{w\times d}$ — $2wd$ elements, in the conventions of <XRef id="prop-tf12-kv-memory" /> with $n$ replaced by $w$.
+
+**Step 2 (Recurrent layers).** Each of the $(1-f)N$ recurrent layers stores its fixed state: $d_s$ numbers per channel across $d$ channels for a selective SSM, and $d\,d_k$ numbers ($d_s = d_k$) for a matrix-state layer, plus a lower-order normalizer that we absorb — $d_s d$ elements either way, constant in $n$.
+
+**Step 3 (Sum the layers).** The layers' states are disjoint, so at $b$ bytes per element
+$$
+M = fN\cdot 2wd\cdot b + (1-f)N\cdot d_s d\cdot b = N\big[f\cdot 2wd + (1-f)d_s d\big]b .
+$$
+No term references $n$. The full-attention comparison is <XRef id="prop-tf12-kv-memory" /> unchanged. $\qquad\blacksquare$
+</Theorem>
+
+We trace the numbers at a production scale: $N = 32$, $d = 4096$, $w = 1024$, $d_s = 16$, $b = 2$ (FP16), context $n = 65{,}536$, and $f = 1/8$ — one attention layer per eight.
+
+- **Full attention.** $M_{\text{full}} = 2\cdot 32\cdot 65{,}536\cdot 4096\cdot 2 = 34{,}359{,}738{,}368$ bytes $\approx 34.36$ GB ($32$ GiB) — for the cache of a *single request*.
+- **Attention term.** $2wd = 2\cdot 1024\cdot 4096 = 8{,}388{,}608$, so $f\cdot 2wd = 1{,}048{,}576$ elements per layer.
+- **State term.** $d_s d = 16\cdot 4096 = 65{,}536$, so $(1-f)\,d_s d = \tfrac{7}{8}\cdot 65{,}536 = 57{,}344$ elements per layer.
+- **Total.** $M = 32\cdot(1{,}048{,}576 + 57{,}344)\cdot 2 = 32\cdot 1{,}105{,}920\cdot 2 = 70{,}778{,}880$ bytes $\approx 70.8$ MB — smaller than the full-attention cache by a factor of $34{,}359{,}738{,}368 / 70{,}778{,}880 \approx 485$, and independent of $n$: at $n = 262{,}144$ the full cache quadruples to $\approx 137$ GB while $M$ does not move.
+- **Where the factor lives.** If the four attention layers instead use *full* attention (set $w = n$), the accounting gives $M = 32\cdot(67{,}108{,}864 + 57{,}344)\cdot 2 = 4{,}298{,}637{,}312$ bytes $\approx 4.30$ GB — a factor of $\approx 8 = 1/f$ only, and still linear in $n$. The window, not hybridization alone, is what removes the $n$-dependence.
+
+MQA and GQA attack the same term differently: they shrink the cache's *width* by the group fraction $g/h$ (<XRef id="prop-tf5-kv-cache" />) but leave the factor $n$ intact; the recurrent route removes $n$ itself, and the two compose — a hybrid's attention layers are typically also grouped-query.
+
+## The design space
+
+The proposition turns architecture choice into a two-parameter budget: how many bytes of decode state, and how many of them content-addressed. Production hybrids are points in that plane.
+
+<Theorem kind="remark" name="The production design space" id="rem-tf14-design-space">
+The table records where deployed hybrids set the dial; $f$ counts attention layers among the mixer layers.
+
+| Model | Recurrent mixer | Attention form | $f$ | Window $w$ |
+|---|---|---|---|---|
+| Jamba | Mamba (selective SSM) | full causal, MoE FFNs | $1/8$ | — (full) |
+| Griffin | RG-LRU gated linear recurrence | sliding-window | $1/3$ | $1024$ |
+| Samba | Mamba | sliding-window | $1/2$ | $2048$ |
+| Zamba | Mamba | one full block, weight-shared, re-applied | $\approx 1/7$ | — (full) |
+
+Jamba <Cite key="lieber2024jamba" /> interleaves one full-attention layer per eight — the worked $f = 1/8$ above, with the linear-in-$n$ cache of its full-attention choice cut eightfold rather than removed; Griffin <Cite key="de2024griffin" /> pairs two gated-linear-recurrence layers with one $w = 1024$ sliding-window layer, so its decode state is constant in $n$; Samba <Cite key="ren2024samba" /> alternates Mamba and $w = 2048$ sliding-window layers one-for-one; and Zamba <Cite key="glorioso2024zamba" /> re-applies a single *shared-weight* full-attention block every six Mamba blocks, buying repeated content addressing for one block's parameters. The pure-recurrent corner $f = 0$ is occupied by RWKV (<XRef id="def-tf14-rwkv" />), xLSTM (<XRef id="def-tf14-mlstm" />), and DeltaNet (<XRef id="def-tf14-delta" />); the corner $f = 1$ is the transformer of Part 3. A systematic study at 8B scale found a hybrid devoting four of its $56$ layers to attention — roughly $7\%$ of all layers, about $1/7$ of the mixer layers — matching or exceeding the pure transformer on standard language evaluations while decoding far faster at long context <Cite key="waleffe2024hybrid" /> — the empirical echo of the accounting: recall saturates at a small content-addressed fraction, and every further attention layer buys bytes, not quality.
+</Theorem>
+
+<MarginNote variant="cross-ref" label="Vision">Vision Mamba <Cite key="zhu2024vim" /> encodes images by bidirectional selective scans over the patch sequence — the encoder pattern of <XRef id="def-tf8-patterns" /> built from <XRef id="def-tf8-bidirectional-scan" /> rather than unmasked attention.</MarginNote>
+
+The design space is decoder-centric because decoding is where the state accounting binds; on the encoder side the same substitution happens bidirectionally, with scans run in both directions standing in for unmasked attention.
+
+One design space, two currencies — that is the arc of this book in a sentence. The first currency is **state size**: from the RNN's $d$ numbers (<XRef id="prop-tf2-bottleneck" />), through the LTI and selective states' $d_s d$, to the KV-cache's $2nd$ per layer; the recall bound (<XRef id="prop-tf14-state-recall" />) is the exchange rate that says what a given state size can never buy. The second currency is **content addressing**: the softmax comparison of a query against an exact prefix, born inside the RNN encoder–decoder, made sublinear-state by kernels and decay (<XRef id="thm-tf13-linattn-rnn" />), made revisable by the delta rule (<XRef id="thm-tf14-delta-descent" />), and purchased at full price only by attention over a lossless cache. Every architecture from chapter 2 to this page is a point on that budget line, and the hybrid stack makes the position an explicit dial $f$. What does not vary along the line is the logic: causality, prefix-consistency, and one-pass training hold verbatim at every $f$ — the guarantees were proved once, for any sequence mixer, and the bottleneck that opened the arc closes it not repealed but priced.
+
+## Exercises
+
+Attempt each before expanding its solution.
+
+**Exercise 14.1 (Prove).** Prove by induction the closed forms $s_{t,c} = \sum_{i=1}^{t}\gamma_c^{\,t-i}e^{k_{i,c}}v_{i,c}$ and $z_{t,c} = \sum_{i=1}^{t}\gamma_c^{\,t-i}e^{k_{i,c}}$ for the WKV states of <XRef id="def-tf14-rwkv" />, and conclude that $[\operatorname{wkv}_t]_c$ is a convex combination of $v_{1,c},\dots,v_{t,c}$.
+
+<SolutionBox>
+
+Induct on $t$ (fix $c$, drop subscripts). Base $t = 0$: both sums are empty and the states are $0$. Step: $s_t = \gamma s_{t-1} + e^{k_t}v_t = \gamma\sum_{i\le t-1}\gamma^{\,t-1-i}e^{k_i}v_i + e^{k_t}v_t = \sum_{i\le t}\gamma^{\,t-i}e^{k_i}v_i$, the $i=t$ term carrying $\gamma^{0} = 1$; deleting $v_i$ gives $z_t$. Substituting the $t-1$ closed forms into the readout, $[\operatorname{wkv}_t]_c = \big(\sum_{i<t}\gamma^{\,t-1-i}e^{k_i}v_i + e^{\mu+k_t}v_t\big)/Z_t$ with $Z_t$ the same expression over weights alone. Every weight is positive and they sum to $Z_t$, so dividing by $Z_t$ yields coefficients that are nonnegative and sum to $1$ — a convex combination of the values (<XRef id="prop-row-stochastic-convex" />). $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 14.2 (Derive).** From the mLSTM recurrence of <XRef id="def-tf14-mlstm" />, derive the unrolled form $\mathbf C_t = \sum_{i=1}^{t}\big(\prod_{s=i+1}^{t}f_s\big)i_i\,\mathbf v_i\mathbf k_i^\top$, and identify the machines obtained at (a) $f_t\equiv\gamma,\ i_t\equiv 1$ and (b) $f_t\equiv 1,\ i_t\equiv 1$.
+
+<SolutionBox>
+
+Induct on $t$: the base $t=1$ gives $\mathbf C_1 = i_1\mathbf v_1\mathbf k_1^\top$ (empty product $=1$); the step multiplies the hypothesis by $f_t$ — extending each product $\prod_{s=i+1}^{t-1}f_s$ to $\prod_{s=i+1}^{t}f_s$ — and appends $i_t\mathbf v_t\mathbf k_t^\top$. (a) With $f_s\equiv\gamma$, $i_i\equiv 1$: $\mathbf C_t = \sum_i \gamma^{\,t-i}\mathbf v_i\mathbf k_i^\top$ — the retention/decayed linear-attention state, the $\gamma$-decay variant of <XRef id="thm-tf13-linattn-rnn" /> transposed. (b) With $f_s\equiv 1$, $i_i\equiv 1$: $\mathbf C_t = \sum_i\mathbf v_i\mathbf k_i^\top$ — plain causal linear attention with identity feature map. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 14.3 (Show).** For the delta rule with $\norm{\mathbf k_t} = 1$, show that $\mathbf S_t\mathbf k_t = (1-\beta_t)\,\mathbf S_{t-1}\mathbf k_t + \beta_t\mathbf v_t$, and that $\mathbf S_t\mathbf k = \mathbf S_{t-1}\mathbf k$ for any $\mathbf k$ with $\mathbf k_t^\top\mathbf k = 0$. Interpret both.
+
+<SolutionBox>
+
+Apply the update to $\mathbf k_t$: $\mathbf S_t\mathbf k_t = \mathbf S_{t-1}\mathbf k_t - \beta_t\mathbf S_{t-1}\mathbf k_t(\mathbf k_t^\top\mathbf k_t) + \beta_t\mathbf v_t(\mathbf k_t^\top\mathbf k_t) = (1-\beta_t)\mathbf S_{t-1}\mathbf k_t + \beta_t\mathbf v_t$, using $\mathbf k_t^\top\mathbf k_t = 1$. For orthogonal $\mathbf k$: $\mathbf S_t\mathbf k = \mathbf S_{t-1}\mathbf k - \beta_t\mathbf S_{t-1}\mathbf k_t(\mathbf k_t^\top\mathbf k) + \beta_t\mathbf v_t(\mathbf k_t^\top\mathbf k) = \mathbf S_{t-1}\mathbf k$ since $\mathbf k_t^\top\mathbf k = 0$. Interpretation: at the written key the stored association moves by convex interpolation toward $\mathbf v_t$ (exact overwrite at $\beta_t = 1$); on the orthogonal complement the memory is untouched — revision is targeted, unlike a forget gate's uniform decay. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 14.4 (Compute).** A recurrent decoder's entire decode state is one matrix $\mathbf S\in\R^{64\times 64}$ stored at $b = 2$ bytes, and values are drawn from a vocabulary with $\lvert\mathcal V\rvert = 65{,}536$. Using <XRef id="prop-tf14-state-recall" />, compute the largest $K$ for which exact $K$-pair recall is information-theoretically possible. Compare with a one-layer attention decoder at $n = 16{,}384$, $d = 64$, $b = 2$ presenting $K = 8{,}192$ pairs.
+
+<SolutionBox>
+
+The state has $m = 64\cdot 64\cdot 16 = 65{,}536$ bits, and $\log_2\lvert\mathcal V\rvert = 16$, so recall can be exact only for $K \le m/16 = 4{,}096$ pairs; at $K = 4{,}097$ it must fail, whatever the parameters. The attention decoder's decode state is its KV-cache: $2ndb = 2\cdot 16{,}384\cdot 64\cdot 2 = 4{,}194{,}304$ bytes $= 33{,}554{,}432$ bits (<XRef id="prop-tf12-kv-memory" />), while $K = 8{,}192$ pairs demand only $8{,}192\cdot 16 = 131{,}072$ bits — the cache clears the floor by a factor of $256$, and it grows with $n$ while the fixed state cannot. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 14.5 (Compute).** Recompute the decode state of <XRef id="prop-tf14-decode-state" /> at the Griffin-like setting $f = 1/4$ (keeping $N = 32$, $d = 4096$, $w = 1024$, $d_s = 16$, $b = 2$), and give the factor saved against full attention at $n = 65{,}536$.
+
+<SolutionBox>
+
+Attention term: $f\cdot 2wd = \tfrac14\cdot 8{,}388{,}608 = 2{,}097{,}152$. State term: $(1-f)d_s d = \tfrac34\cdot 65{,}536 = 49{,}152$. Per layer: $(2{,}097{,}152 + 49{,}152)\cdot 2 = 4{,}292{,}608$ bytes; times $N = 32$: $M = 137{,}363{,}456$ bytes $\approx 137.4$ MB. Against $M_{\text{full}} = 34{,}359{,}738{,}368$ bytes, the factor is $34{,}359{,}738{,}368/137{,}363{,}456 \approx 250$. Doubling $f$ from $1/8$ to $1/4$ roughly halves the saving ($485\to 250$) because the window term dominates the state term by a factor of $\approx 18$. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 14.6 (Derive).** Derive the crossover context length $n^*$ at which a full-attention layer's cache $2nd$ equals a hybrid stack's per-layer average $f\cdot 2wd + (1-f)d_s d$, and evaluate it for $f = 1/8$, $w = 1024$, $d_s = 16$.
+
+<SolutionBox>
+
+Set $2nd = f\cdot 2wd + (1-f)d_s d$ and divide by $2d$:
+$$
+n^* = f\,w + (1-f)\,\frac{d_s}{2}.
+$$
+For $f = 1/8$, $w = 1024$, $d_s = 16$: $n^* = 128 + \tfrac{7}{8}\cdot 8 = 135$. Beyond $135$ tokens of context the hybrid already stores less per layer than full attention, and the gap grows linearly in $n$: at $n = 65{,}536$ the per-layer ratio is $2n/(2fw + (1-f)d_s) = 131{,}072/270 \approx 485$ — the whole-stack factor of the worked trace, as it must be, since every layer scales identically. $\qquad\blacksquare$
+
+</SolutionBox>
