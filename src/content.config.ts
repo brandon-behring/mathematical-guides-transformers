@@ -1,6 +1,6 @@
 /**
  * src/content.config.ts — transformers sibling content collections.
- * Formal-series schema (style-guide-formal-v0.1): researchPortfolioChapterSchema
+ * Formal-series schema (style-guide-formal-v0.3): researchPortfolioChapterSchema
  * merged with the formal fields; chapters glob ./src/content/transformers.
  */
 import { defineCollection, z } from 'astro:content';

@@ -1,6 +1,6 @@
 {
   "name": "mathematical-guides-transformers",
-  "description": "Formal, Definition-Theorem-Proof treatment of the transformer architecture (attention, softmax, scaling). A mathematical-guides family sibling; deploys to /transformers/.",
+  "description": "Transformer Mathematics: a formal Definition-Theorem-Proof treatment of sequence models, from recurrent networks and state space models through attention and transformers to hybrid architectures and vision-language. A mathematical-guides family sibling; deploys to /transformers/.",
   "version": "0.1.0",
   "type": "module",
   "private": true,

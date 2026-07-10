@@ -9,10 +9,22 @@ re-derivation. Designed via 8 user decisions over 2 rounds; **execution is
 deferred to a fresh session** (quota headroom) — this session only parks the
 plan in-repo per the Large Task Protocol.
 
-**Corpus (measured 2026-07-03):** 52 theorem/proposition statements, 51
-written proofs (1 ch05 statement lacks an adjacent proof block — automatic
-first candidate), 30 Prove-exercise solutions, 39 other solutions, 68
+**Corpus (measured 2026-07-03, PRE sequence-models arc):** 52 theorem/proposition
+statements, 51 written proofs (1 ch05 statement lacks an adjacent proof block —
+automatic first candidate), 30 Prove-exercise solutions, 39 other solutions, 68
 definitions, in `src/content/transformers/*.mdx`.
+
+> **Superseded by the sequence-models arc expansion (2026-07-10).** The guide is
+> now 19 chapters, not 14: the arc added chapters 02/03/08/13/14 (recurrent
+> networks, state space models, encoder–decoder families, selective state spaces,
+> hybrid architectures) and renumbered the rest (labels.json grew 176 → 244). This
+> plan's corpus counts and per-chapter batching (14 batches → 19) must be
+> **re-measured at execution**. The arc's own per-chapter integration already ran
+> adversarial math + style verification and full numeric compute-verification, but
+> that is a lighter pass than this plan's falsify → blind-derive → compare → verify
+> pipeline, which still applies to all 19 chapters. Theorem/LO/exercise ids were
+> renamed under `MAP = {2:4,3:5,4:6,5:7,6:9,7:10,8:11,9:12,10:15,11:16,12:17,13:18}`
+> (tf0/tf1 self-map); any id this plan names is post-rename.
 
 ## The 8 decisions
 1. **Scope:** all 189 units (statements+proofs, both solution classes,
@@ -82,3 +94,21 @@ definitions, in `src/content/transformers/*.mdx`.
 - Post-fix: fixed statements' property tests PASS; validate clean; build
   green; PR CI green (incl. the new test step); adversarial review of the
   diff; squash-merged to main; memory updated.
+
+## Dossier ↔ chapter backing map (evidence base for the proof sweep, added 2026-07-09)
+
+Strict-live anchored dossiers in `~/Claude/research-dossiers/` (+ `post_transformers`, `ssm-foundations`)
+are the citation-grounded evidence base the sweep should draw on when checking primary-source claims. Map:
+
+- **ch01 pos-enc (RoPE/ALiBi/sinusoidal), ch04 attention, ch05 MHA, ch06 LayerNorm/RMSNorm/block** →
+  `research_transformer_architecture`.
+- **ch04/07 sparse & efficient attention** → `research_{sparse_attention_patterns,trainable_sparse_attention,kv_cache_sparsity}` (built 2026-07-09).
+- **ch03 SSM (S4/HiPPO), ch13 SSD/duality/RetNet, ch14 RWKV/xLSTM/DeltaNet/hybrids** →
+  `post_transformers/references/dossier/` + `ssm-foundations` ch09–14 (already anchored — cross-link, do not re-derive).
+- **ch09 scaling/objectives/tokenization** → `research_llm_pretraining_scaling`. **ch11 PEFT/LoRA** → `research_peft`.
+- **ch12 MoE, ch17 routing** → `research_mixture_of_experts` (building 2026-07-09).
+- **ch07 enc/dec taxonomy + cross-attn, ch08 masks/MLM/prefix-LM/UniLM** → `research_encoder_decoder_seq2seq` (building 2026-07-09).
+- **ch02 RNN/LSTM/GRU/BPTT/seq2seq/Bahdanau** → `research_recurrent_seq2seq` (building 2026-07-09).
+
+Runbooks: `~/Claude/research-dossiers/docs/plans/active/2026-07-09-{mixture-of-experts,encoder-decoder-seq2seq,recurrent-seq2seq}-dossier.md`.
+When the sweep reaches ch02/07/08/12/17, pull anchored excerpts + evidence IDs from these rather than re-deriving citations.
