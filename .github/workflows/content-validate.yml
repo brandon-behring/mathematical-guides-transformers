@@ -10,6 +10,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -17,4 +18,9 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+        # pagedjs-cli → puppeteer@20 tries to download Chromium in a postinstall
+        # script; that fetch intermittently hangs on CI (6h timeout). No CI job
+        # needs a browser (nothing runs `npm run pdf`), so skip the download.
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
       - run: npm run validate

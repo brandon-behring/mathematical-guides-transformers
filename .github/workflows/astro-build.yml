@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -17,6 +18,10 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+        # Skip puppeteer's flaky Chromium postinstall download (pagedjs-cli dep);
+        # the build needs no browser. Prevents the intermittent npm ci hang.
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
       - run: npm run build
         env:
           BOOK_PRESET: research-portfolio
