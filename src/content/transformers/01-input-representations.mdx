@@ -56,6 +56,8 @@ the $x_t$-th row of $\mathbf E$. Equivalently, $\mathbf e_t = \mathbf e_{x_t}^\t
 
 The embedding carries identity but no order: a permutation of the tokens permutes the rows of $\hat{\mathbf X}$ and nothing else. Position must be supplied separately, which is the subject of the later sections. First we generalize the lookup itself.
 
+<MarginNote variant="cross-ref" label="Who needs position">Injected position is attention's need, not every model's: a recurrence carries order in the *arrival sequence* of its state updates (<XRef id="def-tf2-rnn" />), while attention processes a set (<XRef id="def-tf4-attention" />) — which is exactly why positional encodings exist.</MarginNote>
+
 ## From tokens to units: the embedding interface
 
 Token embedding is one instance of a more general operation. A modality reaches the transformer through a single map from its own raw units into $\R^{d}$; once that map is fixed, the model sees only the matrix it produces. We name the interface, then read token lookup, image patches, and discrete visual codes off it as three instances of one form.

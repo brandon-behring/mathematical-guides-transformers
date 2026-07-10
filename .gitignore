@@ -16,6 +16,11 @@ public/pagefind/
 .DS_Store
 *.swp
 
+# TeX byproducts from figure compilation (only the .tex + .pdf are tracked)
+figures/*.aux
+figures/*.log
+figures/*.out
+
 # Private reference material (copyrighted source PDFs + extracted derivatives).
 # Never commit; never reference from published guide content.
 reference-material/

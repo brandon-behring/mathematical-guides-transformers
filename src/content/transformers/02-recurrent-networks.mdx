@@ -1,0 +1,414 @@
+---
+title: "Recurrent Networks and the Seq2Seq Lineage"
+slug: recurrent-networks
+chapter: 2
+part: 2
+description: "The sequence model before attention: the recurrent state and its unrolled computation graph, the backpropagation-through-time gradient as a sum over time of chain-rule products, the geometric vanishing/exploding gradient bound, the LSTM/GRU gated additive remedy and the constant error carousel, the seq2seq encoder-decoder with its fixed-vector bottleneck, and Bahdanau's additive attention as the birth of content addressing."
+last_verified: 2026-07-09
+rigor_level: rigorous
+prerequisites: [notation, input-representations]
+notation_introduced: ['\mathbf h_t', 'd_s', '\mathbf a_t', '\varphi', '\gamma', '\mathbf W_h', '\mathbf W_x', '\mathbf f_t', '\mathbf i_t', '\mathbf o_t', '\mathbf c_t', '\mathbf z_t', '\mathbf r_t', '\mathbf s_t', '\alpha_{tj}']
+theorems: ['def-tf2-rnn', 'thm-tf2-bptt', 'thm-tf2-gradient-bound', 'def-tf2-lstm', 'def-tf2-gru', 'prop-tf2-cec', 'def-tf2-seq2seq', 'prop-tf2-bottleneck', 'def-tf2-additive-attention']
+los:
+  - id: TF-2.1
+    statement: "Define the recurrent network and trace its unrolled computation graph as a depth-n network with tied weights."
+  - id: TF-2.2
+    statement: "Derive the backpropagation-through-time gradient as a sum over time of chain-rule products, and derive the backward recurrence that computes it in one pass."
+  - id: TF-2.3
+    statement: "Prove the geometric gradient bound for the unrolled recurrence, identify the vanishing and exploding regimes, and explain how the LSTM/GRU gated additive path evades the bound."
+  - id: TF-2.4
+    statement: "Construct the sequence-to-sequence encoder-decoder, prove its fixed-vector bottleneck by a pigeonhole count, and construct additive attention as the remedy."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import SolutionBox from '../../components/SolutionBox.astro';
+
+# Recurrent Networks and the Seq2Seq Lineage
+
+**Where we are.** The notation chapter fixed the toolkit and the previous chapter built the inputs: any modality becomes a sequence of vectors in $\R^{n\times d}$. This chapter opens the guide's account of what to *do* with that sequence, and it begins where the field began — with recurrence. We define the recurrent network and unroll it into a depth-$n$ computation graph with tied weights; derive its training gradient, backpropagation through time, as a sum over time of chain-rule products; prove the geometric bound on those products that makes long-range gradients vanish or explode; construct the gated remedies, the LSTM and the GRU, and prove that their additive cell path — the constant error carousel — escapes the bound; assemble recurrent networks into the sequence-to-sequence encoder–decoder and prove that its fixed-vector interface is a genuine bottleneck, by a pigeonhole count; and construct the mechanism invented to dissolve that bottleneck, additive attention. That last construction is the hinge of the whole guide: softmax content addressing is born here, *inside* a recurrent model, and the chapters that follow ask what survives when the recurrence is taken away.
+
+## The recurrent state
+
+A recurrent network processes a sequence the way a reader processes a sentence: one element at a time, carrying a running summary forward. The summary is a single vector, the *state*; each step folds the next input into it by one fixed, learned map. All memory of the past must live in that vector — a design decision whose consequences, good and bad, drive this entire chapter.
+
+Throughout this chapter we treat states and inputs as **column** vectors — a stated departure from the row convention, as in the softmax-Jacobian calculus of the notation chapter — so that Jacobians act by left multiplication. The inputs $\mathbf x_1,\dots,\mathbf x_n\in\R^{d}$ are the rows of an embedded sequence $\mathbf X\in\R^{n\times d}$ (<XRef id="def-tf1-embedding-interface" />), written as columns.
+
+<Theorem kind="definition" name="Recurrent neural network" id="def-tf2-rnn">
+Fix a **state dimension** $d_s$, weights $\mathbf W_h\in\R^{d_s\times d_s}$, $\mathbf W_x\in\R^{d_s\times d}$, a bias $\mathbf b\in\R^{d_s}$, and an elementwise nonlinearity $\varphi$ (classically $\tanh$). Given inputs $\mathbf x_1,\dots,\mathbf x_n\in\R^{d}$ and the initial state $\mathbf h_0 = \mathbf 0$, the **recurrent neural network (RNN)** computes, for $t = 1,\dots,n$, the pre-activation and **hidden state**
+$$
+\mathbf a_t \defeq \mathbf W_h\mathbf h_{t-1} + \mathbf W_x\mathbf x_t + \mathbf b,
+\qquad
+\mathbf h_t \defeq \varphi(\mathbf a_t) \in\R^{d_s}.
+$$
+The **unrolled computation graph** of $\mathbf h_n$ is the depth-$n$ feed-forward network obtained by writing one copy of the update per step,
+$$
+\mathbf h_n = \varphi\big(\mathbf W_h\,\varphi(\mathbf W_h\,\varphi(\cdots) + \mathbf W_x\mathbf x_{n-1} + \mathbf b) + \mathbf W_x\mathbf x_n + \mathbf b\big),
+$$
+in which every layer shares the same parameters $(\mathbf W_h, \mathbf W_x, \mathbf b)$ — the weights are **tied** across time.<Sidenote>The simple recurrent architecture in this form is due to <Cite key="elman1990finding" />.</Sidenote>
+</Theorem>
+
+<MarginNote variant="pattern" label="Tied depth">An RNN on $n$ tokens *is* an $n$-layer network whose layers are one shared map. Depth grows with the data, parameters do not.</MarginNote>
+
+<Figure
+  src="/figures/unrolled-rnn.svg"
+  caption="Unrolling the recurrence. Left: the cyclic view — one cell with a self-loop. Right: the unrolled view — a depth-n feed-forward graph in which every step applies the same tied weights, and the only path from x_1 to h_n is through every intermediate state. Rendered from TikZ via the figures pipeline."
+  id="fig-unrolled-rnn"
+  width="80%"
+/>
+
+Two structural facts follow from the definition and shape everything below. First, the state is a *sufficient statistic by fiat*: the distribution of everything the network computes after step $t$ depends on $\mathbf x_1,\dots,\mathbf x_t$ only through $\mathbf h_t\in\R^{d_s}$, a vector whose size is fixed before the data arrive. Second, the unrolled graph is a *chain*: the only path from an early input to a late state passes through every intermediate state, so every long-range dependency must survive $T - t$ applications of the same map. The first fact becomes the seq2seq bottleneck; the second becomes the vanishing gradient. We take them in gradient order.
+
+<MarginNote variant="tip" label="Vision">The recurrence never asks whether a row is token, patch, or code (<XRef id="rem-tf1-modality-blind" />); it only demands a total order — a patch grid must be raster-scanned first.</MarginNote>
+
+## Backpropagation through time
+
+Training minimizes a per-step loss summed over the sequence, $L = \sum_{t=1}^n L_t(\mathbf h_t)$ — for language modeling, $L_t$ is the cross-entropy of the next-token prediction read off $\mathbf h_t$ (<XRef id="def-cross-entropy" />). The gradient computation is nothing but the chain rule on the unrolled graph, with one wrinkle: the same $\mathbf W_h$ appears at every layer, so its total gradient is a *sum over the occurrences*. Working that out yields both the formula that exposes the pathology and the algorithm that computes it in one backward pass.
+
+<MarginNote variant="tip" label="Self-explanation">$\mathbf W_h$ appears $n$ times in the unrolled graph. Before reading: what should $\nabla_{\mathbf W_h} L$ be, if each occurrence were an independent copy?</MarginNote>
+
+<Theorem kind="theorem" name="Backpropagation through time" id="thm-tf2-bptt">
+For the RNN of <XRef id="def-tf2-rnn" />, with $\varphi$ and each per-step loss differentiable and $L = \sum_{t=1}^{n} L_t(\mathbf h_t)$:
+
+**(i) Jacobian factorization.** For $1 \le s < t \le n$,
+$$
+\frac{\partial \mathbf h_t}{\partial \mathbf h_s}
+= \prod_{r=s+1}^{t} \operatorname{diag}\!\big(\varphi'(\mathbf a_r)\big)\,\mathbf W_h,
+$$
+the factors ordered with $r$ decreasing from left to right (leftmost $r = t$), and $\partial\mathbf h_t/\partial\mathbf h_t = \mathbf I$.
+
+**(ii) Sum over time of chain-rule products.**
+$$
+\nabla_{\mathbf W_h} L
+= \sum_{t=1}^{n}\ \sum_{s=1}^{t}\ \operatorname{diag}\!\big(\varphi'(\mathbf a_s)\big)
+\left(\frac{\partial \mathbf h_t}{\partial \mathbf h_s}\right)^{\!\top}
+\big(\nabla_{\mathbf h_t} L_t\big)\ \mathbf h_{s-1}^\top .
+$$
+
+**(iii) Backward recurrence.** The totals $\mathbf g_t \defeq \nabla_{\mathbf h_t} L$ satisfy
+$$
+\mathbf g_n = \nabla_{\mathbf h_n} L_n,
+\qquad
+\mathbf g_t = \nabla_{\mathbf h_t} L_t + \mathbf W_h^\top \operatorname{diag}\!\big(\varphi'(\mathbf a_{t+1})\big)\,\mathbf g_{t+1},
+$$
+and $\nabla_{\mathbf W_h} L = \sum_{s=1}^{n} \operatorname{diag}(\varphi'(\mathbf a_s))\,\mathbf g_s\,\mathbf h_{s-1}^\top$, computable in one backward pass in $O\!\big(n\,d_s(d_s + d)\big)$ arithmetic.<Sidenote>The algorithm and the name are due to <Cite key="werbos1990bptt" />.</Sidenote>
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (one-step Jacobian).** $\mathbf h_r = \varphi(\mathbf a_r)$ with $\varphi$ elementwise, so $\partial\mathbf h_r/\partial\mathbf a_r = \operatorname{diag}(\varphi'(\mathbf a_r))$; and $\mathbf a_r$ is affine in $\mathbf h_{r-1}$ with linear part $\mathbf W_h$, so $\partial\mathbf a_r/\partial\mathbf h_{r-1} = \mathbf W_h$. By the chain rule,
+$$
+\frac{\partial \mathbf h_r}{\partial \mathbf h_{r-1}} = \operatorname{diag}\!\big(\varphi'(\mathbf a_r)\big)\,\mathbf W_h .
+$$
+
+**Step 2 (compose across the gap).** In the unrolled graph the unique path from $\mathbf h_s$ to $\mathbf h_t$ is $\mathbf h_s\to\mathbf h_{s+1}\to\cdots\to\mathbf h_t$, so the chain rule multiplies the one-step Jacobians of Step 1 in path order, giving (i).
+
+**Step 3 (tied weights sum over occurrences).** Replace the $s$-th occurrence of $\mathbf W_h$ by an independent copy $\mathbf W^{(s)}$, making $L$ a function of $n$ copies that agrees with the original when all copies equal $\mathbf W_h$. By the multivariate chain rule, the derivative in the tied parameter is the sum of the derivatives in the copies:
+$$
+\nabla_{\mathbf W_h} L = \sum_{s=1}^{n} \nabla_{\mathbf W^{(s)}} L\ \Big|_{\mathbf W^{(1)}=\cdots=\mathbf W^{(n)}=\mathbf W_h}.
+$$
+The copy $\mathbf W^{(s)}$ affects $L$ only through $\mathbf a_s$, and $[\mathbf a_s]_i = \sum_j [\mathbf W^{(s)}]_{ij}[\mathbf h_{s-1}]_j + \cdots$ gives $\nabla_{\mathbf W^{(s)}} L = (\nabla_{\mathbf a_s} L)\,\mathbf h_{s-1}^\top$ (an outer product). Finally $\mathbf a_s$ reaches the loss through every $\mathbf h_t$ with $t \ge s$, so
+$$
+\nabla_{\mathbf a_s} L
+= \operatorname{diag}\!\big(\varphi'(\mathbf a_s)\big) \sum_{t=s}^{n} \left(\frac{\partial \mathbf h_t}{\partial \mathbf h_s}\right)^{\!\top} \nabla_{\mathbf h_t} L_t
+\qquad\text{(Step 1; Step 2; transpose for gradients)}.
+$$
+Substituting and exchanging the order of the double sum ($s \le t$) gives (ii).
+
+**Step 4 (backward recurrence).** Split the sum defining $\mathbf g_s = \sum_{t\ge s} (\partial\mathbf h_t/\partial\mathbf h_s)^\top \nabla_{\mathbf h_t} L_t$ into its $t = s$ term and the rest; each remaining term factors through the first hop, $(\partial\mathbf h_t/\partial\mathbf h_s)^\top = (\partial\mathbf h_{s+1}/\partial\mathbf h_s)^\top(\partial\mathbf h_t/\partial\mathbf h_{s+1})^\top$, and the common factor pulls out:
+$$
+\mathbf g_s = \nabla_{\mathbf h_s} L_s + \mathbf W_h^\top \operatorname{diag}\!\big(\varphi'(\mathbf a_{s+1})\big) \sum_{t=s+1}^{n} \left(\frac{\partial \mathbf h_t}{\partial \mathbf h_{s+1}}\right)^{\!\top} \nabla_{\mathbf h_t} L_t
+= \nabla_{\mathbf h_s} L_s + \mathbf W_h^\top \operatorname{diag}\!\big(\varphi'(\mathbf a_{s+1})\big)\,\mathbf g_{s+1}.
+$$
+Each backward step is one diagonal scaling and one matrix–vector product, $O(d_s^2)$; accumulating the outer products $\operatorname{diag}(\varphi'(\mathbf a_s))\,\mathbf g_s\,\mathbf h_{s-1}^\top$ (and the analogous $\nabla_{\mathbf W_x} L$ terms, $O(d_s d)$ each) over $n$ steps gives the stated cost. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="pattern" label="Two clocks">Read (ii) with two indices: $t$ ranges over where loss is *read out*, $s$ over where the parameter *acted*. Every pair $s \le t$ contributes one chain-rule product spanning the gap.</MarginNote>
+
+The gradients with respect to $\mathbf W_x$ and $\mathbf b$ follow from the identical Step 3 argument with $\mathbf x_s^\top$ or $1$ in place of $\mathbf h_{s-1}^\top$. Everything pathological about the formula sits in one factor: the Jacobian product of (i), a product of $t - s$ matrices, every one of them the *same kind* of matrix. We now bound it.
+
+## Vanishing and exploding gradients
+
+A product of $T - t$ numbers, each of size $\rho$, is $\rho^{T-t}$: geometric in the gap. The Jacobian product of <XRef id="thm-tf2-bptt" /> behaves the same way with $\rho$ replaced by an operator norm, and the norm of each factor is capped by two quantities the architecture fixes — the largest singular value of $\mathbf W_h$ and the largest slope of $\varphi$. The consequence is that the credit a loss at time $T$ can assign to a state at time $t$ dies (or blows up) geometrically in $T - t$.
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: $\norm{\mathbf A\mathbf B}_2 \le \norm{\mathbf A}_2\norm{\mathbf B}_2$. What is the largest possible spectral norm of $\operatorname{diag}(\varphi'(\mathbf a))\,\mathbf W_h$, over all activations $\mathbf a$?</MarginNote>
+
+<Theorem kind="theorem" name="Geometric gradient bound" id="thm-tf2-gradient-bound">
+Let $\varphi$ be differentiable with $\gamma \defeq \sup_{z}\lvert\varphi'(z)\rvert < \infty$, and let $\sigma_{\max}(\mathbf W_h)$ be the largest singular value of $\mathbf W_h$. For all $t < T$,
+$$
+\norm{\frac{\partial \mathbf h_T}{\partial \mathbf h_t}}_2
+\;\le\; \prod_{s=t+1}^{T} \norm{\mathbf W_h^\top \operatorname{diag}\!\big(\varphi'(\mathbf a_s)\big)}_2
+\;\le\; \big(\gamma\,\sigma_{\max}(\mathbf W_h)\big)^{T-t}.
+$$
+Consequently:
+
+**(i) Vanishing regime.** If $\gamma\,\sigma_{\max}(\mathbf W_h) < 1$, then $\norm{\partial \mathbf h_T/\partial \mathbf h_t}_2 \to 0$ exponentially in the gap $T - t$.
+
+**(ii) Exploding regime.** Gradient growth is possible only if $\gamma\,\sigma_{\max}(\mathbf W_h) > 1$ (a necessary condition), and the geometric rate is attained: for the scalar linear RNN $\varphi = \operatorname{id}$, $\mathbf W_h = (\lambda)$ with $\lambda > 1$, one has $\partial h_T/\partial h_t = \lambda^{T-t} \to \infty$.<Sidenote>The difficulty was identified by <Cite key="bengio1994learning" />; the singular-value conditions are from <Cite key="pascanu2013difficulty" />.</Sidenote>
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (transpose invariance).** The spectral norm is invariant under transposition, so for each factor of <XRef id="thm-tf2-bptt" />(i),
+$$
+\norm{\operatorname{diag}\!\big(\varphi'(\mathbf a_s)\big)\,\mathbf W_h}_2
+= \norm{\big(\operatorname{diag}(\varphi'(\mathbf a_s))\,\mathbf W_h\big)^{\!\top}}_2
+= \norm{\mathbf W_h^\top \operatorname{diag}\!\big(\varphi'(\mathbf a_s)\big)}_2,
+$$
+which is the form in which the factor multiplies gradients in the backward recurrence.
+
+**Step 2 (submultiplicativity).** The spectral norm is submultiplicative, so the norm of the product in <XRef id="thm-tf2-bptt" />(i) is at most the product of the factor norms — the first inequality.
+
+**Step 3 (bound one factor).** A diagonal matrix has spectral norm equal to its largest absolute entry: $\norm{\operatorname{diag}(\mathbf v)}_2 = \max_i \lvert v_i\rvert$ (Exercise 2.3). Hence, by submultiplicativity again,
+$$
+\norm{\mathbf W_h^\top \operatorname{diag}\!\big(\varphi'(\mathbf a_s)\big)}_2
+\le \norm{\mathbf W_h^\top}_2\, \max_i \big\lvert\varphi'([\mathbf a_s]_i)\big\rvert
+\le \sigma_{\max}(\mathbf W_h)\,\gamma,
+$$
+using $\norm{\mathbf W_h^\top}_2 = \sigma_{\max}(\mathbf W_h)$. Multiplying $T - t$ identical bounds gives the second inequality.
+
+**Step 4 (regimes).** If $\gamma\sigma_{\max}(\mathbf W_h) = \rho < 1$, the bound reads $\rho^{T-t} \to 0$ exponentially — (i). For (ii), the bound shows growth is impossible when $\gamma\sigma_{\max}(\mathbf W_h) \le 1$, so $\gamma\sigma_{\max}(\mathbf W_h) > 1$ is necessary; in the scalar linear case every factor equals $\lambda$ exactly, so the product is $\lambda^{T-t}$, unbounded for $\lambda > 1$. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="formula" label="Slope caps">$\tanh' = 1 - \tanh^2 \le 1$, so $\gamma = 1$; the logistic sigmoid has $\gamma = 1/4$. A sigmoid RNN vanishes whenever $\sigma_{\max}(\mathbf W_h) < 4$.</MarginNote>
+
+<MarginNote variant="warning" label="One-sided">The first inequality is data-dependent (through the visited $\mathbf a_s$); the second is worst-case. The bound *proves* vanishing when $\gamma\sigma_{\max} < 1$; it only *permits* explosion otherwise.</MarginNote>
+
+The two regimes are not symmetric in practice. Explosion is loud — the loss spikes — and is suppressed by clipping the gradient norm; vanishing is silent: training proceeds, the recent past is learned, and the long range is simply never credited. The worked trace below makes the silence audible on the smallest possible instance.
+
+<Theorem kind="example" name="A two-step scalar gradient trace" id="ex-tf2-scalar-trace">
+Take $d_s = d = 1$, $\varphi = \tanh$, $w_h = 0.5$, $w_x = 1$, $b = 0$, $h_0 = 0$, and inputs $x_1 = x_2 = 1$.
+
+**Forward.** $a_1 = w_h h_0 + w_x x_1 = 1$, so $h_1 = \tanh(1) \approx 0.76159$ and $\varphi'(a_1) = 1 - h_1^2 \approx 0.41997$. Then $a_2 = 0.5\cdot 0.76159 + 1 = 1.38080$, so $h_2 = \tanh(1.38080) \approx 0.88113$ and $\varphi'(a_2) \approx 0.22361$.
+
+**Backward, by <XRef id="thm-tf2-bptt" />(ii).** The parameter $w_x$ acts at both steps, and its gradient is the sum of the two chain-rule products:
+$$
+\frac{\partial h_2}{\partial w_x}
+= \underbrace{\varphi'(a_2)\,x_2}_{s=2:\ 0.22361}
+\;+\;
+\underbrace{\varphi'(a_2)\,w_h\,\varphi'(a_1)\,x_1}_{s=1:\ 0.04696}
+\;\approx\; 0.27057 .
+$$
+The one-step-older occurrence already contributes $0.04696/0.22361 \approx 0.21$ of the fresh one — the per-step attenuation factor is exactly $w_h\,\varphi'(a_1) \approx 0.20999$. The state-to-state Jacobian across the full gap is
+$$
+\frac{\partial h_2}{\partial h_0} = \varphi'(a_2)\,w_h\cdot\varphi'(a_1)\,w_h \approx 0.02348
+\;\le\; \big(\gamma\,\sigma_{\max}\big)^2 = (1\cdot 0.5)^2 = 0.25,
+$$
+consistent with <XRef id="thm-tf2-gradient-bound" />. Compounded, the attenuation is ruinous: at this per-step factor a signal ten steps back contributes $\approx 0.21^{10} \approx 1.7\times 10^{-7}$ of a fresh signal, and even the bound's best case allows only $0.5^{20} \approx 9.5\times 10^{-7}$ across twenty steps. The network is structurally deaf to its own past.
+</Theorem>
+
+## Gated recurrences: LSTM and GRU
+
+Diagnosis before cure: the failure is *multiplicative*. Every step of the chain multiplies the gradient by a fresh copy of $\mathbf W_h^\top\operatorname{diag}(\varphi')$, and a product of many similar factors is geometric. The remedy is to give the state an *additive* update — new information is added to the old state rather than substituted through a squashing map — and to put the only multiplication under the network's own control, as a **gate**: a data-dependent factor in $(0,1)$ that the network can hold open at $\approx 1$. That is the long short-term memory design.
+
+<Theorem kind="definition" name="Long short-term memory (LSTM)" id="def-tf2-lstm">
+Let $\sigma(z) \defeq 1/(1+e^{-z})$ denote the elementwise logistic function (distinguish it from the singular value $\sigma_{\max}(\cdot)$, which always carries a matrix argument). The **LSTM** carries two states, a **cell state** $\mathbf c_t\in\R^{d_s}$ and a hidden state $\mathbf h_t\in\R^{d_s}$, updated for $t = 1,\dots,n$ by three **gates** and a candidate,
+$$
+\begin{aligned}
+\mathbf f_t &\defeq \sigma(\mathbf W_f\mathbf x_t + \mathbf U_f\mathbf h_{t-1} + \mathbf b_f) && \text{(forget gate)},\\
+\mathbf i_t &\defeq \sigma(\mathbf W_i\mathbf x_t + \mathbf U_i\mathbf h_{t-1} + \mathbf b_i) && \text{(input gate)},\\
+\mathbf o_t &\defeq \sigma(\mathbf W_o\mathbf x_t + \mathbf U_o\mathbf h_{t-1} + \mathbf b_o) && \text{(output gate)},\\
+\tilde{\mathbf c}_t &\defeq \tanh(\mathbf W_c\mathbf x_t + \mathbf U_c\mathbf h_{t-1} + \mathbf b_c) && \text{(candidate)},
+\end{aligned}
+$$
+followed by the state updates
+$$
+\mathbf c_t \defeq \mathbf f_t \odot \mathbf c_{t-1} + \mathbf i_t \odot \tilde{\mathbf c}_t,
+\qquad
+\mathbf h_t \defeq \mathbf o_t \odot \tanh(\mathbf c_t),
+$$
+with $\mathbf W_\bullet\in\R^{d_s\times d}$, $\mathbf U_\bullet\in\R^{d_s\times d_s}$, $\mathbf b_\bullet\in\R^{d_s}$, and $\mathbf c_0 = \mathbf h_0 = \mathbf 0$.<Sidenote>The architecture and its analysis of the multiplicative failure are due to <Cite key="hochreiter1997lstm" />; their original cell has no forget gate — the gate $\mathbf f_t$ shown here was added by <Cite key="gers2000forget" />.</Sidenote>
+</Theorem>
+
+<MarginNote variant="pattern" label="Gate = dial">Each gate is a vector in $(0,1)^{d_s}$ computed *from the data*: a per-coordinate dial between "keep" and "overwrite," learned rather than fixed.</MarginNote>
+
+The crucial line is the cell update: $\mathbf c_t$ is a gated *sum*, not a squashed matrix product. Along the chain $\mathbf c_t \to \mathbf c_{t+1} \to \cdots$ the state is never pushed through $\varphi$ and never multiplied by a weight matrix. The next proposition isolates that path and computes its gain exactly.
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: with the gates held fixed, the cell update is $\mathbf c_t = \mathbf f_t\odot\mathbf c_{t-1} + \text{const}$. What is the Jacobian of an elementwise product with a fixed vector?</MarginNote>
+
+<Theorem kind="proposition" name="Constant error carousel" id="prop-tf2-cec">
+Fix $t < T$ and differentiate along the **cell path** — the path $\mathbf c_t \to \mathbf c_{t+1} \to \cdots \to \mathbf c_T$ in the unrolled graph that never passes through a hidden state (equivalently, hold the gate and candidate activations fixed). The Jacobian contribution of this path is
+$$
+\left.\frac{\partial \mathbf c_T}{\partial \mathbf c_t}\right|_{\text{cell path}}
+= \prod_{s=t+1}^{T} \operatorname{diag}(\mathbf f_s)
+= \operatorname{diag}\!\Big(\bigodot_{s=t+1}^{T} \mathbf f_s\Big),
+$$
+whose $i$-th diagonal entry is $\prod_{s=t+1}^{T} [\mathbf f_s]_i \in (0,1)$. The factor involves no weight matrix and no $\varphi'$: saturating the forget gates open drives the gain arbitrarily close to $1$ across an arbitrary gap $T - t$ — and in the original forget-gate-free cell of <Cite key="hochreiter1997lstm" />, whose update is $\mathbf c_t = \mathbf c_{t-1} + \mathbf i_t\odot\tilde{\mathbf c}_t$, the path gain is exactly $1$.
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (the update is affine along the path).** With $\mathbf f_s$, $\mathbf i_s$, $\tilde{\mathbf c}_s$ held fixed — they are functions of $(\mathbf x_s, \mathbf h_{s-1})$, and the cell path excludes the hidden states — the update $\mathbf c_s = \mathbf f_s\odot\mathbf c_{s-1} + \mathbf i_s\odot\tilde{\mathbf c}_s$ is affine in $\mathbf c_{s-1}$. The map $\mathbf c \mapsto \mathbf f_s\odot\mathbf c$ is linear with matrix $\operatorname{diag}(\mathbf f_s)$, so the path's one-step Jacobian is $\operatorname{diag}(\mathbf f_s)$.
+
+**Step 2 (compose).** Diagonal matrices multiply entrywise: the path Jacobian across the gap is $\prod_s \operatorname{diag}(\mathbf f_s) = \operatorname{diag}(\bigodot_s \mathbf f_s)$, with entries $\prod_s [\mathbf f_s]_i$; each lies in $(0,1)$ since every $[\mathbf f_s]_i = \sigma(\cdot) \in (0,1)$, and approaches $1$ as the gates saturate open.
+
+**Step 3 (contrast with the bound).** No factor is a weight matrix and no factor is a derivative of a squashing nonlinearity, so the mechanism of <XRef id="thm-tf2-gradient-bound" /> — a forced product of $\mathbf W_h^\top\operatorname{diag}(\varphi')$ terms — is structurally absent on this path. The gain is not a fixed constant $\rho^{T-t}$ but a learned, per-coordinate quantity the network sets by its gates. $\qquad\blacksquare$
+</Theorem>
+
+The proposition is honest about its scope: the *total* Jacobian $\partial\mathbf c_T/\partial\mathbf c_t$ adds further paths that pass through hidden states into the gates, and those paths do carry weight-matrix products. What the LSTM guarantees is the *existence* of one additive highway whose gain the network controls pointwise — enough to transport error across long gaps, and the architectural ancestor of the residual stream that will play the same role in the depth direction of the transformer.
+
+The GRU compresses the same remedy into a single state vector: one **update gate** divides each coordinate between keeping the old state and writing a candidate, and a **reset gate** controls how much of the past the candidate may read.
+
+<Theorem kind="definition" name="Gated recurrent unit (GRU)" id="def-tf2-gru">
+The **GRU** merges the cell and hidden state into one vector, using two gates:
+$$
+\begin{aligned}
+\mathbf z_t &\defeq \sigma(\mathbf W_z\mathbf x_t + \mathbf U_z\mathbf h_{t-1} + \mathbf b_z) && \text{(update gate)},\\
+\mathbf r_t &\defeq \sigma(\mathbf W_r\mathbf x_t + \mathbf U_r\mathbf h_{t-1} + \mathbf b_r) && \text{(reset gate)},\\
+\tilde{\mathbf h}_t &\defeq \tanh\!\big(\mathbf W_c\mathbf x_t + \mathbf U_c(\mathbf r_t\odot\mathbf h_{t-1}) + \mathbf b_c\big) && \text{(candidate)},
+\end{aligned}
+$$
+with the state update the gated interpolation
+$$
+\mathbf h_t \defeq \mathbf z_t\odot\mathbf h_{t-1} + (\mathbf 1 - \mathbf z_t)\odot\tilde{\mathbf h}_t .
+$$
+<Sidenote>Introduced by <Cite key="cho2014gru" />, in the same work that introduced the RNN encoder–decoder of the next section.</Sidenote>
+</Theorem>
+
+The GRU update is an *entrywise convex combination*: each coordinate of $\mathbf h_t$ lies between the corresponding coordinates of $\mathbf h_{t-1}$ and $\tilde{\mathbf h}_t$ — the convex-combination tool of the notation chapter (<XRef id="prop-row-stochastic-convex" />) reappearing with weights $(z, 1 - z)$ per coordinate. Its carousel is Exercise 2.4: along the direct path the one-step gain is $\operatorname{diag}(\mathbf z_t)$, so $\mathbf z_t \approx \mathbf 1$ holds the state — and the gradient — almost unchanged. This convex-interpolation form is worth remembering; it returns near the end of the arc as the exact scalar reduction of a selective state space update.
+
+## Sequence-to-sequence and the bottleneck
+
+Gates fix the gradient; they do not enlarge the state. We now assemble recurrent networks into the architecture that exposed the state itself as the limiting resource. The task is sequence *transduction* — map an input sequence to an output sequence of a different length, as in translation — and the natural recurrent design reads the input once, summarizes it, and generates from the summary.
+
+<Theorem kind="definition" name="Sequence-to-sequence encoder–decoder" id="def-tf2-seq2seq">
+A **seq2seq** model is a pair of recurrent networks (of any cell type above). The **encoder** reads the input $\mathbf x_1,\dots,\mathbf x_n$ and produces states $\mathbf h_1,\dots,\mathbf h_n\in\R^{d_s}$; the **context vector** is its final state,
+$$
+\mathbf c \defeq \mathbf h_n \in\R^{d_s}.
+$$
+The **decoder** is a recurrent network over its own outputs, initialized at $\mathbf s_0 = \mathbf c$, which generates $y_1,\dots,y_m$ autoregressively:
+$$
+\mathbf s_t \defeq \varphi\big(\mathbf W_s\mathbf s_{t-1} + \mathbf W_y \Emb(y_{t-1}) + \mathbf b'\big),
+\qquad
+p(y_t \mid y_{<t}, \mathbf x_{1:n}) \defeq \softmax(\mathbf W_{\text{out}}\,\mathbf s_t)_{y_t},
+$$
+with $y_0$ a distinguished start symbol of the output vocabulary and generation halting at a distinguished end symbol, which determines $m$. By construction, the joint conditional $p(y_{1:m}\mid \mathbf x_{1:n})$ depends on the input **only through** $\mathbf c$.<Sidenote>The RNN encoder–decoder is due to <Cite key="cho2014gru" />; its scaled realization for translation to <Cite key="sutskever2014seq2seq" />.</Sidenote>
+</Theorem>
+
+<Figure
+  src="/figures/seq2seq-bottleneck.svg"
+  caption="The seq2seq bottleneck. Every path from the input sequence to every decoder step passes through the single fixed-dimensional context vector c = h_n: an hourglass whose neck does not widen as n grows. Rendered from TikZ via the figures pipeline."
+  id="fig-seq2seq-bottleneck"
+  width="75%"
+/>
+
+The last clause of the definition is the architecture's signature and its flaw. The input may be arbitrarily long; the interface it must pass through has dimension $d_s$, fixed before the data arrive. Counting is enough to show this is a genuine — not merely aesthetic — limitation.
+
+<Theorem kind="proposition" name="The fixed-vector bottleneck" id="prop-tf2-bottleneck">
+Fix the state dimension $d_s$ and a machine representation of $b$ bits per coordinate, and let the input vocabulary be $\mathcal V$. Any encoder computes a map $\mathcal V^{\,n}\to\R^{d_s}$ whose image contains at most $2^{b\,d_s}$ distinct context vectors. If
+$$
+n \,\log_2\lvert\mathcal V\rvert \;>\; b\,d_s,
+$$
+then there exist two distinct inputs $\mathbf x \ne \mathbf x'$ with $\mathbf c(\mathbf x) = \mathbf c(\mathbf x')$, and every decoder conditioned only on the context assigns them identical output distributions: $p(\cdot\mid\mathbf x) = p(\cdot\mid\mathbf x')$.
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (count the codes).** A context vector has $d_s$ coordinates of $b$ bits each, hence at most $2^{b d_s}$ representable values.
+
+**Step 2 (count the inputs).** There are $\lvert\mathcal V\rvert^n = 2^{n\log_2\lvert\mathcal V\rvert}$ distinct input sequences of length $n$.
+
+**Step 3 (pigeonhole and factorization).** If $2^{n\log_2\lvert\mathcal V\rvert} > 2^{b d_s}$, the map cannot be injective: two distinct inputs share a context. By <XRef id="def-tf2-seq2seq" /> the decoder's conditional factors through $\mathbf c$, so the two inputs receive the same conditional distribution over every output sequence. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="formula" label="An instance">$d_s = 1000$, fp32 ($b = 32$), $\lvert\mathcal V\rvert = 2^{15}$: collisions are forced once $n > 32000/15 \approx 2133$, i.e. at $n = 2134$ tokens.</MarginNote>
+
+The proposition is a worst-case identity statement — it exhibits two inputs the decoder *cannot* treat differently, however it is trained — and in practice the degradation arrives far earlier: empirically, fixed-vector translation quality falls off well before the counting threshold, on sentences of a few dozen words.<Sidenote>The length degradation and its remedy are the motivating observations of <Cite key="bahdanau2015attention" />.</Sidenote> The same counting argument returns at the end of the arc, sharpened into a recall bound that prices *any* fixed-size decode state against the growing cache it replaces. Here, its 2015 resolution created the object this guide is about.
+
+## Additive attention
+
+If one vector is too narrow an interface, let the decoder look back at *all* the encoder states — but not uniformly: at each output step it should select what is currently relevant. The selection mechanism must be differentiable, so instead of choosing one position it forms a *soft* choice: score every encoder state against the decoder's current state, normalize the scores to a distribution with $\softmax$, and take the resulting convex combination. Relevance is judged by *content*, not by position — the decoder addresses the input by what it says, and the fixed context $\mathbf c$ is replaced by a fresh, query-dependent context at every step.
+
+<Theorem kind="definition" name="Additive (Bahdanau) attention" id="def-tf2-additive-attention">
+Let $\mathbf h_1,\dots,\mathbf h_n\in\R^{d_s}$ be encoder states and $\mathbf s_{t-1}\in\R^{d_s}$ the decoder state before emitting output $t$. Fix an alignment dimension $d_a$ and parameters $\mathbf W_a, \mathbf U_a\in\R^{d_a\times d_s}$, $\mathbf v_a\in\R^{d_a}$. The **alignment scores**, **attention weights**, and **context vector** at step $t$ are
+$$
+e_{tj} \defeq \mathbf v_a^\top\tanh\!\big(\mathbf W_a\mathbf s_{t-1} + \mathbf U_a\mathbf h_j\big),
+\qquad
+\alpha_{t} \defeq \softmax\big(e_{t1},\dots,e_{tn}\big),
+\qquad
+\mathbf c_t \defeq \sum_{j=1}^{n} \alpha_{tj}\,\mathbf h_j,
+$$
+and the decoder update consumes its own context, $\mathbf s_t \defeq \varphi\big(\mathbf W_s\mathbf s_{t-1} + \mathbf W_y\Emb(y_{t-1}) + \mathbf W_{\!c}\,\mathbf c_t + \mathbf b'\big)$. From here on $\mathbf c_t$ denotes this per-step context — the fixed seq2seq context $\mathbf c$ made query-dependent; the LSTM cell state of <XRef id="def-tf2-lstm" /> does not appear again in this chapter.<Sidenote>Introduced by <Cite key="bahdanau2015attention" /> as "learning to align and translate."</Sidenote>
+</Theorem>
+
+Each weight vector $\alpha_t$ is a probability distribution over input positions (<XRef id="def-softmax" />), so $\mathbf c_t$ is a convex combination of the encoder states (<XRef id="prop-row-stochastic-convex" />) — stacking the $\alpha_t$ as rows gives a row-stochastic matrix, our third tool returning in its natural habitat. The bottleneck of <XRef id="prop-tf2-bottleneck" /> is dissolved, not merely widened: the decoder's interface to the input now *grows with the input*, one $d_s$-vector per position, and the pigeonhole count no longer applies because no fixed-dimensional summary sits between encoder and decoder.
+
+<MarginNote variant="pattern" label="What addressing needs">The scoring–normalizing–averaging machinery consumes one query vector and $n$ key vectors. Nothing in it requires that those vectors come from a recurrence.</MarginNote>
+
+<Theorem kind="remark" name="Keep the addressing, drop the recurrence" id="rem-tf2-toward-attention">
+Look at what <XRef id="def-tf2-additive-attention" /> uses and what it does not. The addressing core — score, $\softmax$, convex combination — makes no use of recurrence at all: it consumes a query vector ($\mathbf s_{t-1}$) and a set of candidate vectors ($\mathbf h_j$), and the two recurrent networks serve only to *manufacture* those vectors, at the cost of the sequential chain and its geometric gradients (<XRef id="thm-tf2-gradient-bound" />). The move that defines the rest of this guide is to keep the content addressing and delete the manufacturer: let learned linear projections produce queries, keys, and values directly from the embedded sequence, replace the additive score $\mathbf v_a^\top\tanh(\mathbf W_a\mathbf s + \mathbf U_a\mathbf h)$ by a scaled dot product, and let the addressing itself do all of the mixing — scaled dot-product attention (<XRef id="def-tf4-attention" />), the subject of Part 3. Before taking that step, the next chapter follows the other branch of the fork: keep the recurrence, but make it *linear*, so that the chain can be computed in parallel and its timescales controlled — a branch that rejoins this one, selective and content-aware, at the end of the arc.
+</Theorem>
+
+## Exercises
+
+Attempt each before expanding its solution.
+
+**Exercise 2.1 (Compute).** Write out the unrolled two-step expression for $h_2$ from <XRef id="def-tf2-rnn" />, identifying the tied occurrences of $(w_h, w_x, b)$. Then rerun the trace of <XRef id="ex-tf2-scalar-trace" /> with $w_h = 0.8$, $w_x = 1$, $b = 0$, $h_0 = 0$, $\varphi = \tanh$, and inputs $x_1 = 0.5$, $x_2 = -0.5$: compute $h_1$, $h_2$, and $\partial h_2/\partial h_0$, and verify the bound of <XRef id="thm-tf2-gradient-bound" />.
+
+<SolutionBox>
+
+**Unrolling.** $h_2 = \varphi\big(w_h\,\varphi(w_h h_0 + w_x x_1 + b) + w_x x_2 + b\big)$: the same triple $(w_h, w_x, b)$ appears at both depths — a depth-$2$ feed-forward network with tied weights, per <XRef id="def-tf2-rnn" />.
+
+**Forward.** $a_1 = 0.5$, so $h_1 = \tanh(0.5) \approx 0.46212$ and $\varphi'(a_1) = 1 - h_1^2 \approx 0.78645$. Then $a_2 = 0.8\cdot 0.46212 - 0.5 = -0.13031$, so $h_2 = \tanh(-0.13031) \approx -0.12957$ and $\varphi'(a_2) = 1 - h_2^2 \approx 0.98321$.
+
+**Backward.** By <XRef id="thm-tf2-bptt" />(i),
+$$
+\frac{\partial h_2}{\partial h_0} = \varphi'(a_2)\,w_h\cdot\varphi'(a_1)\,w_h
+= 0.98321\cdot 0.8\cdot 0.78645\cdot 0.8 \approx 0.49488 .
+$$
+The bound gives $(\gamma\,\sigma_{\max})^2 = (1\cdot 0.8)^2 = 0.64 \ge 0.49488$ — satisfied, and not tight, because the visited slopes $\varphi'(a_s)$ fall below the cap $\gamma = 1$. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 2.2 (Derive).** From <XRef id="thm-tf2-bptt" />(ii), derive the backward recurrence of part (iii) — $\mathbf g_t = \nabla_{\mathbf h_t} L_t + \mathbf W_h^\top\operatorname{diag}(\varphi'(\mathbf a_{t+1}))\,\mathbf g_{t+1}$ — and show that the full gradient computation costs $O\!\big(n\,d_s(d_s + d)\big)$ arithmetic, i.e. one backward pass, not one pass per pair $(s,t)$.
+
+<SolutionBox>
+
+Define $\mathbf g_s \defeq \sum_{t\ge s} (\partial\mathbf h_t/\partial\mathbf h_s)^\top \nabla_{\mathbf h_t} L_t$, the inner sum of (ii) without the leading diagonal factor. Split off $t = s$ (where the Jacobian is $\mathbf I$) and factor every remaining term through the first hop $\partial\mathbf h_{s+1}/\partial\mathbf h_s = \operatorname{diag}(\varphi'(\mathbf a_{s+1}))\mathbf W_h$:
+$$
+\mathbf g_s = \nabla_{\mathbf h_s} L_s + \mathbf W_h^\top\operatorname{diag}\!\big(\varphi'(\mathbf a_{s+1})\big)\sum_{t\ge s+1}\left(\frac{\partial\mathbf h_t}{\partial\mathbf h_{s+1}}\right)^{\!\top}\nabla_{\mathbf h_t} L_t
+= \nabla_{\mathbf h_s} L_s + \mathbf W_h^\top\operatorname{diag}\!\big(\varphi'(\mathbf a_{s+1})\big)\,\mathbf g_{s+1}.
+$$
+Each backward step costs one matrix–vector product and a diagonal scaling, $O(d_s^2)$; the per-step accumulations $\operatorname{diag}(\varphi'(\mathbf a_s))\mathbf g_s\mathbf h_{s-1}^\top$ and $\operatorname{diag}(\varphi'(\mathbf a_s))\mathbf g_s\mathbf x_s^\top$ are outer products of cost $O(d_s^2)$ and $O(d_s d)$. Over $n$ steps the total is $O(n\,d_s(d_s + d))$ — linear in $n$, though the double sum of (ii) has $\Theta(n^2)$ terms, because the recurrence shares every suffix product. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 2.3 (Prove).** Prove $\norm{\operatorname{diag}(\mathbf v)}_2 = \max_i\lvert v_i\rvert$, complete the second inequality of <XRef id="thm-tf2-gradient-bound" />, and conclude that a logistic-sigmoid RNN ($\varphi = \sigma$) has vanishing gradients whenever $\sigma_{\max}(\mathbf W_h) < 4$.
+
+<SolutionBox>
+
+For any $\mathbf x$, $\norm{\operatorname{diag}(\mathbf v)\mathbf x}^2 = \sum_i v_i^2 x_i^2 \le (\max_i v_i^2)\norm{\mathbf x}^2$, and the standard basis vector at a maximizing index attains equality, so $\norm{\operatorname{diag}(\mathbf v)}_2 = \max_i\lvert v_i\rvert$. Then, by submultiplicativity and transpose invariance of the spectral norm,
+$$
+\norm{\mathbf W_h^\top\operatorname{diag}(\varphi'(\mathbf a_s))}_2 \le \sigma_{\max}(\mathbf W_h)\max_i\lvert\varphi'([\mathbf a_s]_i)\rvert \le \sigma_{\max}(\mathbf W_h)\,\gamma,
+$$
+and the product over $s = t+1,\dots,T$ gives $(\gamma\sigma_{\max}(\mathbf W_h))^{T-t}$. For the logistic function, $\sigma' = \sigma(1-\sigma) \le 1/4$ (maximized at $\sigma = 1/2$), so $\gamma = 1/4$ and $\gamma\sigma_{\max}(\mathbf W_h) < 1$ holds whenever $\sigma_{\max}(\mathbf W_h) < 4$; by <XRef id="thm-tf2-gradient-bound" />(i) the gradient then vanishes exponentially. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 2.4 (Prove).** For the GRU (<XRef id="def-tf2-gru" />): show that $\mathbf h_t$ is an entrywise convex combination of $\mathbf h_{t-1}$ and $\tilde{\mathbf h}_t$; show that along the direct path (gates and candidate held fixed) the one-step Jacobian is $\operatorname{diag}(\mathbf z_t)$; and conclude the GRU's analogue of <XRef id="prop-tf2-cec" />.
+
+<SolutionBox>
+
+Coordinatewise, $[\mathbf h_t]_i = [\mathbf z_t]_i[\mathbf h_{t-1}]_i + (1 - [\mathbf z_t]_i)[\tilde{\mathbf h}_t]_i$ with $[\mathbf z_t]_i = \sigma(\cdot)\in(0,1)$: nonnegative weights summing to one, hence a convex combination per coordinate, so $[\mathbf h_t]_i$ lies between $[\mathbf h_{t-1}]_i$ and $[\tilde{\mathbf h}_t]_i$. Holding $\mathbf z_t$ and $\tilde{\mathbf h}_t$ fixed, the update is affine in $\mathbf h_{t-1}$ with linear part $\mathbf h\mapsto\mathbf z_t\odot\mathbf h$, whose matrix is $\operatorname{diag}(\mathbf z_t)$. Composing across a gap, the direct-path Jacobian is $\operatorname{diag}\big(\bigodot_{s}\mathbf z_s\big)$ — diagonal, weight-free, and $\varphi'$-free, with entries approaching $1$ as $\mathbf z_s\to\mathbf 1$ (the "copy" setting). This is the GRU's constant error carousel: one gate plays both the forget and input roles, with $\mathbf f = \mathbf z$ tied to $\mathbf i = \mathbf 1 - \mathbf z$. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 2.5 (Count).** A seq2seq model has $d_s = 512$ and stores its context in fp16 ($b = 16$) over a vocabulary of size $\lvert\mathcal V\rvert = 2^{16}$. Count the distinct representable contexts and the input sequences of length $n$, and find the smallest $n$ at which <XRef id="prop-tf2-bottleneck" /> forces a collision.
+
+<SolutionBox>
+
+The context takes at most $2^{b d_s} = 2^{16\cdot 512} = 2^{8192}$ values; there are $\lvert\mathcal V\rvert^n = 2^{16n}$ inputs of length $n$. A collision is forced when $16n > 8192$, i.e. $n > 512$: at $n = 513$, two distinct 513-token inputs must share a context vector, and the decoder must emit identical distributions for them. (The threshold $n = b\,d_s/\log_2\lvert\mathcal V\rvert = 512$ tokens is small by modern standards — and the practical failure precedes the counting failure by a wide margin.) $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 2.6 (Compute).** At some decoder step the alignment scores against $n = 3$ scalar encoder states $h_1 = 2$, $h_2 = 0$, $h_3 = -1$ come out as $e = (2, 0, -1)$. Compute the attention weights $\alpha$ (numerically stably) and the context $c = \sum_j \alpha_j h_j$, and verify the convex-combination property of <XRef id="prop-row-stochastic-convex" />.
+
+<SolutionBox>
+
+Subtract the maximum score $2$ before exponentiating (exact by translation invariance, <XRef id="prop-softmax-translation-inv" />): $e - 2\mathbf 1 = (0, -2, -3)$ exponentiates to $(1, e^{-2}, e^{-3}) \approx (1, 0.1353, 0.0498)$ with sum $\approx 1.1851$, so
+$$
+\alpha \approx (0.8438,\ 0.1142,\ 0.0420).
+$$
+The context is $c = 0.8438\cdot 2 + 0.1142\cdot 0 + 0.0420\cdot(-1) \approx 1.6456$, which lies in the convex hull $[-1, 2]$ of the encoder states, as <XRef id="prop-row-stochastic-convex" /> requires: attention interpolates and cannot reach outside the hull of what it attends to. $\qquad\blacksquare$
+
+</SolutionBox>

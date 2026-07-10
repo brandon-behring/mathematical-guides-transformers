@@ -69,6 +69,8 @@ with a **classifier head** $\mathbf W_{\textsf{cls}}\in\R^{d\times C}$, bias $\m
 A detector reads a document that already exists, so there is no reason to forbid a position from attending to its right context: the causal mask of the generation setting is simply omitted, and the encoder is bidirectional. Formally this changes nothing in <XRef id="def-tf10-encoder-classifier" /> — the same pooling and head apply — but it is what lets a single position aggregate evidence from the entire sequence, which is exactly what a document-level decision needs.
 </Theorem>
 
+<MarginNote variant="cross-ref" label="The encoder pattern">This is the mixer-agnostic encoder pattern of <XRef id="def-tf8-patterns" />: unconstrained (bidirectional) mixing, product a representation — instantiable by attention, a bidirectional recurrence, or a bidirectional scan alike.</MarginNote>
+
 ## The contrastive objective
 
 Labeled detection data is often scarce, but *pairs* are cheap: any document and a second view of it — paired text under a second encoder, an augmentation, or, the canonical case, **the same content in another modality** (an image and its caption) — form a positive pair, and every other document in the batch is a negative. The picture to hold is a retrieval game. Lay $B$ representations on one side and their $B$ partners on the other; the objective asks each representation to pick its true partner out of the $B$ candidates by similarity. The crucial observation, which we will prove, is that "pick the true partner by similarity" is *literally* a softmax classification with the similarities as logits — so contrastive learning is the cross-entropy of the notation chapter wearing different clothes.
