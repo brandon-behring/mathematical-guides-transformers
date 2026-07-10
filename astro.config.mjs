@@ -16,7 +16,7 @@ const mathematicalGuidesFamilyStyle = defineStyle({
   name: 'mathematical-guides-family',
   site: 'https://mathematical.brandon-behring.dev',
   routes: { frontmatter: { enabled: true, prefix: '' } },
-  deploy: 'pages',
+  deploy: 'workers',
   katexMacros: {
     '\\R': '\\mathbb{R}',
     '\\Z': '\\mathbb{Z}',
