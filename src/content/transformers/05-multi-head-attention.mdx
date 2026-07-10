@@ -144,7 +144,7 @@ The cache holds one key matrix and one value matrix per *distinct* K/V projectio
 
 <MarginNote variant="formula" label="Cache savings">For $h=32$, MQA cuts KV cache $32\times$; GQA with $g=8$ keeps $1/4$ of it while staying closer to MHA quality.</MarginNote>
 
-<MarginNote variant="pattern" label="What sharing cannot fix">MQA/GQA shrink the cache by $g/h$, but it still grows with $n$. Removing the $n$-dependence itself is the recurrent route (<XRef id="prop-tf14-decode-state" />).</MarginNote>
+<MarginNote variant="pattern" label="What sharing cannot fix">MQA/GQA shrink the cache by $g/h$, but it still grows with $n$. Removing the $n$-dependence itself needs a state that does not grow — the recurrent route (<XRef id="thm-tf13-linattn-rnn" />; priced for hybrids in <XRef id="prop-tf14-decode-state" />).</MarginNote>
 
 Two points sharpen the trade-off. First, the savings are about *bandwidth*, not chiefly parameters: the query and output projections are untouched, so the projection-parameter count moves only from $4d^2$ (MHA) to $2d^2 + 2(g/h)\,d^2$, a modest change; the real win is that fewer distinct K/V heads mean fewer cache reads and writes per generated token. Second, this is why GQA is the common middle ground — it retains most of that bandwidth gain while recovering much of MHA's quality, by reading K/V groups rather than collapsing to a single shared head <Cite key="ainslie2023gqa" />.
 

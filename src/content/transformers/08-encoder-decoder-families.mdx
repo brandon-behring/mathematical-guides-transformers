@@ -146,7 +146,7 @@ The lattice is the chapter's organizing claim: family and pattern are orthogonal
 
 ## One pass and sequential depth
 
-The training chapter asserted that teacher forcing scores all positions in a single forward pass (<XRef id="def-tf9-teacher-forcing" />). That assertion is a theorem about causal stacks, and prefix-consistency is exactly the hypothesis it needs: the conditional at position $t$ requires the *length-$t$* evaluation, and causality says the length-$n$ evaluation already contains all $n$ of them.
+Teacher forcing — the training move (next chapter, <XRef id="def-tf9-teacher-forcing" />) that conditions every position on the gold prefix and scores all positions in a single forward pass — rests on a theorem about causal stacks, which we prove here. Prefix-consistency is exactly the hypothesis it needs: the conditional at position $t$ requires the *length-$t$* evaluation, and causality says the length-$n$ evaluation already contains all $n$ of them.
 
 <MarginNote variant="tip" label="Self-explanation">Before the proof: the model defines $p_\theta(\,\cdot\mid x_{1:t})$ by running on the *prefix* $x_{1:t}$. What single property guarantees that running once on the *full* sequence reproduces row $t$ of every prefix run?</MarginNote>
 
