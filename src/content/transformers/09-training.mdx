@@ -35,7 +35,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 ## Autoregressive language modeling
 
-A language model assigns a probability to a whole sequence, but it never has to compute one directly: the chain rule of probability factors any joint distribution into a product of next-token conditionals, and an autoregressive model parameterizes exactly those conditionals. The factorization is exact, not an approximation — there is no independence assumption hidden in it.
+A language model assigns a probability to a whole sequence, but it never has to compute one directly: the chain rule of probability factors any joint distribution into a product of next-token conditionals, and an autoregressive model parameterizes exactly those conditionals. The factorization is exact, not an approximation — there is no independence assumption hidden in it. Nor is it the transformer's: the same chain rule first served the recurrent encoder–decoder (<XRef id="def-tf2-seq2seq" />), and it is architecture-blind.
 
 <Theorem kind="definition" name="Autoregressive language model" id="def-tf9-autoregressive-lm">
 An **autoregressive language model**<Sidenote>The decoder-only formulation underlying the GPT family <Cite key="radford2019language" />.</Sidenote> factorizes the joint probability of a token sequence $\mathbf x = (x_1,\dots,x_T)$ into a product of conditionals,
@@ -142,6 +142,8 @@ During training, **teacher forcing** supplies the ground-truth token $x_t$ as th
 </Theorem>
 
 <MarginNote variant="pattern" label="Why it parallelizes">Conditioning on gold tokens makes every position's input known in advance, so the $T$ losses share one masked forward pass.</MarginNote>
+
+<MarginNote variant="cross-ref" label="Two licenses">One pass yielding all $T$ conditionals is the causality theorem <XRef id="thm-tf8-one-pass" /> — every causal mixer has it; that the pass is also *fast* is the $\Theta(1)$-depth column of <XRef id="prop-tf8-sequential-depth" />, which recurrences lack.</MarginNote>
 
 <Theorem kind="remark" name="Exposure bias">
 At inference there are no gold tokens: the model must generate autoregressively, feeding each prediction back as the next input. If it errs at position $t$, every later prediction conditions on a prefix the model never saw during training — a train–test distribution mismatch known as **exposure bias**, and one that compounds with sequence length. Standard mitigations include scheduled sampling, which gradually substitutes model predictions for gold tokens during training, and sequence-level objectives that score the rollout directly rather than each position in isolation.

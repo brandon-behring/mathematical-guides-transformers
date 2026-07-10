@@ -29,11 +29,11 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Notation and Prerequisites
 
-**Where we are.** This chapter is the single-source notation reference for the guide: every dimension symbol, operator, and prerequisite result is fixed here once, and later chapters invoke it by name. Read it front to back on a first pass, then return whenever a proof cites a definition from here. We assume linear algebra and elementary probability; everything specific to transformers is built from the three tools developed below — the softmax, cross-entropy, and row-stochastic matrices.
+**Where we are.** This chapter is the single-source notation reference for the guide: every dimension symbol, operator, and prerequisite result is fixed here once, and later chapters invoke it by name. Read it front to back on a first pass, then return whenever a proof cites a definition from here. We assume linear algebra and elementary probability; everything specific to sequence models is built from the three tools developed below — the softmax, cross-entropy, and row-stochastic matrices.
 
 ## Conventions
 
-Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d}$), and matrices are bold uppercase ($\mathbf W$). Vectors are **row** vectors unless stated otherwise, so a sequence of $n$ tokens is a matrix $\mathbf X \in \R^{n\times d}$ whose $i$-th row is the $i$-th token representation. Sets are calligraphic ($\mathcal V$ for the vocabulary). We write $\defeq$ for "is defined as" (marking a definition, not a derived equality), $\odot$ for the Hadamard product, $\mathbf 1$ for the all-ones vector, and $\mathbf e_k$ for the $k$-th standard basis (one-hot) vector. The norm $\norm{\mathbf x}$ is Euclidean and $[\mathbf A]_{ij}$ is the $(i,j)$ entry.
+Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d}$), and matrices are bold uppercase ($\mathbf W$). Vectors are **row** vectors unless stated otherwise, so a sequence of $n$ tokens is a matrix $\mathbf X \in \R^{n\times d}$ whose $i$-th row is the $i$-th token representation. Sets are calligraphic ($\mathcal V$ for the vocabulary). We write $\defeq$ for "is defined as" (marking a definition, not a derived equality), $\odot$ for the Hadamard product, $\mathbf 1$ for the all-ones vector, and $\mathbf e_k$ for the $k$-th standard basis (one-hot) vector. The norm $\norm{\mathbf x}$ is Euclidean and $[\mathbf A]_{ij}$ is the $(i,j)$ entry. Note one glyph pair kept deliberately distinct: bold $\mathbf h_t$ is a recurrent hidden state (a vector), while italic $h$ is the head count (a scalar).
 
 **Standing dimensions.** These symbols keep their meaning throughout the guide.
 
@@ -47,6 +47,7 @@ Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d
 | $d_{\text{ff}}$ | feed-forward hidden dimension (typically $4d$) |
 | $\lvert\mathcal V\rvert$ | vocabulary size |
 | $N$ | number of transformer layers (blocks) |
+| $d_s$ | state dimension of a recurrent or state space model |
 | $p,\,c$ | image patch side and channel count; a patch flattens to dimension $p^2 c$ |
 
 **Standing operators.** Each is defined once, in the chapter named; return here for a lookup.
@@ -61,6 +62,9 @@ Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d
 | $\operatorname{FFN}(\mathbf x)$ | position-wise feed-forward network | The Transformer Block |
 | $\operatorname{LN}(\mathbf x)$ | layer normalization | The Transformer Block |
 | $\mathbf M$ | causal mask matrix | Attention (<XRef id="def-tf4-causal-mask" />) |
+| $(\statemat,\inputmat,\outputmat,\feedmat),\ \Delta$ | continuous state space quintuple and step size | State Space Models (<XRef id="def-tf3-ssm" />) |
+| $(\discA,\discB)$ | zero-order-hold discretized state matrices | State Space Models (<XRef id="thm-tf3-zoh" />) |
+| $\bullet$ | associative scan operator on affine pairs | State Space Models (<XRef id="def-tf3-scan-op" />) |
 
 ## Modality-agnostic conventions
 

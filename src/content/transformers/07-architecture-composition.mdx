@@ -124,6 +124,8 @@ The three standard architectures are three settings of two binary switches — i
 | Encoder-decoder | causal decoder + bidirectional encoder | decoder → encoder | sequence-to-sequence (T5 <Cite key="raffel2020t5" />, the original transformer <Cite key="vaswani2017attention" />) |
 | Decoder-only | causal | none | autoregressive generation (GPT, LLaMA <Cite key="touvron2023llama" />) |
 
+Notice that neither switch mentions attention: "causal or bidirectional" and "is there a conditioning channel" are properties a mixer can have, not properties of this mixer. The encoder–decoder-families chapter abstracts both switches to arbitrary sequence mixers (<XRef id="def-tf8-patterns" />) and instantiates the same three patterns across the attention, recurrent, and state-space families.
+
 An encoder-only model typically adds a learned summary position (a $\texttt{[CLS]}$ token) and trains a small head on that position's final hidden state. The remaining switch — "is there an encoder?" — is implied: an encoder exists exactly when cross-attention is present to consume its output.
 </Theorem>
 
@@ -200,7 +202,7 @@ If the softmax kernel is replaced by an explicit feature map $\phi:\R^{d_k}\to\R
 $$
 \text{output}_i = \frac{\phi(\mathbf q_i)^\top\sum_{j}\phi(\mathbf k_j)\mathbf v_j^\top}{\phi(\mathbf q_i)^\top\sum_{j}\phi(\mathbf k_j)}.
 $$
-The matrix $\sum_j\phi(\mathbf k_j)\mathbf v_j^\top\in\R^{D\times d_v}$ — with $\phi(\mathbf k_j)$ and $\mathbf v_j$ treated as column vectors here, so each summand is a $D\times d_v$ outer product — is computed **once** and shared across queries, so each output costs $O(D d_v)$ and the total is $O(n D d_v)$ — *linear* in $n$ <Cite key="katharopoulos2020transformers" />. This is a different function: with the standard choice $\phi(x) = \operatorname{elu}(x)+1 > 0$ the weights remain non-negative and row-normalized, so convexity survives; what is given up is the exponential kernel's temperature-controlled sharpness, trading approximation quality for the asymptotic gain.
+The matrix $\sum_j\phi(\mathbf k_j)\mathbf v_j^\top\in\R^{D\times d_v}$ — with $\phi(\mathbf k_j)$ and $\mathbf v_j$ treated as column vectors here, so each summand is a $D\times d_v$ outer product — is computed **once** and shared across queries, so each output costs $O(D d_v)$ and the total is $O(n D d_v)$ — *linear* in $n$ <Cite key="katharopoulos2020transformers" />. This is a different function: with the standard choice $\phi(x) = \operatorname{elu}(x)+1 > 0$ the weights remain non-negative and row-normalized, so convexity survives; what is given up is the exponential kernel's temperature-controlled sharpness, trading approximation quality for the asymptotic gain. In the causal case the shared sums become *running* sums — a state updated token by token — and that observation is upgraded to a theorem later: causal linear attention **is** a matrix-state recurrence (<XRef id="thm-tf13-linattn-rnn" />), and with decay it is exactly a selective state space model (<XRef id="thm-tf13-ssd" />).
 </Theorem>
 
 <Theorem kind="remark" name="FlashAttention changes only the algorithm" id="rem-tf7-flash-attention">

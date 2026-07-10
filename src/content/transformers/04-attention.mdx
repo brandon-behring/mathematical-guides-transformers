@@ -26,7 +26,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # The Attention Mechanism
 
-**Where we are.** Attention is the transformer's one genuinely new operation: each token aggregates information from every other token, selectively. We build it from one nonlinearity (softmax), one similarity (the dot product), and one piece of normalization (the $1/\sqrt{d_k}$ scaling), and prove the property that makes each true.
+**Where we are.** Attention is the transformer's central operation — each token aggregates information from every other token, selectively — though not its invention: content addressing was born inside the recurrent encoder–decoder (<XRef id="def-tf2-additive-attention" />), and what the transformer did was let it stand alone. We build it from one nonlinearity (softmax), one similarity (the dot product), and one piece of normalization (the $1/\sqrt{d_k}$ scaling), and prove the property that makes each true.
 
 ## Notation
 
@@ -39,6 +39,10 @@ Softmax turns a vector of scores into a probability distribution: larger scores 
 ## Scaled dot-product attention
 
 Structurally, attention is **Nadaraya–Watson kernel regression with a learned kernel**: each output is a kernel-weighted average of the value vectors, where the weight value $j$ receives is proportional to $\exp(\inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k})$. The correspondence is exact — *kernel weights* ↦ *a softmax row*, *kernel-regression estimate* ↦ *the attention output* — and it breaks in exactly one place: the kernel is **learned**, so it need not be symmetric or positive-definite, and the classical kernel-smoothing guarantees do not transfer. We make the construction precise.
+
+<Theorem kind="remark" name="The addressing lineage" id="rem-tf4-addressing-lineage">
+Score–normalize–average is older than the transformer: additive attention (<XRef id="def-tf2-additive-attention" />) already computed $\softmax$ weights over content and took the convex combination — inside a recurrent encoder–decoder, with the score $\mathbf v_a^\top\tanh(\mathbf W_a\mathbf s + \mathbf U_a\mathbf h)$ computed by a small network. Scaled dot-product attention makes two substitutions: the additive score becomes an inner product (one matmul, no extra nonlinearity), and the recurrent controller that manufactured queries and keys is deleted — learned projections of the sequence itself produce them. The kernel-regression reading above covers both: they are the same estimator under different kernels.
+</Theorem>
 
 <Theorem kind="definition" name="Scaled dot-product attention" id="def-tf4-attention">
 Given queries $\mathbf Q\in\R^{n\times d_k}$, keys $\mathbf K\in\R^{n\times d_k}$, and values $\mathbf V\in\R^{n\times d_v}$,
