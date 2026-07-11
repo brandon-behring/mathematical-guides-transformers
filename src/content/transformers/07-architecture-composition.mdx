@@ -25,6 +25,7 @@ los:
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
@@ -75,6 +76,15 @@ Each decoder query thereby attends over **all** $n$ encoder positions, condition
 <MarginNote variant="formula" label="Q vs K, V">Queries from the decoder, keys and values from the encoder — the only structural difference from self-attention, where all three come from one sequence.</MarginNote>
 
 Because cross-attention is an instance of scaled dot-product attention, the convexity guarantee carries over verbatim: each cross-attention weight row is row-stochastic, so every decoder output is a convex combination of the encoder value rows (<XRef id="prop-row-stochastic-convex" />). The decoder cannot manufacture content outside the span of the encoder's value vectors; it can only select and average over the encoded source. With this operation in hand, the decoder block has three sublayers: the encoder block's self-attention *masked*, the one genuinely new sublayer — cross-attention — and the feed-forward network.
+
+<Figure
+  src="/figures/cross-attention-wiring.svg"
+  alt="Cross-attention: the decoder supplies queries; the encoder supplies keys and values. Scores are m×n and each output row is a convex combination of the encoder values."
+  desc="Two source streams feed one attention block. The decoder stream X_dec (m×d) projects by W^Q to Q; the encoder stream H_enc (n×d) projects by W^K and W^V to K and V. Q, K, V enter the cross-attention block, whose scores QKᵀ are m×n, producing a context C of length m (m×d_v). Edge labels mark the decoder length m and encoder length n."
+  caption="Cross-attention wiring (def-tf7-cross-attention): queries from the decoder, keys and values from the encoder — the only structural difference from self-attention. The scores are m×n (m decoder, n encoder positions), and because it is still scaled dot-product attention, each output row is a convex combination of the encoder values — the decoder selects and averages the encoded source, it cannot fabricate beyond it (prop-row-stochastic-convex)."
+  id="fig-cross-attention"
+  width="88%"
+/>
 
 <Theorem kind="remark" name="Vision-language fusion is cross-attention" id="rem-tf7-multimodal-crossattn">
 The "separate input sequence" the decoder conditions on need not be text. Let $\mathbf H_{\text{img}}\in\R^{n_v\times d}$ be patch features from a Vision Transformer (<XRef id="rem-tf7-vit" />) and $\mathbf X_{\text{txt}}\in\R^{m\times d}$ a text stream. Conditioning text generation on the image is exactly <XRef id="def-tf7-cross-attention" /> with the encoder stream taken to be vision:
@@ -128,6 +138,15 @@ Notice that neither switch mentions attention: "causal or bidirectional" and "is
 
 An encoder-only model typically adds a learned summary position (a $\texttt{[CLS]}$ token) and trains a small head on that position's final hidden state. The remaining switch — "is there an encoder?" — is implied: an encoder exists exactly when cross-attention is present to consume its output.
 </Theorem>
+
+<Figure
+  src="/figures/three-architectures.svg"
+  alt="The three standard architectures as a 2×2 grid over two switches: self-attention (bidirectional/causal) × cross-attention (absent/present), with the fourth cell unused."
+  desc="A 2×2 grid. Rows are the generating stack's self-attention (bidirectional, causal); columns are cross-attention (absent, present). Encoder-only sits at bidirectional/absent (BERT); Decoder-only at causal/absent (GPT, LLaMA); Encoder-decoder at causal/present (T5, the original transformer), its cell showing a bidirectional-masked encoder feeding a causal-masked decoder. The bidirectional/present cell is greyed as non-standard. Each cell carries an attention-mask icon: a full grid for bidirectional, a lower-triangular grid for causal."
+  caption="The three standard architectures are three settings of two binary switches — self-attention bidirectional vs causal, and cross-attention present vs absent (rem-tf7-three-archs). Encoder-only, Decoder-only, and Encoder-decoder fill three cells; the fourth — a bidirectional generator with cross-attention — is unused, since bidirectional self-attention is incompatible with the autoregressive generation cross-attention serves. The mask icons show what each self-attention setting attends to."
+  id="fig-three-architectures"
+  width="82%"
+/>
 
 <Theorem kind="remark" name="Two fusion routes are two switch settings" id="rem-tf7-unified-sequence">
 A generative vision-language model couples the two modalities by one of two routes, and they are the two settings of the cross-attention switch in <XRef id="rem-tf7-three-archs" />. **Cross-attention present:** a decoder attends to a separate image stream (<XRef id="rem-tf7-multimodal-crossattn" />) — the encoder-decoder pattern with a vision encoder in place of a text one. **Cross-attention absent:** project the image features — in practice a frozen vision encoder's output features, as in LLaVA, not raw patch embeddings — into the token space and **concatenate** them with the text tokens into one sequence $\mathbf X = [\,\mathbf X_{\text{img}};\,\mathbf X_{\text{txt}}\,]$, processed by a single decoder-only stack (<XRef id="def-tf7-decoder-only" />) — the embedding interface of <XRef id="def-tf1-embedding-interface" /> used twice, with no new operation <Cite key="liu2023llava" />. The "is there an encoder?" switch decides between them. Both routes are built out in full later: the projector and learned-query resampler that fill the concatenation route (<XRef id="def-tf15-connector" />), and the single interleaved stream that subsumes both into one decoder (<XRef id="def-tf17-interleaved" />).

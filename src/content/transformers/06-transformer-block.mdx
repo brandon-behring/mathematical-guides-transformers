@@ -23,6 +23,7 @@ los:
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
@@ -46,6 +47,15 @@ with $\mathbf W_1\in\R^{d\times d_{\text{ff}}}$, $\mathbf W_2\in\R^{d_{\text{ff}
 Applied to a sequence $\mathbf X\in\R^{n\times d}$, the map acts row-wise: $[\operatorname{FFN}(\mathbf X)]_{i,:} = \operatorname{FFN}(\mathbf X_{i,:})$. There is no cross-position term, so every interaction *between* tokens is the work of attention alone; the feed-forward network contributes nonlinear capacity *within* a token. These are the block's only two computational operations — cross-token mixing and per-token processing — and everything else is infrastructure for stable gradients.
 
 <MarginNote variant="pattern" label="Division of labor">$\operatorname{FFN}$ = per-token nonlinearity; attention = cross-token mixing. The block has no third computational operation.</MarginNote>
+
+<Figure
+  src="/figures/ffn-expansion.svg"
+  alt="The feed-forward network widens a token from d to d_ff features, applies a nonlinearity, and projects back to d."
+  desc="A single token x of dimension d passes through W_1, which widens it into a hidden layer drawn four times taller (d_ff = 4d features) where the nonlinearity σ is applied; W_2 then projects back to dimension d to give y. The box width is constant, so only the height — the feature dimension — changes. Applied independently to every token."
+  caption="The position-wise feed-forward network as widen → activate → project (def-tf6-ffn). W_1 widens each token d → d_ff (drawn 4× the height), σ bends, W_2 projects d_ff → d — applied to every token independently, with no cross-token term. This is the block's only per-token nonlinearity."
+  id="fig-ffn-expansion"
+  width="70%"
+/>
 
 The two layers admit a memory reading that makes the structural kinship with attention exact.
 
@@ -179,6 +189,15 @@ $$
 <MarginNote variant="pattern" label="Where LN sits">Pre-norm: LN inside the residual branch, skip path naked. Post-norm: LN outside, on top of the skip sum.</MarginNote>
 
 The distinction is exactly whether the residual path stays *naked*. In pre-norm, $\mathbf Y = \mathbf X + (\cdots)$ is a residual layer of the form in <XRef id="thm-tf6-gradient-highway" />, so its Jacobian is $\mathbf I + \mathbf J$ and the gradient inherits the all-skip $\mathbf I$ directly. In post-norm, $\mathbf Y = \operatorname{LN}(\mathbf X + (\cdots))$ wraps the residual sum in a further map, so its Jacobian is $\mathbf J_{\operatorname{LN}}(\mathbf I + \mathbf J)$ — the layer-norm Jacobian of <XRef id="prop-tf6-ln-jacobian" /> multiplies the whole bracket, identity term included. The skip path no longer reaches the next layer untouched; even the all-skip route must pass through a normalization Jacobian at every step.
+
+<Figure
+  src="/figures/block-anatomy.svg"
+  alt="Pre-norm vs post-norm blocks: pre-norm puts layer-norm inside the residual branch (skip stays naked); post-norm puts it after the add (on the skip sum)."
+  desc="Two aligned residual units for a sublayer f. Pre-norm: X taps off to LN then f, rejoining at the add ⊕ to give Y — the skip path from the tap to the add carries no layer-norm. Post-norm: X taps off to f, rejoins at ⊕, then passes through LN to give Y — layer-norm sits on the summed skip path. Only the position of the LN box differs; the two blocks are otherwise identical."
+  caption="Pre-norm vs post-norm, read off one question: where does layer-norm sit relative to the residual skip (def-tf6-prenorm, def-tf6-postnorm)? Pre-norm Y = X + f(LN X) leaves the skip naked, so the all-skip gradient term reaches the next layer untouched; post-norm Y = LN(X + f X) wraps the sum, so even that route passes through a layer-norm Jacobian each step (thm-tf6-gradient-highway). Shown for one sublayer f ∈ {MHA, FFN}."
+  id="fig-block-anatomy"
+  width="88%"
+/>
 
 <Theorem kind="remark" name="What pre-norm buys at initialization" id="rem-tf6-prenorm-init">
 A mean-field analysis <Cite key="xiong2020layer" /> supports a qualitative picture at initialization: a pre-norm block behaves like a small perturbation of the identity, while a post-norm block, with $\operatorname{LN}$ on every skip step, can produce larger gradients near the output layers and is more sensitive to initialization and learning-rate warmup. This is *not* a theorem that every pre-norm transformer has depth-independent gradients — the sublayer terms still accumulate — but it explains why deep post-norm stacks ($L\gtrsim 12$) are notoriously hard to train without warmup and residual-scaling tricks, while pre-norm largely sidesteps the difficulty. Pre-norm is the post-2020 default (GPT-2/3, Llama, PaLM); post-norm is used by the original transformer and BERT.
