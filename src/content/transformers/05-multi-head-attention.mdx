@@ -167,6 +167,16 @@ Two points sharpen the trade-off. First, the savings are about *bandwidth*, not 
   width="92%"
 />
 
+The three variants differ only in the number of *distinct* key/value heads; the query heads and every other projection are untouched.
+
+| Variant | Query heads | KV heads | KV cache / layer | Quality |
+|---|---|---|---|---|
+| MHA | $h$ | $h$ | $2nh\,d_k$ | baseline |
+| GQA | $h$ | $g$ ($g \mid h$) | $2ng\,d_k$ — $g/h$ of MHA | near-MHA <Cite key="ainslie2023gqa" /> |
+| MQA | $h$ | $1$ | $2n\,d_k$ — $1/h$ of MHA | largest drop <Cite key="shazeer2019mqa" /> |
+
+The cache column is exact (<XRef id="prop-tf5-kv-cache" />); the quality column is *empirical* — a measured trade-off, not implied by the cache formula.
+
 ## Tracing the dimensions
 
 To see the construction concretely, take $n = 3$ tokens, $d = 4$, $h = 2$, so $d_k = d_v = d/h = 2$, with input $\mathbf X\in\R^{3\times 4}$.

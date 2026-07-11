@@ -228,6 +228,16 @@ The matrix $\sum_j\phi(\mathbf k_j)\mathbf v_j^\top\in\R^{D\times d_v}$ — with
 The $O(n^2)$ **memory** of materializing the attention matrix can be removed without altering the result. FlashAttention <Cite key="dao2022flashattention" /> tiles the computation into blocks that fit in fast on-chip memory and accumulates the softmax in a numerically stable online pass, never storing the full $n\times n$ matrix; the additional activation memory drops from quadratic to linear in $n$ at fixed head dimension. The output is **exact** — the function computed is identical to scaled dot-product attention. This is an algorithmic optimization, not a mathematical one.
 </Theorem>
 
+Three ways to pay the attention bill, and only one of them changes the function computed:
+
+| Method | Operator | Output | Time / layer | Activation memory |
+|---|---|---|---|---|
+| Softmax attention | exponential kernel | exact | $O(n^2 d)$ | $O(n^2)$ |
+| FlashAttention | the *same* operator | exact — identical function | $O(n^2 d)$ | $O(n)$ |
+| Linear attention | a *different* operator | approximate | $O(n D d_v)$ — linear in $n$ | $O(n)$ |
+
+FlashAttention (<XRef id="rem-tf7-flash-attention" />) is an *algorithm*: it tiles the same computation to cut memory, leaving both the function and the $O(n^2 d)$ time unchanged. Linear attention (<XRef id="rem-tf7-linear-attention" />) is a *different operator*: swapping the exponential kernel for a feature map $\phi$ buys linear time and memory, at the cost of exactness.
+
 ## A concrete parameter count
 
 The asymptotics above hide constants that matter in practice. We count the parameters of one standard block explicitly, then assemble a full model, and read off the dominant scaling term — the quantity that governs how parameter count grows with width and depth.

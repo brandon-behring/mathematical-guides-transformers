@@ -203,6 +203,17 @@ The distinction is exactly whether the residual path stays *naked*. In pre-norm,
 A mean-field analysis <Cite key="xiong2020layer" /> supports a qualitative picture at initialization: a pre-norm block behaves like a small perturbation of the identity, while a post-norm block, with $\operatorname{LN}$ on every skip step, can produce larger gradients near the output layers and is more sensitive to initialization and learning-rate warmup. This is *not* a theorem that every pre-norm transformer has depth-independent gradients — the sublayer terms still accumulate — but it explains why deep post-norm stacks ($L\gtrsim 12$) are notoriously hard to train without warmup and residual-scaling tricks, while pre-norm largely sidesteps the difficulty. Pre-norm is the post-2020 default (GPT-2/3, Llama, PaLM); post-norm is used by the original transformer and BERT.
 </Theorem>
 
+Summarizing where the choice bites:
+
+| Aspect | Post-norm | Pre-norm |
+|---|---|---|
+| Normalization | $\operatorname{LN}(\mathbf X + f(\mathbf X))$ — on the skip sum | $\mathbf X + f(\operatorname{LN}\,\mathbf X)$ — inside the branch |
+| Skip path | a layer-norm Jacobian at every step | naked; the identity term survives |
+| Deep training | warmup + residual-scaling; init-sensitive | largely warmup-free |
+| Used by | original transformer, BERT | GPT-2/3, Llama, PaLM |
+
+The training rows are the mean-field/empirical picture (<XRef id="rem-tf6-prenorm-init" />, <Cite key="xiong2020layer" />) — a strong tendency at initialization, not a depth-independent guarantee.
+
 We close by checking that the block is shape-preserving, which is what lets blocks stack without any interface adapter.
 
 <Theorem kind="example" name="Tracing dimensions through a pre-norm block" id="ex-tf6-trace">
