@@ -3,7 +3,7 @@ name: authoring-figures
 description: Author consistent, high-quality, collision-free TikZ figures for the transformer-mathematics guide. Use for "make a figure", "draw a diagram", "add a figure to chapter N", "this figure looks off / the text hits a line", or whenever creating or revising any figures/*.tex.
 version: 0.2.0
 effort: medium
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash(pdflatex:*, pdftoppm:*, pdftocairo:*, python3:*, npm:*, codex:*)
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash(pdflatex:*), Bash(pdftoppm:*), Bash(pdftocairo:*), Bash(python3:*), Bash(npm:*), Bash(codex:*)
 ---
 
 # Authoring Figures
@@ -35,7 +35,9 @@ all live there). Full rule-set + rationale: **`references/figure-standard.md`**.
 5. **Orthogonal routing.** Right-angle connectors (`tfflow` dataflow, `tfcollect` collector-without-head); minimal
    bends; **no text on any arrow path**. Curves are for decoration, not a formal pipeline.
 6. **Grayscale-safe redundant encoding.** Every role = colour **+** border style **+** in-node label, so meaning
-   survives greyscale and colour-vision deficiency. Render-check in grayscale.
+   survives greyscale and colour-vision deficiency. Render-check in grayscale. Also put a `%! no-theme` line at
+   the top of the `.tex` so the figure renders as a light *card* in dark mode (the site's luminance-based dark
+   remap otherwise washes out role symbols against the un-themed pastel fills) — see `references/figure-standard.md`.
 7. **Type hierarchy by size *contrast*.** Large box symbols (the heroes) → smaller title → small light captions.
    Contrast carries the hierarchy — do not just make everything big.
 8. **Framed heatmaps** for matrix instances: a rounded outer frame (so it reads as a box like the others),

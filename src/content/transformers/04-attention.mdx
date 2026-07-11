@@ -79,6 +79,8 @@ A $-\infty$ logit exponentiates to $0$, so each softmax row remains a probabilit
 
 <Figure
   src="/figures/attention-pattern.svg"
+  alt="Causal self-attention mask: query i attends only to keys j ≤ i, so the weight matrix is lower-triangular."
+  desc="A lower-triangular attention pattern — position i may attend to positions j ≤ i only; entries above the diagonal are masked to zero (a -∞ logit exponentiates to a 0 weight), and each row remains a probability distribution over the allowed keys."
   caption="Causal self-attention. Query q_i attends only to keys k_j with j ≤ i; each row of the masked weight matrix is a probability distribution. Rendered from TikZ via the figures pipeline."
   id="fig-causal-mask"
   width="58%"

@@ -114,6 +114,15 @@ high-luminance role colour (orange especially) maps to near-white and its border
 terminal/role boxes a darker, heavier border (`orange!78!black`, 0.8pt) and operation boxes a lighter one
 (0.45pt), so terminals read as the pipeline's endpoints even without colour.
 
+**Dark mode — render as a light "card".** Put a `%! no-theme` line at the top of every figure `.tex`. The site
+otherwise remaps the figure's colours for dark mode by *luminance* — it maps **every** dark colour → light —
+which washes out the dark role-box symbols against the (un-remapped) light pastel fills, i.e. light-on-light.
+Opting out with `%! no-theme` keeps the figure exactly as designed, and the `.sty`'s `every picture` adds a
+white `background rectangle`, so a figure renders as a fully-legible white card on the dark page (light mode
+unchanged, white-on-white). Verified: a themed dark render leaves Q/K/V symbols faint; the light card is
+crisp. (Alternatives — theme-stable dark symbols, or no-fill/border-only role boxes — either fail against the
+luminance remap or change the approved filled-box look. The light card is the working, minimal fix.)
+
 **Stroke-weight hierarchy (print-safe, settled).** The objects out-weight the wiring: role/terminal box borders
 (0.8pt) > connectors (`tfflow`/`tfcollect`, 0.7pt) > dimension double-arrows (0.4pt); operation scaffolding
 (`tfstruct`, 0.45pt) stays recessive. These values are the settled result of *three* codex audits: the first
@@ -153,7 +162,9 @@ then *passing* the fixed one. **Zero is the release bar. Do not show a figure un
 Scope caveat: the gate checks text↔**line** only (magenta text vs cyan connectors). Text↔text and box↔box
 overlaps — a label crowded onto a neighbouring box's text, two under-spaced panels colliding — are the same
 colour to the gate and pass it. Those are caught only by *looking* at the render, so the visual self-review
-is not optional: gate first, then eyes.
+is not optional: gate first, then eyes. (Dimension double-arrows `tfInkDim` also ride the cyan seam, and
+dimension labels sit just outside their bracket — so edge-dimensioned figures still gate zero in practice; no
+`\tfdim*` exclusion is needed.)
 
 ---
 

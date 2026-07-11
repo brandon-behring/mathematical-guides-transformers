@@ -9,7 +9,7 @@
 % off matrix EDGES; RELATIVE positioning with named spacing tokens; ORTHOGONAL routing; operation
 % labels are WHITE-KNOCKOUT nodes welded to their arrow (a line can't show through them). A colour
 % seam (tfText / tfInk) lets an automated two-colour "gate" render separate text from lines for a
-% pixel-level collision check (scripts/check-figure-collisions.mjs).
+% pixel-level collision check (scripts/check_figure_collisions.py).
 
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{transformer-figures}[2026/07/10 Transformer Mathematics figure standard v0.4]
@@ -73,6 +73,13 @@
   % ── comparison-grid cell frames (a 2×2 / n-panel compare): active vs inactive(greyed) ──
   tfpanel/.style   ={draw=gray!45, rounded corners=2pt, line width=0.4pt},
   tfpaneloff/.style={tfpanel, fill=black!5},
+  % ── dark-mode: render each figure as a light "card" ──
+  % Each figure's .tex carries a `%! no-theme` line, opting out of the site's dark colour-remap (which maps
+  % EVERY dark colour → light and so would wash out role-box symbols against the un-themed light pastel fills).
+  % This white background rectangle keeps that opted-out figure fully legible on a dark page; light mode is
+  % unchanged (white on white). The rect is white → invisible to the collision gate (not magenta/cyan).
+  background rectangle/.style={fill=white, rounded corners=2.5pt},
+  every picture/.append style={show background rectangle},
 }
 
 % Heatmap cell (inline fills + white/dark numerals for contrast; the heatmap interior is EXCLUDED
@@ -118,7 +125,7 @@
 %    → prose text becomes pure MAGENTA, connectors pure CYAN (one render). No per-figure edits,
 %    because all text routes through tfText and all connectors through tfInk/tfInkDim. The
 %    white-knockout fill stays white, erasing cyan beneath an op-label (no false positive).
-%    scripts/check-figure-collisions.mjs: fail on any magenta pixel within the clearance of cyan. ──
+%    scripts/check_figure_collisions.py: fail on any magenta pixel within the clearance of cyan. ──
 \providecommand{\tfgatemode}{normal}
 \def\tf@gm@gate{gate}
 \ifx\tfgatemode\tf@gm@gate

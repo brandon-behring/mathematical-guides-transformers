@@ -63,7 +63,7 @@ Schematically: the input $\mathbf X$ fans out to $h$ heads; each head runs atten
 <Figure
   src="/figures/mha-split-concat.svg"
   alt="Multi-head attention: input X fans out to h heads, each returning an n×d_v block; the blocks concatenate and a projection W^O maps back to n×d."
-  desc="The input X (n×d) splits at a junction into h parallel heads (shown for h=3); each head applies its own learned Q/K/V projections and returns an n×d_v block. The blocks concatenate into an n×h·d_v matrix, and the output projection W^O maps that back to n×d to give Y. Example d=6, h=3, d_k=d_v=2."
+  desc="The input X (n×d) splits at a junction into h parallel heads (shown for h=3); each head applies its own learned Q/K/V projections and returns an n×d_v block. The blocks concatenate into an n×h·d_v matrix, and the output projection W^O maps that back to n×d to give Y. Example d=6, h=3, d_k=d_v=2 (a schematic instance; the chapter's dimension trace below uses h=2)."
   caption="Multi-head attention as split → per-head attend → concat → project (def-tf5-mha). X fans out to h heads, each attending in its own learned d_k-subspace — not a slice of X — and W^O remixes the concatenated outputs across heads back to n×d. The parameter count is independent of h (prop-tf5-mha-params)."
   id="fig-mha-split-concat"
   width="80%"

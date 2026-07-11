@@ -10,7 +10,9 @@ Heatmap interiors are excluded by construction (their numerals are white/dark, n
 White-knockout op-labels do not false-positive: their white fill erases the cyan beneath them.
 
 Usage:  python3 scripts/check_figure_collisions.py figures/attention-shapes.tex [--clearance-mm 0.35] [--dpi 600]
-Exit 0 = clean; exit 1 = collision(s), with crops written next to the figure as <name>.collision-N.png.
+Exit 0 = clean; exit 1 = collision(s), with crops written as tfgate-<name>.collision-N.png in the system temp dir.
+Dimension double-arrows (tfInkDim) also ride the cyan seam; dimension labels sit just outside their bracket, so
+edge-dimensioned figures still gate zero (verified across all figures using \tfdim* — no exclusion needed).
 """
 import argparse, os, subprocess, sys, tempfile
 import numpy as np
@@ -71,9 +73,7 @@ def main():
     ys, xs = np.where(hit)
     order = np.argsort(xs)
     xs, ys = xs[order], ys[order]
-    regions, cx0, cy = [], xs[0], [ys[0]]
-    cx1 = xs[0]
-    cxs = [xs[0]]
+    regions = []
     # simple 1-D-ish clustering by x-gap
     cluster_xs, cluster_ys = [xs[0]], [ys[0]]
     for x, y in zip(xs[1:], ys[1:]):
