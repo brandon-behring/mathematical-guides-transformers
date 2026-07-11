@@ -1,0 +1,52 @@
+% cross-attention-wiring (ch07, def-tf7-cross-attention) — the ONE asymmetry that distinguishes cross- from
+% self-attention: queries come from the DECODER stream, keys and values from the ENCODER stream. Two source
+% streams (X_dec ∈ R^{m×d} top, H_enc ∈ R^{n×d} bottom) feed one attention op; the scores QKᵀ are m×n (not
+% n×n) and the output is m×d_v (decoder length). Instance m=3 decoder positions, n=4 encoder positions.
+% /authoring-figures standard: relative positioning + tokens, Q/K/V roles, orthogonal routing, edge dims on
+% the FREE row-edges (m for the decoder stream, n for the encoder stream, m for the output), line-free lanes.
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+
+  % ══ Q / K / V column (Q top from decoder; K, V below from encoder) ══
+  \node[tfinput] (Xdec) {$\mathbf X_{\text{dec}}$};
+  \node[tfQ, right=\tfstagegap of Xdec] (Q) {$\mathbf Q$};
+  \node[tfK, below=8mm of Q] (K) {$\mathbf K$};
+  \node[tfV, below=8mm of K] (V) {$\mathbf V$};
+  \node[tfinput, left=\tfstagegap of K] (Henc) {$\mathbf H_{\text{enc}}$};
+
+  % ══ projections: decoder → Q ; encoder → K and V (one tap splits the encoder stream) ══
+  \draw[tfflow] (Xdec) -- (Q) node[midway, tfoplabel] {$\mathbf W^{Q}$};
+  \coordinate (etap) at ($(Henc.east)+(5mm,0)$);
+  \draw[tfcollect] (Henc.east) -- (etap);
+  \node[tfjoin] at (etap) {};
+  \draw[tfflow] (etap) -- (K.west) node[pos=0.7, tfoplabel] {$\mathbf W^{K}$};
+  \draw[tfflow] (etap) |- (V.west) node[pos=0.75, tfoplabel] {$\mathbf W^{V}$};
+
+  % ══ cross-attention: Q + K,V all enter the tall box's west edge → context C (m×d_v) ══
+  % CA spans the whole Q→V column so the three role inputs are clean parallel arrows; scores note lives INSIDE.
+  \node[tfstruct, minimum width=24mm, minimum height=42mm, right=15mm of K, align=center] (CA)
+       {cross-\\attention\\[5pt]{\scriptsize scores $\mathbf Q\mathbf K^{\top}\!:\ m\times n$}};
+  \draw[tfflow] (Q.east) -- (Q.east -| CA.west);
+  \draw[tfflow] (K.east) -- (K.east -| CA.west);
+  \draw[tfflow] (V.east) -- (V.east -| CA.west);
+  \node[tfoutput, right=15mm of CA] (C) {$\mathbf C$};
+  \draw[tfflow] (CA.east) -- (C.west);
+
+  % ══ dimension payload: decoder length m, encoder length n, output length m ══
+  \tfdimleft{Xdec}{$m$}
+  \tfdimleft{Henc}{$n$}
+  \tfdimright{C}{$m$}
+
+  % ── stream labels + title + caption in line-free lanes ──
+  \node[tfaxis, above=\tflabelgap of Xdec] {decoder};
+  \node[tfaxis, below=\tflabelgap of Henc] {encoder};
+  \node[tfrole, above=9mm of Q] {Cross-attention: queries from the decoder, keys/values from the encoder};
+  \node[tfcap, align=center, below=9mm of V]
+       {$\operatorname{CrossAttn}(\mathbf X_{\text{dec}},\mathbf H_{\text{enc}})=\operatorname{Attn}(\mathbf X_{\text{dec}}\mathbf W^{Q},\,\mathbf H_{\text{enc}}\mathbf W^{K},\,\mathbf H_{\text{enc}}\mathbf W^{V})$\\[3pt]
+        every decoder position attends over all $n$ encoder positions; each output row is a \emph{convex combination} of the encoder values\\[2pt]
+        --- the decoder selects and averages the encoded source, it cannot fabricate beyond it\quad(example $m{=}3$, $n{=}4\Rightarrow$ scores $3{\times}4$)};
+
+\end{tikzpicture}
+\end{document}

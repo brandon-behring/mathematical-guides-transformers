@@ -1,0 +1,57 @@
+% block-anatomy (ch06, def-tf6-prenorm / def-tf6-postnorm) — pre-norm vs post-norm, read off ONE question:
+% where does layer-norm sit relative to the residual skip? Pre-norm Y = X + f(LN(X)) leaves the skip NAKED
+% (LN inside the branch); post-norm Y = LN(X + f(X)) wraps the whole sum (LN on the skip sum). We draw the
+% generic residual unit (sublayer f = MHA, then FFN — each wraps identically) so the LN position is the only
+% thing that moves between the two rows. /authoring-figures standard: relative positioning + tokens, orthogonal
+% skip "staple" (up-over-down, no curve), tfadd ⊕ where the skip rejoins, IDENTICAL gap pattern in both rows
+% so the shared endpoints (X, tap, Y) align on vertical guides (compare topology, not layout), line-free lanes.
+\documentclass[tikz,border=10pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+  % uniform box footprint + one gap value, so both rows have identical geometry and their endpoints align
+  \tikzset{blk/.style={minimum width=12mm, minimum height=11mm}}
+  \newcommand{\gp}{8mm}
+
+  % ══ ROW 1 — PRE-NORM: LN inside the branch, skip path stays naked ══
+  \node[tfinput, blk] (pX) {$\mathbf X$};
+  \node[tfjoin, right=6mm of pX] (pTap) {};
+  \node[tfstruct, blk, right=\gp of pTap] (pLN) {LN};
+  \node[tfstruct, blk, right=\gp of pLN] (pF) {$f$};
+  \node[tfadd, right=\gp of pF] (pAdd) {$+$};
+  \node[tfoutput, blk, right=\gp of pAdd] (pY) {$\mathbf Y$};
+  \draw[tfflow] (pX) -- (pTap);
+  \draw[tfflow] (pTap) -- (pLN);
+  \draw[tfflow] (pLN) -- (pF);
+  \draw[tfflow] (pF) -- (pAdd);
+  \draw[tfflow] (pAdd) -- (pY);
+  % skip (identity) — orthogonal staple from the tap over the branch into the add's top
+  \coordinate (pSkip) at ([yshift=9mm]pTap);
+  \draw[tfflow] (pTap) -- (pTap |- pSkip) -- (pAdd |- pSkip) -- (pAdd.north);
+  \node[text=tfText, font=\footnotesize, left=7mm of pX] {Pre-norm};
+
+  % ══ ROW 2 — POST-NORM: LN on the skip SUM, after the add ══
+  \node[tfinput, blk, below=24mm of pX] (qX) {$\mathbf X$};
+  \node[tfjoin, right=6mm of qX] (qTap) {};
+  \node[tfstruct, blk, right=\gp of qTap] (qF) {$f$};
+  \node[tfadd, right=\gp of qF] (qAdd) {$+$};
+  \node[tfstruct, blk, right=\gp of qAdd] (qLN) {LN};
+  \node[tfoutput, blk, right=\gp of qLN] (qY) {$\mathbf Y$};
+  \draw[tfflow] (qX) -- (qTap);
+  \draw[tfflow] (qTap) -- (qF);
+  \draw[tfflow] (qF) -- (qAdd);
+  \draw[tfflow] (qAdd) -- (qLN);
+  \draw[tfflow] (qLN) -- (qY);
+  \coordinate (qSkip) at ([yshift=9mm]qTap);
+  \draw[tfflow] (qTap) -- (qTap |- qSkip) -- (qAdd |- qSkip) -- (qAdd.north);
+  \node[text=tfText, font=\footnotesize, left=7mm of qX] {Post-norm};
+
+  % ── title + caption in line-free lanes ──
+  \node[tfrole, above=9mm of pF] {Where layer-norm sits: pre-norm vs post-norm};
+  \node[tfcap, align=center, below=10mm of qF]
+       {sublayer $f\in\{\operatorname{MHA},\operatorname{FFN}\}$, each wrapped identically\\[3pt]
+        pre-norm $\mathbf Y=\mathbf X+f(\operatorname{LN}(\mathbf X))$\qquad post-norm $\mathbf Y=\operatorname{LN}(\mathbf X+f(\mathbf X))$\\[3pt]
+        only LN's position moves — deciding whether the skip (identity) path reaches the next layer untouched};
+
+\end{tikzpicture}
+\end{document}
