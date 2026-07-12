@@ -33,6 +33,15 @@ definitions, in `src/content/transformers/*.mdx`.
 > the `MAP`-style renumber no longer applies to new content. A 3-voice / 3-round review already ran over the current
 > 19 chapters (2026-07-10); its **confirmed defects are pre-seeded below** (Stage-A/C work already done for them).
 
+> **Readiness review (Codex 2026-07-11)** (`.consult/codex-20260711T195132_033960-roadmap-readiness.md`). Three changes:
+> (1) the **load-bearing** pre-seeded defects — **ch10 contrastive over-reach** and the **ch17 missing tag/probability
+> factor** — are **pulled FORWARD to a pre-Track-A fix** (restructuring must not migrate or cite known-invalid material);
+> the rest ride this terminal sweep. (2) This sweep is **not the only proof gate**: each new Track-A/B chapter gets a
+> **lightweight per-chapter proof/numeric gate as it lands**; only the exhaustive falsify→derive→compare→verify sweep is
+> terminal. (3) The **`tests/properties/` harness is landed by Track A (PR1), not created here** — this audit *extends*
+> it, so migration and the new chapters already run under regression protection. The sweep inventories **semantic IDs**
+> (post-migration), not `tf\d+`.
+
 ## Pre-seeded findings (from the 2026-07-10 three-round review — confirmed by ≥2 independent voices)
 
 Feed these straight into Stage C/D as candidate findings (skip re-discovery; still verify per decision 7). Blocking
@@ -41,9 +50,11 @@ only confirms those did not regress. The audit OWNS:
 - **ch10 contrastive minimizer** (`prop-tf10-contrastive-alignment`): the "equivalently, on L2-normalized embeddings"
   step is false (fixed-τ margin ≤ 2/τ cannot diverge); split into unconstrained-logit lemma / constrained spherical-code
   optimum / directional tendency, and fix ch18:33's "correct precisely because" over-claim to match ch18:114's caveat.
-- **ch07 encoder⟺cross-attention contradiction**: line 129's "an encoder exists exactly when cross-attention is present"
-  contradicts the encoder-only row + ViT (55) + LLaVA (133) in-chapter; the real switch is whether the encoder feeds
-  cross-attention vs. a concat-projector. (Expository.)
+- **ch07 encoder⟺cross-attention contradiction** (**pull FORWARD — pre-Track-A**): line 129's "an encoder exists exactly
+  when cross-attention is present" contradicts the encoder-only row + ViT (55) + LLaVA (133) in-chapter; the real switch
+  is whether the encoder feeds cross-attention vs. a concat-projector. (Expository.) **Fix the merged `three-architectures`
+  figure caption (#10) in the same change** — it renders the same "unused 4th cell" framing (bidirectional self-attention
+  + cross-attention is used in fusion / cross-encoders, so scope the claim to *generating* stacks).
 - **ch17 any-to-any tag-factor**: the proof drops $p(c_t\mid u_{<t})$; add $p(u_t\mid u_{<t})=p(c_t\mid u_{<t})\,
   p(x_t\mid u_{<t},c_t)$ (theorem survives).
 - **ch17 finite-alphabet wording** (`prop-tf17-why-discrete` + Exercise 17.3): "only over a finite alphabet / finite sum
@@ -74,8 +85,11 @@ presumes the pre-normalization representation, to forestall the R3-4 confusion.
    peek voids that unit's B signal and is disclosed in the report.
 6. **Property tests are durable:** curated Stage-A tests land in
    `tests/properties/` (stdlib-only preferred; no new CI dependencies) with a
-   test step added to `.github/workflows/content-validate.yml` (+ `tests/**`
-   in its trigger paths) — the repo's first regression suite.
+   test step in `.github/workflows/content-validate.yml` (+ `tests/**` in its
+   trigger paths). **(Amended 2026-07-11 per the readiness review: the harness
+   + CI step are established by Track A, PR1 — this sweep *extends* the existing
+   suite rather than creating it, so migration and the new chapters already run
+   under regression protection.)**
 7. **Rigor bar:** fix defects (invalid steps, false statements,
    statement↔proof mismatches) AND rigor gaps (unstated load-bearing
    assumptions — "taken as given" is legal only when stated); improvements

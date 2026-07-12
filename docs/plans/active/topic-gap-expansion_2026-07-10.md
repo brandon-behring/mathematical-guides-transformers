@@ -4,6 +4,12 @@
 because three of its four additions need a **new** strict-live research dossier built first. Design record:
 `~/.claude/plans/how-much-research-is-elegant-popcorn.md`.
 
+**Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
+(`.consult/codex-20260711T195132_033960-roadmap-readiness.md`) flagged two fixes, folded in below: the structure-design
+pass becomes a hard **B0 exit gate** (not an at-execution afterthought), and the three dossiers **build in parallel with
+Track A** (freeze scopes now; only *authoring* waits on Track A + dossier acceptance) — so the critical path is dossier
+readiness, not Track A completion.
+
 ## Context
 
 A 3-voice topic-coverage sweep (Codex + Gemini + Claude) asked what whole **topics** the guide is missing for its
@@ -66,15 +72,24 @@ from primaries.** New dossiers use the same strict-live v3 pipeline as the six m
   generative-text eval. (Positional-encoding breadth, RMSNorm, init/signal-propagation are already covered or handled
   in Track A — not gaps.)
 
-## Structure-design pass (at execution)
+## Structure-design pass — a hard B0 EXIT GATE (per the Codex readiness review)
 Track B grows the guide to ~24 chapters. Because IDs are semantic/chapter-free (Track A), adding chapters is cheap, but
-**P3 now gains ICL + RLHF/DPO (+ maybe scaling)** — its internal order and whether scaling opens P4 needs a mini
-holistic-sweep (like the 6-part design) to balance the parts. Do that pass before authoring, not now.
+**P3 gains ICL + RLHF/DPO (+ maybe scaling)**. Codex flagged "structure pass at execution" as too late; it is now a
+**gate that must clear before any Track B authoring**, with explicit exit criteria:
+- the **three dossiers are built and accepted** (evidence ledgers usable);
+- **chapter placement is decided** — P3 internal order, and whether scaling opens P4;
+- the **ICL theorem scopes are frozen** (constructive associative-lookup + retrieval-error bound only; induction-heads /
+  ICL-as-GD stay remarks);
+- the **DPO and scaling claims are pinned** to specific `evidence_ledger` ids in their dossiers.
+Only then does authoring (B1–B4) begin.
 
-## Delivery — phased (after Track A)
+## Delivery — phased
 (B0) build the three new dossiers (`research_preference_optimization`, `research_scaling_laws`,
-`research_incontext_associative_memory`) — strict-live v3, each tracked as a research-dossiers issue.
-(B1) BPE ch01 section (no dossier). (B2) ICL chapter. (B3) RLHF/DPO chapter. (B4) Scaling-laws chapter.
+`research_incontext_associative_memory`) — strict-live v3, each tracked as a research-dossiers issue (#5/#6/#7).
+**Run B0 in PARALLEL with Track A** — freeze scopes now, build during A; nothing here depends on Track A code.
+(B0-gate) the structure-design **exit gate** above clears.
+(B1) BPE ch01 section (no dossier). (B2) ICL chapter. (B3) RLHF/DPO chapter. (B4) Scaling-laws chapter — each authored
+only after the gate clears **and** after Track A has landed the semantic-ID / re-part machinery they build on.
 Then the pre-seeded proof-audit runs over the full ~24-chapter corpus.
 
 ## Verification (at execution)

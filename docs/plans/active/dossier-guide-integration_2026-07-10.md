@@ -3,6 +3,14 @@
 **Status:** approved design, **not yet executed**. Parked per the Large Task Protocol. Supersedes
 `docs/notes/sparse-attention-chapter-ideas_2026-07-09.md`. Companion: `topic-gap-expansion_2026-07-10.md` (Track B).
 
+**Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
+(`.consult/codex-20260711T195132_033960-roadmap-readiness.md`) returned NO-GO for the backlog *as phased* (direction
+A→B→C sound). Its blocking/important fixes are folded in below: the PR sequence is re-split (re-part / ID-migration /
+MoE-author+extract are now separate — extracting MoE before its chapter exists would leave ch12 hollow), an explicit
+**MoE derivation gate** precedes authoring, **ID-migration + bibliography invariants** are named, the **property-test
+harness lands during this track** (not deferred to the proof-audit), and **infra-readiness spikes** run before
+authoring.
+
 ## Context
 
 The six merged research dossiers (`~/Claude/research-dossiers/`, research-dossiers PR #4) are the guide's backing
@@ -93,11 +101,15 @@ enc-dec taxonomy. **Gaps to resolve before/while authoring:**
 3. old-ch13→ new SSD chunk wording: $c\asymp\sqrt{d_s}$ minimizes the arithmetic surrogate; $c\asymp d_s$ is the
 hardware-shape choice on the same $\Theta(nd_sd)$ plateau (asymptotics unchanged).
 
-## Math fixes — DEFERRED → pre-seed the proof-audit (survivors of the 3-round review)
+## Math fixes — pre-seed the proof-audit (survivors of the 3-round review)
 See `proof-audit_2026-07-03.md`'s pre-seeded list. In brief: ch10 contrastive over-reach + ch18:33 propagation; ch07
-encoder⟺cross-attention in-chapter contradiction; ch17 any-to-any tag-factor omission; ch17 finite-alphabet wording
-(prop + Exercise 17.3); ch18 prose N-4/N-5; ch08 definition-before-use. **Reviewed and REFUTED (do not seed):** ch13
-dual-discretization (explicitly scoped), ch10 Mahalanobis (pooled reps in ambient $\R^d$; sphere is nonlinear).
+encoder⟺cross-attention in-chapter contradiction (**+ the `three-architectures` figure caption from #10 — fix figure
+and prose together**, since the merged figure renders the same "unused 4th cell" framing); ch17 any-to-any tag-factor
+omission; ch17 finite-alphabet wording (prop + Exercise 17.3); ch18 prose N-4/N-5; ch08 definition-before-use. **Per
+the Codex readiness review, the load-bearing defects (ch10 contrastive over-reach, ch17 missing tag/probability factor)
+are pulled FORWARD to a pre-Track-A fix** — restructuring must not migrate or cite known-invalid material; the rest ride
+the terminal sweep. **Reviewed and REFUTED (do not seed):** ch13 dual-discretization (explicitly scoped), ch10
+Mahalanobis (pooled reps in ambient $\R^d$; sphere is nonlinear).
 
 ## Migration, glossaries, completeness, repairs
 - **IDs/prose:** semantic chapter-free IDs for new content; migrate moved-chapter IDs once; **prose-number grep sweep**
@@ -119,12 +131,31 @@ dual-discretization (explicitly scoped), ch10 Mahalanobis (pooled reps in ambien
 New chapters + corrected propositions: **Codex 5.6** (adversarial math — substituting for out-of-credits Fable) +
 Sonnet (style) + Python numeric compute-verification (seq-models-arc precedent).
 
-## Delivery — phased shippable PRs
-1. **Math-fix blockers + $d_{\text{cache}}$ unification** (small; de-risks MoE + MLA).
-2. **Mechanical re-part + ID/prose migration + MoE-extract** (frontmatter `part:` + semantic-ID moves + prose sweep).
-3. **MoE chapter** (derived cost model). 4. **Sparse chapter**. 5. **Glossaries + completeness + narrative repairs.**
-Each independently reviewable/mergeable; isolates the risky renumber from content. Local gate per PR: `npm run validate`
-+ `npm run build` + 0 KaTeX errors.
+## Delivery — phased shippable PRs (re-split per the Codex readiness review)
+The old PR2 bundled re-part + ID-migration + MoE-extraction — too many failure modes, and extracting MoE before the MoE
+chapter exists leaves ch12 hollow with dangling forward-refs. Re-split into six:
+1. **Math-fix blockers + $d_{\text{cache}}$ unification** + **PR1 gates**: (a) the **MoE derivation gate** — derive the
+   three-quantity cost model from `def-tf12-cost-eq` and *review it* before any MoE authoring, separating resident
+   $E\mu$ / activated $Tk\Phi$ / traffic $A_B\mu$ with limiting-case checks (one-token decode, $A_B=E$, repeated
+   routing, expert sharding); (b) land the **`tests/properties/` harness + CI step** now (not deferred to the
+   proof-audit) so migration runs under regression protection; (c) **infra-readiness spikes** — scaffold
+   back-matter/glossary support, `<NotationOverride>` rendering, KaTeX for all new notation, numeric/property-test CI
+   trigger paths, figure conventions; (d) generate a **corpus manifest** (chapter order/part/ID/counts/printed-numbers)
+   as the baseline for every later PR and the proof-audit.
+2. **Mechanical re-part ONLY** — frontmatter `part:` moves, no ID or content change; `validate` + build green.
+3. **Semantic-ID migration** — machine-generated old→new manifest; the **ID invariants** (below) all pass; prose-number
+   sweep clean.
+4. **MoE chapter — authored AND extracted from ch12 atomically** (never extract before the destination exists).
+5. **Sparse & Sub-Quadratic Attention chapter.**
+6. **Glossaries + completeness + narrative repairs.**
+Each independently reviewable/mergeable. **Per-PR gate:** `npm run validate` + `npm run build` + 0 KaTeX errors + 0
+duplicate labels + (content PRs) the **bibliography gate** — every new `<Cite key>` resolves 1:1 through
+`bibliography.bib` → `src/data/references.json`, keys unique.
+
+**ID-migration invariants (PR3, re-checked after every later insertion):** corpus-wide duplicate-ID check; every old ID
+either mapped or deliberately retired; no dangling `<XRef>`/label entries; no stray legacy `tf\d+` IDs; generated labels
+match displayed chapter/theorem numbers; prose-number sweep after *each* insertion (semantic IDs stop key-drift, not
+printed-number drift).
 
 ## Verification (of the whole track, at execution)
 - All six dossiers' cited claims resolve to a primary + `evidence_ledger` id (or a "derive"/"top-up" tag per the
