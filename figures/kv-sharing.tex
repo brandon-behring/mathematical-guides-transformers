@@ -1,0 +1,88 @@
+%! no-theme
+% kv-sharing (ch05, def-tf5-gqa / prop-tf5-kv-cache) — how MHA / GQA / MQA share key/value heads.
+% Query heads are always h; the number of DISTINCT key/value heads is h (MHA) / g (GQA) / 1 (MQA), and the
+% KV cache is proportional to it: prop-tf5-kv-cache gives 2n·h·d_k / 2n·g·d_k / 2n·d_k. Instance h=4, g=2
+% (the chapter's own dimension trace is h=2 — too small for a genuine GQA middle case). /authoring-figures
+% standard: relative positioning + spacing tokens, orthogonal fan-in comb (bus + tfjoin dot + single trunk),
+% grayscale-safe roles (Q solid purple / KV dashed blue, disambiguated by the two row labels), line-free
+% title/caption lanes.
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+
+  % ══ Panel 1 — MHA (g = h): one KV head per query head, 1:1 ══
+  \node[tfQ, tfunit] (mq1) {};
+  \node[tfQ, tfunit, right=\tfheadgap of mq1] (mq2) {};
+  \node[tfQ, tfunit, right=\tfheadgap of mq2] (mq3) {};
+  \node[tfQ, tfunit, right=\tfheadgap of mq3] (mq4) {};
+  \node[tfK, tfunit, below=\tfmapdrop of mq1] (mk1) {};
+  \node[tfK, tfunit, below=\tfmapdrop of mq2] (mk2) {};
+  \node[tfK, tfunit, below=\tfmapdrop of mq3] (mk3) {};
+  \node[tfK, tfunit, below=\tfmapdrop of mq4] (mk4) {};
+  \draw[tfcollect] (mq1.south) -- (mk1.north);
+  \draw[tfcollect] (mq2.south) -- (mk2.north);
+  \draw[tfcollect] (mq3.south) -- (mk3.north);
+  \draw[tfcollect] (mq4.south) -- (mk4.north);
+
+  % ══ Panel 2 — GQA (g = 2): a group of two query heads shares one KV head ══
+  \node[tfQ, tfunit, right=\tfstagegap of mq4] (gq1) {};
+  \node[tfQ, tfunit, right=\tfheadgap of gq1] (gq2) {};
+  \node[tfQ, tfunit, right=\tfheadgap of gq2] (gq3) {};
+  \node[tfQ, tfunit, right=\tfheadgap of gq3] (gq4) {};
+  \coordinate (gc1) at ($(gq1)!0.5!(gq2)$);
+  \coordinate (gc2) at ($(gq3)!0.5!(gq4)$);
+  \node[tfK, tfunit] (gk1) at (gc1 |- mk1) {};
+  \node[tfK, tfunit] (gk2) at (gc2 |- mk1) {};
+  % fan-in comb: verticals down to a short bus, one trunk from the bus centre to the KV tile (tfjoin dot)
+  \coordinate (gbus) at ([yshift=-\tfjoinrise]gq1.south);
+  \draw[tfcollect] (gq1.south) -- (gq1 |- gbus);   \draw[tfcollect] (gq2.south) -- (gq2 |- gbus);
+  \draw[tfcollect] (gq1 |- gbus) -- (gq2 |- gbus);
+  \node[tfjoin] at (gk1 |- gbus) {};               \draw[tfcollect] (gk1 |- gbus) -- (gk1.north);
+  \draw[tfcollect] (gq3.south) -- (gq3 |- gbus);   \draw[tfcollect] (gq4.south) -- (gq4 |- gbus);
+  \draw[tfcollect] (gq3 |- gbus) -- (gq4 |- gbus);
+  \node[tfjoin] at (gk2 |- gbus) {};               \draw[tfcollect] (gk2 |- gbus) -- (gk2.north);
+
+  % ══ Panel 3 — MQA (g = 1): all query heads share one KV head ══
+  \node[tfQ, tfunit, right=\tfstagegap of gq4] (aq1) {};
+  \node[tfQ, tfunit, right=\tfheadgap of aq1] (aq2) {};
+  \node[tfQ, tfunit, right=\tfheadgap of aq2] (aq3) {};
+  \node[tfQ, tfunit, right=\tfheadgap of aq3] (aq4) {};
+  \coordinate (ac1) at ($(aq1)!0.5!(aq4)$);
+  \node[tfK, tfunit] (ak1) at (ac1 |- mk1) {};
+  \coordinate (abus) at ([yshift=-\tfjoinrise]aq1.south);
+  \draw[tfcollect] (aq1.south) -- (aq1 |- abus);   \draw[tfcollect] (aq2.south) -- (aq2 |- abus);
+  \draw[tfcollect] (aq3.south) -- (aq3 |- abus);   \draw[tfcollect] (aq4.south) -- (aq4 |- abus);
+  \draw[tfcollect] (aq1 |- abus) -- (aq4 |- abus);
+  \node[tfjoin] at (ak1 |- abus) {};               \draw[tfcollect] (ak1 |- abus) -- (ak1.north);
+
+  % ── row labels (far left; the tiles themselves are unlabeled) ──
+  \node[tfcap, align=right, left=\tfheadgap of mq1] {query\\heads};
+  \node[tfcap, align=right, left=\tfheadgap of mk1] {KV\\heads};
+
+  % ── panel titles (centred above each query row) ──
+  \coordinate (mtop) at ($(mq1.north)!0.5!(mq4.north)$);
+  \coordinate (gtop) at ($(gq1.north)!0.5!(gq4.north)$);
+  \coordinate (atop) at ($(aq1.north)!0.5!(aq4.north)$);
+  \node[tfrole, above=\tflabelgap of mtop] {MHA};
+  \node[tfrole, above=\tflabelgap of gtop] {GQA};
+  \node[tfrole, above=\tflabelgap of atop] {MQA};
+
+  % ── per-panel KV count (centred below each KV row) ──
+  \coordinate (mbot) at ($(mk1.south)!0.5!(mk4.south)$);
+  \coordinate (gbot) at ($(gk1.south)!0.5!(gk2.south)$);
+  \node[tfcap, below=4mm of mbot] {$\#\mathrm{KV}=h=4$};
+  \node[tfcap, below=4mm of gbot] {$\#\mathrm{KV}=g=2$};
+  \node[tfcap, below=4mm of ak1.south, anchor=north] {$\#\mathrm{KV}=1$};
+
+  % ── title + caption in line-free lanes ──
+  \coordinate (figtop) at ($(mtop)!0.5!(atop)$);
+  \coordinate (figbot) at ($(mbot)!0.5!(ak1.south)$);
+  \node[tfrole, above=11mm of figtop] {Sharing key/value heads};
+  \node[tfcap, align=center, below=11mm of figbot]
+       {KV cache $\propto\ \#\mathrm{KV}$ heads:\ \ $2n\,h\,d_k$ (MHA)\ $\cdot$\ $2n\,g\,d_k$ (GQA)\ $\cdot$\ $2n\,d_k$ (MQA)\\[2pt]
+        queries stay per-head (only $\mathbf K,\mathbf V$ are shared); fewer distinct KV heads $\Rightarrow$ fewer cache reads per generated token --- the decode-bandwidth win\\[2pt]
+        (example $h{=}4,\ g{=}2\ \Rightarrow\ 1:\tfrac12:\tfrac14$ of the MHA cache)};
+
+\end{tikzpicture}
+\end{document}

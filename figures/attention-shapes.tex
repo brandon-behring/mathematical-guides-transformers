@@ -1,0 +1,74 @@
+%! no-theme
+% attention-shapes (ch04, def-tf4-attention) — scaled dot-product attention as a shape pipeline.
+% RELATIVE positioning throughout (positioning lib + spacing tokens from transformer-figures.sty):
+% every element is placed `right/above/below = <token> of <neighbour>`, never raw (x,y), so gaps are
+% guaranteed by construction. Sizes read off each matrix's free edges; orthogonal routing; A is a
+% framed grayscale magnitude heatmap of a concrete n=3 example (Python-verified; rows sum to 1).
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+
+  % ---- inputs Q, K (dims on free top/left edges) ----
+  \node[tfQ, font=\large] (Q) {$Q$};
+  \node[tfK, font=\large, below=\tfbranchgap of Q] (K) {$K$};
+  \tfdimtop{Q}{$d_k$} \tfdimleft{Q}{$n$}
+  \tfdimtop{K}{$d_k$} \tfdimleft{K}{$n$}
+  \coordinate (QKmid) at ($(Q.east)!0.5!(K.east)$);
+
+  % ---- A: n×n attention matrix as a grayscale magnitude heatmap (concrete n=3) ----
+  %! palette-local: black!NN = attention-weight magnitude (grayscale heatmap), white numerals on dark cells
+  \matrix (A) [right=32mm of QKmid, matrix of nodes, ampersand replacement=\&,
+      column sep=-0.3pt, row sep=-0.3pt, inner sep=0pt,
+      nodes={draw=gray!38, minimum size=6.6mm, inner sep=0pt, font=\scriptsize, text=black!82}]{
+      |[fill=black!34,text=white]| 0.56 \& |[fill=black!11]| 0.09 \& |[fill=black!24]| 0.35 \\
+      |[fill=black!11]| 0.09 \& |[fill=black!34,text=white]| 0.56 \& |[fill=black!24]| 0.35 \\
+      |[fill=black!15]| 0.17 \& |[fill=black!15]| 0.17 \& |[fill=black!39,text=white]| 0.66 \\ };
+  \node[draw=gray!55, rounded corners=2pt, line width=0.5pt, fit=(A), inner sep=1.5pt] (Af) {};
+  % highlight ONE query row (row 1) — its weights average the value rows into the matching output row.
+  % Heavy frame (survives grayscale as a bold outline vs the thin cell borders); purple = query (rows = queries).
+  \node[draw=purple!75, rounded corners=1.5pt, line width=0.9pt, fit=(A-1-1)(A-1-3), inner sep=0.3pt] (rowhl) {};
+
+  % ---- weighted sum A·V -> context, via explicit × node ----
+  \node[tfmerge, right=\tfstagegap of Af] (mul) {$\times$};
+  \node[tfoutput, fill=orange!11, font=\large, right=\tfstagegap of mul] (C) {$C$};
+  \node[tfV, font=\large, below=\tfbranchgap of mul] (V) {$V$};
+  \tfdimbottom{V}{$d_v$} \tfdimleft{V}{$n$}
+  \tfdimtop{C}{$d_v$} \tfdimright{C}{$n$}
+
+  % ---- orthogonal merge + dataflow arrows (drawn between named anchors; no text on any path) ----
+  \coordinate (busc) at ($(Q.east)+(3mm,0)$);
+  \coordinate (mrg)  at (busc |- QKmid);
+  \draw[tfcollect] (Q.east) -| (mrg);
+  \draw[tfcollect] (K.east) -| (mrg);
+  % op-label is a WHITE-KNOCKOUT midway node ON the flow arrow — its fill masks the line behind it,
+  % so a line cannot show through it, and `midway` keeps it off every other line by construction.
+  \draw[tfflow] (mrg) -- (A.west)
+       node[midway, tfoplabel] {$QK^\top/\sqrt{d_k}$\\[1pt] row-wise softmax};
+  \draw[tfflow] (Af.east) -- (mul.west);
+  \draw[tfflow] (V.north) -- (mul.south);
+  \draw[tfflow] (mul.east) -- (C.west);
+
+  % ---- labels: title / captions / context / legend in line-free lanes (positioned to boxes) ----
+  \node[tfrole, above=\tflabelgap of Af] {$A$ \; ($n\times n$)};
+  \node[tfcap, align=center, below=\tflabelgap of Af]
+       {rows = queries $i$ \,·\, cols = keys $j$\\ $n{=}3$ example \,($\approx$, rows sum to $1$)};
+  \node[tfcap, below=\tflabelgap of C] {$=AV$ \; (context)};
+
+  % ---- Q/K/V key: direct plural pairings, placed below the inputs ----
+  \node[tfQ, minimum width=5mm, minimum height=5mm, font=\scriptsize,
+        below=\tfbranchgap of K.south west, anchor=north west] (kq) {Q};
+  \node[tfcap, right=1mm of kq] (kql) {: queries};
+  \node[tfK, minimum width=5mm, minimum height=5mm, font=\scriptsize, right=7mm of kql] (kk) {K};
+  \node[tfcap, right=1mm of kk] (kkl) {: keys};
+  \node[tfV, minimum width=5mm, minimum height=5mm, font=\scriptsize, right=7mm of kkl] (kv) {V};
+  \node[tfcap, right=1mm of kv] {: values};
+
+  % ---- averaging cue: the highlighted query row of A is a set of weights that averages the value rows ----
+  \coordinate (avgY) at ([yshift=-6mm]kq.south);
+  \node[tfcap, align=center] at (avgY -| Af)
+       {each output row is a weighted average of the value rows --- weights $=$ that row of $A$ (sum to $1$):\\[1pt]
+        highlighted\; $C_{1,:}=0.56\,V_{1,:}+0.09\,V_{2,:}+0.35\,V_{3,:}$};
+
+\end{tikzpicture}
+\end{document}

@@ -23,6 +23,7 @@ los:
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
@@ -65,6 +66,19 @@ Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d
 | $(\statemat,\inputmat,\outputmat,\feedmat),\ \Delta$ | continuous state space quintuple and step size | State Space Models (<XRef id="def-tf3-ssm" />) |
 | $(\discA,\discB)$ | zero-order-hold discretized state matrices | State Space Models (<XRef id="thm-tf3-zoh" />) |
 | $\bullet$ | associative scan operator on affine pairs | State Space Models (<XRef id="def-tf3-scan-op" />) |
+
+## Reading the figures
+
+The figures in this guide follow one visual grammar, so a diagram in a later chapter reads the same way as one here. Boxes are typed by role — each carrying a colour, a border style, *and* a label, so the role survives in grayscale and under colour-vision deficiency — while arrows carry the flow of data and a matrix's size is read off its own edges. Any colour beyond these fixed roles is local to the figure that uses it, and is explained there. The legend below is the key.
+
+<Figure
+  src="/figures/figure-legend.svg"
+  alt="A key to the guide's figure vocabulary: query/key/value and input/output/operation boxes, flow arrows, split-merge junctions, the residual-add node, and edge-dimension brackets."
+  desc="Two columns. Roles: query (purple, solid border), key (blue, dashed), value (orange, dotted), and input/activation, output, and operation boxes — each carrying colour, border style, and a label. Wiring and shapes: a data-flow arrow, a split/merge junction, a residual-add node, and an edge-dimension bracket. A note states that colour beyond these roles is figure-local and that each role stays legible in grayscale through its border style and label."
+  caption="The figure vocabulary used throughout the guide. Each role is encoded by colour, border style, and label together, so meaning survives grayscale and colour-vision deficiency; any colour beyond these roles is local to the figure that uses it."
+  id="fig-reading-figures"
+  width="82%"
+/>
 
 ## Modality-agnostic conventions
 
