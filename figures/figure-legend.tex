@@ -1,0 +1,58 @@
+%! no-theme
+% figure-legend (ch00, "Reading the figures" §) — the key to the visual vocabulary shared by every figure in
+% the guide (transformer-figures.sty): role boxes (Q/K/V + terminals + operations), the wiring (flow, split/
+% merge, residual add), and how a matrix's size is read off its edges. States the grayscale-safety contract
+% (role = colour + border style + label) and that any colour beyond these roles is local to a given figure.
+% /authoring-figures standard: relative positioning + tokens, the same styles the figures use, line-free lanes.
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+  \tikzset{sw/.style={minimum width=9mm, minimum height=6mm}, lbl/.style={tfcap, anchor=west}}
+  \newcommand{\rg}{8mm}   % legend row gap
+
+  % ═══ Roles (left column) ═══
+  \node[tfQ, sw] (rQ) {\footnotesize$\mathbf Q$};
+  \node[lbl, right=2.5mm of rQ] {query\quad(e.g.\ $\mathbf X\mathbf W^{Q}$)};
+  \node[tfK, sw, below=\rg of rQ] (rK) {\footnotesize$\mathbf K$};
+  \node[lbl, right=2.5mm of rK] {key\quad(e.g.\ $\mathbf X\mathbf W^{K}$)};
+  \node[tfV, sw, below=\rg of rK] (rV) {\footnotesize$\mathbf V$};
+  \node[lbl, right=2.5mm of rV] {value\quad(e.g.\ $\mathbf X\mathbf W^{V}$)};
+  \node[tfinput, sw, below=\rg of rV] (rin) {};
+  \node[lbl, right=2.5mm of rin] {input / activation};
+  \node[tfoutput, sw, below=\rg of rin] (rout) {};
+  \node[lbl, right=2.5mm of rout] {output};
+  \node[tfstruct, sw, below=\rg of rout] (rop) {};
+  \node[lbl, right=2.5mm of rop] {operation $\cdot$ sublayer};
+
+  % ═══ Wiring & shapes (right column, aligned to the left rows) ═══
+  \node[sw] (wflow) at ([xshift=52mm]rQ.center) {};
+  \draw[tfflow] (wflow.west) -- (wflow.east);
+  \node[lbl, right=2.5mm of wflow] {data flow};
+
+  \node[sw, below=\rg of wflow] (wmrg) {};
+  \draw[tfcollect] (wmrg.north west) -- (wmrg.center);
+  \draw[tfcollect] (wmrg.south west) -- (wmrg.center);
+  \node[tfjoin] at (wmrg.center) {};
+  \draw[tfflow] (wmrg.center) -- (wmrg.east);
+  \node[lbl, right=2.5mm of wmrg] {split / merge (bus $\cdot$ junction)};
+
+  \node[sw, below=\rg of wmrg] (wadd) {};
+  \node[tfadd] at (wadd.center) {$+$};
+  \node[lbl, right=2.5mm of wadd] {residual add};
+
+  \node[sw, below=\rg of wadd] (wdim) {};
+  \draw[tfdimarrow] (wdim.west) -- (wdim.east) node[midway, above=-0.7mm, tfdim] {$n$};
+  \node[lbl, right=2.5mm of wdim] {dimension — size on a free edge};
+
+  % ═══ group headings + title + note in line-free lanes ═══
+  \node[tfrole, anchor=south west] at ([yshift=4mm]rQ.north west) {Roles};
+  \node[tfrole, anchor=south west] at ([yshift=4mm]wflow.north west) {Wiring \& shapes};
+  \coordinate (top) at ($(rQ.north)!0.5!(wflow.north)$);
+  \node[tfrole, font=\normalsize\bfseries] at ([xshift=20mm, yshift=12mm]top) {Reading the figures};
+  \node[tfcap, align=left, anchor=north west] at ([yshift=-6mm]rop.south west -| rQ.west)
+       {Grayscale-safe by construction: each role is colour \emph{and} border style (solid $/$ dashed $/$ dotted) \emph{and} an in-box label,\\
+        so meaning survives without colour. Any colour beyond these roles is local to the figure that uses it.};
+
+\end{tikzpicture}
+\end{document}

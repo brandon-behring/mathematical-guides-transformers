@@ -1,0 +1,35 @@
+%! no-theme
+% ffn-expansion (ch06, def-tf6-ffn) — the position-wise feed-forward network as a widen→activate→project.
+% FFN(x) = σ(x W_1 + b_1) W_2 + b_2, with W_1 ∈ R^{d×d_ff}, W_2 ∈ R^{d_ff×d}, d_ff = 4d (typical), applied
+% per token. Device: WIDTH-PROPORTIONAL boxes — the hidden layer is drawn 4× the height of input/output, so
+% the expansion is legible at a glance (height ∝ number of units). /authoring-figures standard: relative
+% positioning + tokens, white-knockout W_1/W_2 labels on horizontal arrows, edge-dim brackets on the FREE
+% outer edges of x and y. The hidden box is mid-pipeline (flow on both vertical edges), so a dimension
+% BRACKET there would cross a flow arrow — its d_ff is carried by the proportional height + a text label.
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+
+  % ── pipeline: x (d) ──W_1──▶ σ-hidden (d_ff = 4d, drawn 4× taller) ──W_2──▶ y (d) — all on one axis ──
+  \node[tfinput,  minimum height=10mm, minimum width=11mm, font=\large] (x) {$\mathbf x$};
+  % same width as x/y so ONLY height varies — height, not bulk, carries the d_ff expansion
+  \node[tfstruct, minimum height=40mm, minimum width=11mm, font=\Large, right=\tfstagegap of x] (h) {$\sigma$};
+  \node[tfoutput, minimum height=10mm, minimum width=11mm, font=\large, right=\tfstagegap of h] (y) {$\mathbf y$};
+
+  \draw[tfflow] (x.east) -- (h.west) node[midway, tfoplabel] {$\mathbf W_1$ widens};
+  \draw[tfflow] (h.east) -- (y.west) node[midway, tfoplabel] {$\mathbf W_2$ projects};
+
+  % ── dimensions: brackets on the free outer edges (x.left, y.right); the hidden height carries d_ff ──
+  \tfdimleft{x}{$d$}
+  \tfdimright{y}{$d$}
+  \node[tfdim, above=4.5mm of h] {$d_{\text{ff}} = 4d$};
+
+  % ── title + caption in line-free lanes ──
+  \node[tfrole, above=10mm of h] {Position-wise feed-forward network};
+  \node[tfcap, align=center, below=7mm of h]
+       {$\operatorname{FFN}(\mathbf x)=\sigma(\mathbf x\mathbf W_1+\mathbf b_1)\,\mathbf W_2+\mathbf b_2$\quad$\cdot$\quad applied to each token independently\\[3pt]
+        widen $d\!\to\! d_{\text{ff}}$,\ bend by $\sigma$ (ReLU / GELU),\ project $d_{\text{ff}}\!\to\! d$\quad(typically $d_{\text{ff}}=4d$)};
+
+\end{tikzpicture}
+\end{document}

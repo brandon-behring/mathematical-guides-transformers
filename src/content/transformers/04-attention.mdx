@@ -54,6 +54,15 @@ with softmax applied row-wise to the $n\times n$ logit matrix.
 
 Because each softmax row is non-negative and sums to one (<XRef id="def-softmax" />), the weight matrix is row-stochastic, so output row $i$ is a **convex combination** of the value rows (<XRef id="prop-row-stochastic-convex" />) — the kernel-regression reading made literal.
 
+<Figure
+  src="/figures/attention-shapes.svg"
+  alt="Scaled dot-product attention as a shape pipeline: Q and K form an n×n weight matrix A, which averages the rows of V into the context C."
+  desc="Query and key matrices (each n×d_k) combine through a QKᵀ/√d_k, row-wise softmax step into the n×n attention matrix A, drawn as a concrete 3×3 grayscale magnitude heatmap whose rows sum to one. Row 1 is highlighted and expanded below as C_{1,:} = 0.56 V_{1,:} + 0.09 V_{2,:} + 0.35 V_{3,:}, showing that each output row is a weighted average of the value rows. A then multiplies V (n×d_v) at a product node to give the context C (n×d_v)."
+  caption="Scaled dot-product attention as a shape pipeline (def-tf4-attention). Q·Kᵀ/√d_k then row-wise softmax gives the n×n weight matrix A — each row a probability distribution — so the context C = AV has each row a convex combination of the value rows (prop-row-stochastic-convex). The highlighted row makes one such weighted average concrete. Shapes flow n×d_k → n×n → n×d_v."
+  id="fig-attention-shapes"
+  width="92%"
+/>
+
 For language modeling, attention must additionally respect time: position $i$ may consult only positions $j \le i$. This is imposed not by changing the operator but by adding a fixed mask to the logits before the softmax.
 
 <Theorem kind="definition" name="Causal (masked) attention" id="def-tf4-causal-mask">
@@ -70,6 +79,8 @@ A $-\infty$ logit exponentiates to $0$, so each softmax row remains a probabilit
 
 <Figure
   src="/figures/attention-pattern.svg"
+  alt="Causal self-attention mask: query i attends only to keys j ≤ i, so the weight matrix is lower-triangular."
+  desc="A lower-triangular attention pattern — position i may attend to positions j ≤ i only; entries above the diagonal are masked to zero (a -∞ logit exponentiates to a 0 weight), and each row remains a probability distribution over the allowed keys."
   caption="Causal self-attention. Query q_i attends only to keys k_j with j ≤ i; each row of the masked weight matrix is a probability distribution. Rendered from TikZ via the figures pipeline."
   id="fig-causal-mask"
   width="58%"

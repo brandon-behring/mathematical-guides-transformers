@@ -1,0 +1,53 @@
+%! no-theme
+% mha-split-concat (ch05, def-tf5-mha) — multi-head attention as split → per-head attend → concat → project.
+% Each head has its OWN learned projection (X W_i^{Q,K,V}) into a d_k-subspace — NOT a raw slice of X.
+% Concrete instance: d=6, h=3, d_k=d_v=2 (h·d_v = 6 = d). /authoring-figures standard: relative positioning,
+% clean split/merge idiom (bus + tfjoin dot + single trunk arrowhead), edge dims on FREE edges, text lanes.
+\documentclass[tikz,border=6pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+
+  % ---- input X ----
+  \node[tfinput, font=\large] (X) {$X$};
+  \tfdimtop{X}{$d$} \tfdimleft{X}{$n$}
+
+  % ---- h heads (stacked, symmetric about the X→Concat axis), each an Attn block → n×d_v ----
+  \node[tfstruct, font=\small, right=\tfstagegap of X] (h2) {head$_2$};
+  \node[tfstruct, font=\small, above=\tfbranchgap of h2] (h1) {head$_1$};
+  \node[tfstruct, font=\small, below=\tfbranchgap of h2] (h3) {head$_3$};
+  \tfdimtop{h1}{$d_v$}
+
+  % ---- concat → output projection ----
+  \node[tfstruct, font=\small, right=\tfstagegap of h2, minimum height=13mm] (cat) {Concat};
+  \tfdimtop{cat}{$h\,d_v{=}d$}
+  \node[tfoutput, font=\large, right=\tfstagegap of cat] (Y) {$Y$};
+  \tfdimtop{Y}{$d$} \tfdimright{Y}{$n$}
+
+  % ---- SPLIT: X → junction dot → one arrow into each head (single arrowheads at the leaves) ----
+  \coordinate (sp) at ($(X.east)+(6mm,0)$);
+  \draw[tfcollect] (X.east) -- (sp);
+  \node[tfjoin] at (sp) {};
+  \draw[tfflow] (sp) |- (h1.west);
+  \draw[tfflow] (sp) -- (h2.west);
+  \draw[tfflow] (sp) |- (h3.west);
+
+  % ---- CONCAT: heads → junction dot → one arrow into Concat (no stacked arrowheads at the merge) ----
+  \coordinate (cc) at ($(cat.west)+(-6mm,0)$);
+  \draw[tfcollect] (h1.east) -| (cc);
+  \draw[tfcollect] (h2.east) -- (cc);
+  \draw[tfcollect] (h3.east) -| (cc);
+  \node[tfjoin] at (cc) {};
+  \draw[tfflow] (cc) -- (cat.west);
+
+  % ---- output projection W^O (white-knockout label on its own arrow) ----
+  \draw[tfflow] (cat.east) -- (Y.west) node[midway, tfoplabel] {$W^{O}$};
+
+  % ---- title + caption in line-free lanes (the head definition lives here, so it reads for ALL heads) ----
+  \node[tfrole, above=\tflabelgap of h1] {Multi-Head Attention};
+  \node[tfcap, align=center, below=6mm of h3]
+       {each $\operatorname{head}_i=\operatorname{Attn}(XW_i^{Q},XW_i^{K},XW_i^{V})\in\mathbb{R}^{n\times d_v}$ --- its \emph{own} learned projections, not a slice of $X$\\[1pt]
+        $h$ heads $\cdot$ concat $\cdot$ remix by $W^{O}$ (mixes across heads) \quad (example $d{=}6,\ h{=}3,\ d_k{=}d_v{=}2$)};
+
+\end{tikzpicture}
+\end{document}

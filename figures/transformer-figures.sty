@@ -1,0 +1,135 @@
+% transformer-figures.sty — shared TikZ style package for "Transformer Mathematics" figures.
+%
+% SOURCE OF TRUTH for the figure visual standard. Every figure loads it:
+%   \documentclass[tikz,border=3pt]{standalone}\usepackage{transformer-figures}
+% NOT discovered as a figure by book-scaffold build-figures (scans *.tex only); pdflatex runs from
+% each figure's dir, so \usepackage{transformer-figures} resolves here.
+%
+% Principle: enough notation to follow the computation + track shapes, nothing decorative. Sizes read
+% off matrix EDGES; RELATIVE positioning with named spacing tokens; ORTHOGONAL routing; operation
+% labels are WHITE-KNOCKOUT nodes welded to their arrow (a line can't show through them). A colour
+% seam (tfText / tfInk) lets an automated two-colour "gate" render separate text from lines for a
+% pixel-level collision check (scripts/check_figure_collisions.py).
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{transformer-figures}[2026/07/10 Transformer Mathematics figure standard v0.4]
+
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+\RequirePackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc,fit,backgrounds,matrix}
+
+% ── Spacing tokens (place elements `right/above=<token> of <neighbour>`, never raw (x,y)) ──
+\newlength{\tfstagegap}\setlength{\tfstagegap}{19mm}   % between pipeline stages (box→box)
+\newlength{\tflabelgap}\setlength{\tflabelgap}{2.6mm}  % label / title / caption to its host arrow or box
+\newlength{\tfbranchgap}\setlength{\tfbranchgap}{12mm} % vertical branch drop (K below Q · V below ×)
+\newlength{\tfheadgap}\setlength{\tfheadgap}{4mm}      % between sibling head/unit tiles in a row
+\newlength{\tfjoinrise}\setlength{\tfjoinrise}{4mm}    % bus drop below a row / tfjoin rise above a fan-in target
+\newlength{\tfmapdrop}\setlength{\tfmapdrop}{18mm}     % row→row drop in a mapping/comb figure (query row → KV row)
+
+% ── Colour seam (the gate flips these; see bottom) ──
+\providecommand{\tfpagebg}{white}
+\colorlet{tfText}{black!74}     % ALL prose text: op-labels, captions, titles, dims, box symbols
+\colorlet{tfInk}{gray!80}       % dataflow + collector connectors
+\colorlet{tfInkDim}{gray!58}    % dimension double-arrows
+
+\tikzset{
+  % ── matrix / block shape (symbol font per node) ──
+  tf@box/.style={draw, rounded corners=1.5pt, align=center, inner sep=3pt,
+                 minimum width=11mm, minimum height=10mm, text=tfText},
+  % Weight hierarchy (two codex audits converged on it): role/terminal borders > connectors > dim-arrows,
+  % so the objects out-weight the wiring. Role boxes also need a DARK-enough border to survive grayscale
+  % (orange especially — its high luminance made the Y border vanish); operation scaffolding (tfstruct)
+  % stays recessive/light.
+  tfinput/.style ={tf@box, fill=blue!14,   draw=blue!62,        line width=0.8pt},
+  tfoutput/.style={tf@box, fill=orange!16, draw=orange!78!black, line width=0.8pt},
+  tfproj/.style  ={tf@box, fill=purple!15, draw=purple!64,      line width=0.8pt},
+  tfstruct/.style={tf@box, fill=black!6,   draw=gray!55,        line width=0.45pt},
+  % ── Q / K / V — redundant: fill + border dash + label ──
+  tfQ/.style={tfproj,   draw=purple!72},
+  tfK/.style={tfinput,  draw=blue!68,   dashed},
+  tfV/.style={tfoutput, draw=orange!72, densely dotted, line width=0.9pt},
+  % small head/group unit tile (size-only override; apply AFTER a role style: [tfQ,tfunit] / [tfK,tfunit])
+  tfunit/.style={minimum width=7mm, minimum height=6mm, inner sep=2pt},
+  % ── one stroke vocabulary (connectors route through tfInk so the gate can recolour them) ──
+  tfflow/.style   ={->, >={Stealth[length=2.0mm]}, draw=tfInk, line width=0.7pt},
+  tfcollect/.style={-, draw=tfInk, line width=0.7pt},
+  tfmerge/.style  ={draw=gray!80, circle, inner sep=0.4pt, minimum size=4.2mm, fill=white, line width=0.5pt},
+  % split / merge junction: draw a bus with plain `tfcollect` lines to a `tfjoin` dot, then ONE `tfflow`
+  % (single arrowhead) on the trunk — never stack arrowheads at a fan-out / fan-in.
+  tfjoin/.style   ={circle, fill=tfInk, inner sep=0pt, minimum size=2.8pt},
+  % residual/merge ADD node (⊕): a bg-filled circle so lines are masked behind it; sits on a spine where a
+  % skip path rejoins. Use \node[tfadd]{$+$}; the fill lets connectors terminate cleanly at its border.
+  tfadd/.style    ={circle, draw=tfInk, fill=\tfpagebg, inner sep=0pt, minimum size=4.6mm, font=\small, text=tfText, line width=0.6pt},
+  % ── text styles (all route through tfText) ──
+  tfdim/.style ={font=\scriptsize, text=tfText},
+  tfrole/.style={font=\footnotesize\bfseries, text=tfText},
+  tfcap/.style ={font=\scriptsize, text=tfText},
+  tfaxis/.style={font=\scriptsize\itshape, text=tfText},
+  % ── white-knockout operation label: ride an arrow as a midway node; fill masks the line behind it ──
+  tfoplabel/.style={tfcap, align=center, fill=\tfpagebg, inner sep=1.6pt},
+  % ── dimension double-arrow ──
+  tfdimarrow/.style={<->, >={Stealth[length=1.0mm]}, draw=tfInkDim, line width=0.4pt},
+  % ── comparison-grid cell frames (a 2×2 / n-panel compare): active vs inactive(greyed) ──
+  tfpanel/.style   ={draw=gray!45, rounded corners=2pt, line width=0.4pt},
+  tfpaneloff/.style={tfpanel, fill=black!5},
+  % ── dark-mode: render each figure as a light "card" ──
+  % Each figure's .tex carries a `%! no-theme` line, opting out of the site's dark colour-remap (which maps
+  % EVERY dark colour → light and so would wash out role-box symbols against the un-themed light pastel fills).
+  % This white background rectangle keeps that opted-out figure fully legible on a dark page; light mode is
+  % unchanged (white on white). The rect is white → invisible to the collision gate (not magenta/cyan).
+  background rectangle/.style={fill=white, rounded corners=2.5pt},
+  every picture/.append style={show background rectangle},
+}
+
+% Heatmap cell (inline fills + white/dark numerals for contrast; the heatmap interior is EXCLUDED
+% from the gate — it is a self-contained object whose numerals cannot reach the pipeline connectors).
+% \tfheatcell{x}{y}{v}
+\newcommand{\tfheatcell}[3]{%
+  \pgfmathtruncatemacro{\tf@shade}{round(#3*50+6)}%
+  \ifdim #3pt>0.46pt \def\tf@txt{white}\else\def\tf@txt{black!82}\fi
+  \node[draw=gray!38, fill=black!\tf@shade, minimum size=6.6mm, inner sep=0pt,
+        font=\scriptsize, text=\tf@txt] at (#1,#2) {#3}}
+
+% Attention-mask icon — a small 4×4 grid showing which (query row i, key col j) pairs a position may attend.
+%   \tfmaskicon{full}{<coord>}   → every cell shaded (BIDIRECTIONAL: attend all positions)
+%   \tfmaskicon{causal}{<coord>} → lower-triangular incl. diagonal (CAUSAL: position i attends keys j ≤ i)
+% Grayscale-safe (shading only); the shape itself is the cue. Centred on <coord>; wrap nothing — it draws in place.
+\newcommand{\tfmaskicon}[2]{%
+  \def\tf@mt{#1}\def\tf@mfull{full}%
+  \begin{scope}[shift={(#2)}, x=1.1mm, y=1.1mm]
+    \foreach \r in {0,1,2,3}{\foreach \c in {0,1,2,3}{%
+      \pgfmathtruncatemacro{\tf@tri}{\c<=\r ? 1 : 0}%
+      \ifx\tf@mt\tf@mfull\def\tf@on{1}\else\let\tf@on\tf@tri\fi
+      \ifnum\tf@on=1\relax \fill[gray!48] (\c-2,2-\r) rectangle +(1,-1);\fi
+    }}%
+    \draw[gray!35, line width=0.2pt, step=1] (-2,-2) grid (2,2);%
+    \draw[gray!62, line width=0.35pt] (-2,-2) rectangle (2,2);%
+  \end{scope}}
+
+% Edge dimension labels — a matrix's size on a chosen FREE edge (never an edge an arrow uses).
+\newcommand{\tfdimtop}[2]{%
+  \draw[tfdimarrow] ([yshift=1.3mm]#1.north west) -- ([yshift=1.3mm]#1.north east)
+       node[midway, above=-0.7mm, tfdim] {#2};}
+\newcommand{\tfdimbottom}[2]{%
+  \draw[tfdimarrow] ([yshift=-1.3mm]#1.south west) -- ([yshift=-1.3mm]#1.south east)
+       node[midway, below=-0.7mm, tfdim] {#2};}
+\newcommand{\tfdimleft}[2]{%
+  \draw[tfdimarrow] ([xshift=-1.3mm]#1.north west) -- ([xshift=-1.3mm]#1.south west)
+       node[midway, left=0.6mm, tfdim] {#2};}
+\newcommand{\tfdimright}[2]{%
+  \draw[tfdimarrow] ([xshift=1.3mm]#1.north east) -- ([xshift=1.3mm]#1.south east)
+       node[midway, right=0.6mm, tfdim] {#2};}
+
+% ── Collision GATE render. Compile with:  pdflatex "\def\tfgatemode{gate}\input{fig.tex}"
+%    → prose text becomes pure MAGENTA, connectors pure CYAN (one render). No per-figure edits,
+%    because all text routes through tfText and all connectors through tfInk/tfInkDim. The
+%    white-knockout fill stays white, erasing cyan beneath an op-label (no false positive).
+%    scripts/check_figure_collisions.py: fail on any magenta pixel within the clearance of cyan. ──
+\providecommand{\tfgatemode}{normal}
+\def\tf@gm@gate{gate}
+\ifx\tfgatemode\tf@gm@gate
+  \colorlet{tfText}{magenta}\colorlet{tfInk}{cyan}\colorlet{tfInkDim}{cyan}
+\fi
+
+\endinput

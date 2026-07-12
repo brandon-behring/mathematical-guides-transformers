@@ -1,0 +1,88 @@
+%! no-theme
+% three-architectures (ch07, rem-tf7-three-archs / Ex 7.2) — the three standard architectures ARE the switch
+% space itself: two binary switches (self-attention bidirectional vs causal) × (cross-attention absent vs
+% present) give four settings; three are standard, the fourth is non-standard. Drawing the 2×2 makes the
+% chapter's thesis literal and teaches WHY only three of four are used.
+%   (bi, absent)   = Encoder-only   · BERT
+%   (causal, absent)= Decoder-only  · GPT, LLaMA
+%   (causal, present)= Encoder-decoder · T5, original transformer
+%   (bi, present)  = NON-STANDARD (bidirectional self-attention is incompatible with the autoregressive
+%                    generation cross-attention serves — unused, not impossible)
+% Pedagogical mitigations: (i) each block carries an attention-mask icon (\tfmaskicon full/causal) so the
+% row switch is SHOWN, not just named; (ii) the enc-dec cell shows BOTH a bidirectional-masked encoder and a
+% causal-masked decoder (kills "enc-dec has no bidirectional part"); (iii) the 4th cell reads as unused+reason.
+% /authoring-figures standard: relative positioning + tokens, grayscale-safe (masks are shading; roles by
+% label+border), line-free title/caption lanes.
+\documentclass[tikz,border=10pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+  \newcommand{\CW}{50mm}\newcommand{\CH}{40mm}\newcommand{\GAP}{7mm}
+
+  % ══ the 2×2 cells (rows: bidirectional / causal · cols: cross-attn absent / present) ══
+  \node[tfpanel,    minimum width=\CW, minimum height=\CH]                       (cA1) {}; % bi, absent
+  \node[tfpaneloff, minimum width=\CW, minimum height=\CH, right=\GAP of cA1]     (cB1) {}; % bi, present  → non-standard
+  \node[tfpanel,    minimum width=\CW, minimum height=\CH, below=\GAP of cA1]     (cA2) {}; % causal, absent
+  \node[tfpanel,    minimum width=\CW, minimum height=\CH, below=\GAP of cB1]     (cB2) {}; % causal, present
+
+  % ── cell A1 — Encoder-only ──
+  \node[tfrole, font=\small\bfseries, anchor=north] at ([yshift=-2.5mm]cA1.north) {Encoder-only};
+  \node[tfaxis, anchor=south] (a1o) at ([yshift=6mm]cA1.center) {pooled embedding};
+  \node[tfstruct, minimum width=15mm, minimum height=12mm, align=center, font=\footnotesize] (a1b) at ([yshift=-1mm]cA1.center) {Enc\\$\times N$};
+  \coordinate (a1m) at ([xshift=12mm]a1b.center); \tfmaskicon{full}{a1m}
+  \node[tfaxis, anchor=north] (a1i) at ([yshift=-8.5mm]cA1.center) {tokens};
+  \node[tfaxis, anchor=south] at ([yshift=1.5mm]cA1.south) {BERT};
+  \draw[tfflow] (a1i) -- (a1b);   \draw[tfflow] (a1b) -- (a1o);
+
+  % ── cell A2 — Decoder-only ──
+  \node[tfrole, font=\small\bfseries, anchor=north] at ([yshift=-2.5mm]cA2.north) {Decoder-only};
+  \node[tfaxis, anchor=south] (a2o) at ([yshift=6mm]cA2.center) {next token};
+  \node[tfstruct, minimum width=15mm, minimum height=12mm, align=center, font=\footnotesize] (a2b) at ([yshift=-1mm]cA2.center) {Dec\\$\times N$};
+  \coordinate (a2m) at ([xshift=12mm]a2b.center); \tfmaskicon{causal}{a2m}
+  \node[tfaxis, anchor=north] (a2i) at ([yshift=-8.5mm]cA2.center) {prompt};
+  \node[tfaxis, anchor=south] at ([yshift=1.5mm]cA2.south) {GPT, LLaMA};
+  \draw[tfflow] (a2i) -- (a2b);   \draw[tfflow] (a2b) -- (a2o);
+
+  % ── cell B2 — Encoder-decoder (BOTH masks; cross-attn couples them) ──
+  \node[tfrole, font=\small\bfseries, anchor=north] at ([yshift=-2.5mm]cB2.north) {Encoder-decoder};
+  \node[tfstruct, minimum width=12mm, minimum height=11mm, align=center, font=\scriptsize] (b2e) at ([xshift=-11.5mm,yshift=1mm]cB2.center) {Enc\\$\times N$};
+  \node[tfstruct, minimum width=12mm, minimum height=11mm, align=center, font=\scriptsize] (b2d) at ([xshift=11.5mm,yshift=1mm]cB2.center) {Dec\\$\times N$};
+  \coordinate (b2em) at ([yshift=-8mm]b2e.center); \tfmaskicon{full}{b2em}
+  \coordinate (b2dm) at ([yshift=-8mm]b2d.center); \tfmaskicon{causal}{b2dm}
+  \draw[tfflow] (b2e.east) -- (b2d.west) node[midway, tfoplabel, font=\tiny] {cross-\\attn};
+  \node[tfaxis, anchor=south] at ([yshift=6mm]b2d.center) {next token};
+  \node[tfaxis, anchor=south] at ([yshift=1.5mm]cB2.south) {T5, original transformer};
+
+  % ── cell B1 — non-standard (greyed) ──
+  \node[tfrole, font=\small\bfseries, anchor=north, text=gray!60] at ([yshift=-2.5mm]cB1.north) {non-standard};
+  \node[align=center, font=\scriptsize, text=gray!58] at ([yshift=-1mm]cB1.center)
+       {bidirectional self-attention\\is incompatible with the\\autoregressive generation\\cross-attention serves};
+
+  % ══ axis headers ══
+  \coordinate (gtop) at ([yshift=3mm]cA1.north);
+  \node[tfcap, anchor=south] at (cA1.north |- gtop) {absent};
+  \node[tfcap, anchor=south] at (cB1.north |- gtop) {present};
+  \coordinate (colmid) at ($(cA1.north)!0.5!(cB1.north)$);
+  \node[tfrole, anchor=south] at ([yshift=7.5mm]colmid) {cross-attention};
+
+  \coordinate (gleft) at ([xshift=-3mm]cA1.west);
+  \node[tfcap, anchor=east] at (gleft |- cA1) {bidirectional};
+  \node[tfcap, anchor=east] at (gleft |- cA2) {causal};
+  \coordinate (rowmid) at ($(cA1.west)!0.5!(cA2.west)$);
+  \node[tfrole, rotate=90, anchor=south] at ([xshift=-26mm]rowmid) {self-attention};
+
+  % ══ title + mask legend + caption (line-free lanes) ══
+  \node[tfrole, font=\normalsize\bfseries, anchor=south] at ([yshift=13mm]colmid) {The three \emph{standard} architectures $=$ two binary switches};
+
+  \coordinate (botmid) at ($(cA2.south)!0.5!(cB2.south)$);
+  \node[tfcap, align=center, anchor=north] at ([yshift=-5mm]botmid)
+       {Row $=$ the self-attention of the \emph{generating} stack — encoder-decoder is causal because its decoder generates.\\
+        Three of the four settings are standard; a bidirectional generator with cross-attention (top-right) is unused.};
+  \coordinate (legY) at ([yshift=-16mm]botmid);
+  \coordinate (lm1) at ([xshift=-32mm]legY); \tfmaskicon{full}{lm1}
+  \node[tfcap, anchor=west] at ([xshift=3.5mm]lm1) {attend all positions (bidirectional)};
+  \coordinate (lm2) at ([xshift=24mm]legY); \tfmaskicon{causal}{lm2}
+  \node[tfcap, anchor=west] at ([xshift=3.5mm]lm2) {attend earlier positions only (causal)};
+
+\end{tikzpicture}
+\end{document}
