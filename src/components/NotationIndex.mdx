@@ -53,7 +53,7 @@ import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 | $K$ | number of adapted matrices | LoRA accounting (<XRef id="def-lora" />) |
 | $K$ | number of draft tokens proposed per speculative cycle | Inference Optimizations (<XRef id="def-spec-decode" />) |
 | $K$ | number of key–value pairs in a finite recall problem | Modern Recurrent & Hybrid (<XRef id="prop-state-recall" />) |
-| $N$ | model parameter count | Practical Training Optimizations (<XRef id="def-train-memory" />) |
+| $N$ | model parameter count | Scaling Laws and Practical Training Optimizations (<XRef id="def-separable-scaling-law" />, <XRef id="def-train-memory" />) |
 | $N$ | retrieval-pool size | Multimodal Evaluation (<XRef id="def-retrieval" />) |
 | $c$ | chunk size | Selective State Spaces (<XRef id="prop-chunked" />) |
 | $c$ | candidate or class index | Multimodal Evaluation |
@@ -61,6 +61,23 @@ import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 | $u_t$ | scalar channel of token row $\mathbf x_t$ | Selective State Spaces (<XRef id="def-selective-ssm" />) |
 | $\mathbf e_k$ | $k$-th standard-basis (one-hot) vector | guide-wide default; Notation |
 | $\mathbf e_k$ | learned code vector in $\R^{d_c}$ | Discrete Visual Tokenization (<XRef id="def-codebook" />) |
+
+<div className="notation-print-break" aria-hidden="true" />
+
+**Scaling-fit and allocation quantities.** These are local to the empirical surrogate and its continuous constrained optimization.
+
+| Symbol | Meaning | Scope |
+|---|---|---|
+| $\widehat L(N,D)$ | fitted final held-out next-token loss at parameter count $N$ and seen-token count $D$ | Scaling Laws (<XRef id="def-separable-scaling-law" />) |
+| $D$ | number of seen training-token presentations | Scaling Laws (<XRef id="def-separable-scaling-law" />) |
+| $E$ | fitted loss floor | Scaling Laws (<XRef id="def-separable-scaling-law" />) |
+| $A,B>0$ | parameter-limited and data-limited fit coefficients | Scaling Laws (<XRef id="def-separable-scaling-law" />) |
+| $\alpha,\beta>0$ | fitted parameter and data exponents | Scaling Laws (<XRef id="def-separable-scaling-law" />) |
+| $\widehat C(N,D)$ | symbolic dense-training compute proxy $\kappa ND$ | Scaling Laws (<XRef id="def-training-compute-proxy" />) |
+| $\kappa,C>0$ | proxy factor and fixed proxy budget | Scaling Laws (<XRef id="def-training-compute-proxy" />) |
+| $\mathcal S_C$ | positive continuous allocations satisfying $\kappa ND=C$ | Scaling Laws (<XRef id="def-training-compute-proxy" />) |
+| $N^\star,D^\star$ | unique continuous compute-optimal parameter/token allocation | Scaling Laws (<XRef id="thm-compute-optimal-allocation" />) |
+| $\gamma$ | optimal excess-loss exponent $\alpha\beta/(\alpha+\beta)$ | Scaling Laws (<XRef id="prop-optimal-excess-loss-rate" />) |
 
 <div className="notation-print-break" aria-hidden="true" />
 

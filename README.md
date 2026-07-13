@@ -12,12 +12,10 @@ order follows the arc.
 Authoring follows the family's dossier-grounded
 [formal style guide](https://github.com/brandon-behring/mathematical-guides/blob/main/docs/style-guide-formal-v0.3.md).
 
-## Structure: 23 chapters, 6 parts
+## Structure: 24 chapters, 6 parts
 
-Published chapter numbers deliberately reserve **13** (scaling laws).
-The current 23-chapter corpus therefore occupies **00–12 and 14–23**. Source filenames carry
-those final display numbers, while frontmatter `slug` values are number-free, so filling a reserved
-slot does not change an existing chapter URL.
+Published chapters occupy every display number from **00 through 23**. Source filenames carry those
+display numbers, while frontmatter `slug` values remain number-free so chapter URLs stay stable.
 
 - **Part 1 — Foundations.** Notation and prerequisites; input representations (reversible text tokenization
   with BPE, the modality-agnostic embedding interface, positional encodings, RoPE).
@@ -31,7 +29,8 @@ slot does not change an existing chapter URL.
   construction; encoders and decoders across architecture families (causality as
   prefix-consistency, abstracted over any sequence mixer); token-level training; pairwise preference
   optimization through RLHF and DPO; encoder readouts, contrastive alignment, and detection.
-- **Part 4 — Efficient & Conditional Computation.** Training optimizations; inference optimizations
+- **Part 4 — Efficient & Conditional Computation.** Empirical scaling laws and compute-optimal
+  model/data allocation; training optimizations; inference optimizations
   (greedy, temperature, top-$k$, and top-$p$ decoding; the KV-cache, quantization, FlashAttention,
   and speculative decoding); mixture-of-experts
   (routing gradients, load balance, expert capacity, cost accounting, and expert parallelism).

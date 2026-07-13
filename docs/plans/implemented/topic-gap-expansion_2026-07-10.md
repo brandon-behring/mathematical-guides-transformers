@@ -1,14 +1,14 @@
 # Topic-gap expansion (Track B) — four convergent gaps + evidence lock
 
-**Status:** B0 evidence reconciliation and the atomic structure-design exit gate cleared on 2026-07-13. The accepted
-`research-dossiers` snapshot, per-owner provenance commits, and exact evidence IDs are frozen in the B0 record below;
-no Track B guide prose was authored before clearance. **B1 (BPE in ch01), B2 (ICL in ch08), and B3 (RLHF/DPO in
-ch11) completed on 2026-07-13; B4 Scaling is next**, based on the merged B3 predecessor.
+**Status:** **Implemented 2026-07-13.** B0 evidence reconciliation and the atomic structure-design exit gate cleared
+before authoring; B1 (BPE in ch01), B2 (ICL in ch08), B3 (RLHF/DPO in ch11), and B4 (Scaling in ch13) then completed
+in predecessor order. The accepted `research-dossiers` snapshot, per-owner provenance commits, and exact evidence IDs
+are frozen below. The separate pre-seeded terminal proof/pagination audit is now the sole active content plan.
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
 (`docs/audits/roadmap-readiness_2026-07-11.md`) flagged two fixes, folded in below: the structure-design
-pass becomes a hard **B0 exit gate** (not an at-execution afterthought). Track A's A3/A7 prerequisites and the B0
-evidence/structure gate and B1–B3 are complete; the critical path is now B4 followed by the terminal whole-corpus
+pass becomes a hard **B0 exit gate** (not an at-execution afterthought). Track A's A3/A7 prerequisites, the B0
+evidence/structure gate, and B1–B4 are complete. The frozen 24-chapter corpus now passes to the terminal whole-corpus
 proof and pagination audit.
 
 ## Context
@@ -195,6 +195,30 @@ primary papers rather than dossier slugs.
   on pages 147–158, every exercise prompt remains with its collapsed solution row, and Chapter 12 begins cleanly on
   page 159.
 
+### B4 acceptance record — complete 2026-07-13
+
+- Chapter 13 now defines a separable fitted held-out next-token-loss surface and the dense-training proxy
+  $\widehat C=\kappa ND$; proves the unique continuous compute-optimal parameter/token allocation for arbitrary positive
+  exponents; derives the equal-exponent square-root corollary, unequal-exponent ratio law, and optimal excess-loss rate;
+  and separates exact surrogate algebra from empirical extrapolation, discrete constraints, lifecycle demand,
+  deliberate over-training, sparse activation, and test-time reasoning compute.
+- Provenance is frozen to accepted dossier snapshot `ffd4e3a184ea364b95764a541830a0bba9489c4b`, owner
+  `research_llm_pretraining_scaling` at content commit `07e649de4397ebd205947f687634a21dca8e5c5f` (merged via
+  `e66bf53813beab08497b34e0d8e1924dea2fb101`), and evidence pins `_0001`, `_0014`, `_0015`, `_0002`, `_0016`, and
+  `_0017`. The chapter cites the primary Kaplan et al., Hoffmann et al., Sardana et al., and Gadre et al. papers.
+- The log-space allocation TikZ/PDF/SVG figure, three glossary entries, notation and quick-reference entries,
+  neighboring chapter links, four learning objectives, and six solved exercises are wired. The completed corpus has
+  24 chapters occupying 00–23, 309 semantic labels, 109 learning objectives, 759 cross-references, 223 registry
+  references, 133 exercises/137 occurrences, 46 numerically guarded claims, and 31 figures.
+- Acceptance checks passed: 13 scaling-specific tests within the 100-test Python suite, including randomized
+  independent minimization, global perturbation, multiplier-sign, unequal-ratio, weighted-balance, trace-comparator,
+  and domain guards; corpus/property/semantic-ID, SVG-ID, print-HTML, and migration checks; a zero-collision 600 dpi
+  figure audit; scaffold validation; the 32-page production site build with 20,522 indexed words; and
+  `git diff --check`. Independent mathematics, pedagogy, and repository-QA reviews reported no remaining findings.
+  The 375 px render has no page-level overflow and synchronized figure accessibility text. In the 319-page print
+  render, Chapter 13 is legible on pages 170–178, its figure and caption remain atomic, all six prompts retain their
+  collapsed solution rows on page 178, and Chapter 14 begins cleanly on page 179.
+
 ## Delivery — phased
 This order—not the topic-heading order above—is authoritative:
 
@@ -205,15 +229,15 @@ This order—not the topic-heading order above—is authoritative:
 3. **B1 (complete 2026-07-13):** add the BPE section to ch01 (no dossier); the corpus remains 21 chapters.
 4. **B2 (complete 2026-07-13):** add ICL as ch08; the corpus becomes 22 chapters and 08 is no longer reserved.
 5. **B3 (complete 2026-07-13):** add RLHF/DPO as ch11; the corpus becomes 23 chapters and 11 is no longer reserved.
-6. **B4 (next):** add Scaling Laws as ch13; the corpus becomes 24 chapters and 13 is no longer reserved, then run the
-   final whole-corpus sweep.
-7. Run the pre-seeded terminal proof audit over the frozen 24-chapter corpus.
+6. **B4 (complete 2026-07-13):** add Scaling Laws as ch13; the corpus becomes 24 chapters and 13 is no longer reserved.
+7. **Terminal audit (next; separately tracked):** run the pre-seeded proof/pagination audit over the frozen
+   24-chapter corpus.
 
 Each B PR proceeds only after its predecessor merges and updates the shared `NotationIndex`/`QuickReference`, glossary
 entries where new terms warrant them, README/CLAUDE chapter metadata and occupied/reserved slots, corpus/property
 manifests, and the prose-number sweep. Deployment remains a separate post-content task and is not part of this sequence.
 
-## Verification (at execution)
-Each new chapter: cited claims resolve to its authoritative dossier evidence ledgers (BPE from primaries); Codex-5.6 + Sonnet +
-Python numeric protocol; DPO/scaling derivations numerically checked; the structure-design pass keeps the parts
-balanced and the dual-footing thesis intact (BPE closes the text-tokenizer asymmetry).
+## Verification — cleared
+Every new chapter's cited claims resolve to its authoritative dossier evidence ledgers (BPE to primaries). Independent
+model review plus deterministic and randomized numeric guards checked the DPO and scaling derivations. The completed
+structure keeps the parts balanced and the dual-footing thesis intact; BPE closes the text-tokenizer asymmetry.

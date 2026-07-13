@@ -4,9 +4,9 @@ slug: training-optimizations
 chapter: 14
 part: 4
 description: "The algebra behind production training tools: the training-memory equation, mixed precision as a numerical dynamic-range argument, gradient checkpointing as a memory–compute tradeoff (Theta(sqrt(L)) memory for one extra forward pass), LoRA as a low-rank update with a 2r/d parameter reduction, and ZeRO/FSDP as a 1/P memory partition."
-last_verified: 2026-06-03
+last_verified: 2026-07-13
 rigor_level: rigorous
-prerequisites: [notation, attention]
+prerequisites: [notation, attention, scaling-laws]
 notation_introduced: ['M_{\text{train}}', 'b_p', 'b_g', 'b_o', 'b_a', 'P', 'L', '\Delta\mathbf W']
 theorems: ['def-train-memory', 'prop-fp32-adam', 'def-mixed-precision', 'prop-mixed-precision', 'thm-checkpointing', 'def-lora', 'prop-lora-savings', 'def-zero', 'prop-zero-memory']
 los:
@@ -32,10 +32,10 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Practical Training Optimizations
 
-**Where we are.** Every production training tool one hears named — mixed precision, gradient checkpointing, LoRA, ZeRO/FSDP — is, mathematically, an algebraic transformation of one specific term in a single equation: the memory a stochastic optimizer needs to train a model. We state that equation first, fixing the bytes-per-quantity that each term carries; then we walk each tool through it. Mixed precision shrinks the bytes per parameter and gradient by a dynamic-range argument; gradient checkpointing shrinks the activation count by trading memory for recomputation, and we prove the $\Theta(\sqrt{L})$ optimum exactly; LoRA collapses the trainable-parameter count to a low-rank adapter, with a parameter saving we state as a proposition; and ZeRO/FSDP partitions every term across $P$ workers, with per-worker memory and communication we compute term by term.
+**Where we are.** Chapter 13 allocated a symbolic training-compute budget between parameter count and seen tokens. This chapter asks whether the chosen training run fits on actual devices. Every production training tool one hears named — mixed precision, gradient checkpointing, LoRA, ZeRO/FSDP — is, mathematically, an algebraic transformation of one specific term in a single equation: the memory a stochastic optimizer needs to train a model. We state that equation first, fixing the bytes-per-quantity that each term carries; then we walk each tool through it. Mixed precision shrinks the bytes per parameter and gradient by a dynamic-range argument; gradient checkpointing shrinks the activation count by trading memory for recomputation, and we prove the $\Theta(\sqrt{L})$ optimum exactly; LoRA collapses the trainable-parameter count to a low-rank adapter, with a parameter saving we state as a proposition; and ZeRO/FSDP partitions every term across $P$ workers, with per-worker memory and communication we compute term by term.
 
 <NotationOverride scope="Practical Training Optimizations">
-$N$ is the model's **parameter count** (the literature's “$N$-parameter model”), overriding the standing block-count meaning. Here $L$ is depth in transformer blocks.
+$N$ continues to mean model **parameter count** as in Scaling Laws (<XRef id="def-separable-scaling-law" />), overriding the standing block-count meaning. Here $L$ is depth in transformer blocks.
 </NotationOverride>
 
 ## The training-memory equation

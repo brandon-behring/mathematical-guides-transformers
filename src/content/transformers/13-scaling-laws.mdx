@@ -1,0 +1,354 @@
+---
+title: "Scaling Laws"
+slug: scaling-laws
+chapter: 13
+part: 4
+description: "Empirical pretraining-loss scaling laws, the dense-training compute proxy, a general compute-optimal model/data allocation theorem, the equal-exponent square-root corollary, the optimal excess-loss rate, and the boundaries introduced by deployment-aware allocation and deliberate over-training."
+last_verified: 2026-07-13
+rigor_level: rigorous
+prerequisites: [notation, input-representations, training]
+notation_introduced: ['\widehat L(N,D)', 'N', 'D', 'E', 'A', 'B', '\alpha', '\beta', '\widehat C(N,D)', '\kappa', 'C', '\mathcal S_C', 'N^\star', 'D^\star', '\gamma']
+theorems: ['def-separable-scaling-law', 'rem-scaling-law-boundaries', 'def-training-compute-proxy', 'thm-compute-optimal-allocation', 'cor-equal-exponent-allocation', 'prop-optimal-excess-loss-rate', 'ex-scaling-allocation-trace', 'rem-lifecycle-allocation']
+los:
+  - id: lo-scaling-law-interpretation
+    statement: "Analyze a separable empirical loss fit by identifying its parameter-limited term, data-limited term, fitted loss floor, fitted domain, and non-universal assumptions."
+  - id: lo-compute-optimal-allocation
+    statement: "Derive and prove the unique continuous model/data allocation that minimizes the fitted loss under a fixed dense-training compute proxy."
+  - id: lo-square-root-allocation
+    statement: "Compare the exact equal-exponent square-root allocation with near-equal or unequal exponent behavior and compute the resulting scaling exponents."
+  - id: lo-scaling-law-boundaries
+    statement: "Analyze which conclusions change when the objective includes deployment demand, deliberate over-training, architectural sparsity, or constraints outside the fitted regime."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import NotationOverride from '../../components/NotationOverride.astro';
+import Figure from '../../components/Figure.astro';
+import SolutionBox from '../../components/SolutionBox.astro';
+
+# Scaling Laws
+
+**Where we are.** Chapter 10 defined the next-token loss optimized during pretraining. We now ask an allocation question that the loss alone cannot answer: under a fixed training budget, how much should be spent on model parameters and how much on training tokens? Empirical scaling studies fit smooth loss surfaces in those two variables. Once one such fit and a compute proxy are stated, their continuous optimum follows from a constrained calculation. This chapter derives that optimum for arbitrary positive fitted exponents, isolates the extra assumption behind the familiar square-root rule, and then marks the point where training-only arithmetic stops answering deployment questions. Chapters 14–16 supply the memory, serving, and conditional-compute details that the proxy deliberately suppresses.
+
+<NotationOverride scope="Scaling Laws">
+Here $N$ is the parameter count used by a scaling-law fit, not the standing transformer block count; $D$ is the number of training-token presentations. The symbols $E,A,B,\alpha,\beta,\kappa$, and $C$ are local fit, proxy, and budget quantities. Parameter-count and token-count conventions must match before coefficients from two fits are compared.
+</NotationOverride>
+
+## Fit the loss surface
+
+Scaling laws begin as regression models over completed training runs. They summarize how a measured loss changes within a specified family and experimental range; they are not identities of transformer architecture.
+
+<Theorem kind="definition" name="Separable empirical scaling law" id="def-separable-scaling-law">
+For parameter count $N>0$ and seen-token count $D>0$, a **separable empirical scaling law** models final held-out next-token loss by
+$$
+\widehat L(N,D)
+\defeq E + A N^{-\alpha} + B D^{-\beta},
+$$
+where $A,B,\alpha,\beta>0$ and $E$ is finite. The term $E$ is the fitted loss floor, $A N^{-\alpha}$ is the parameter-limited excess, and $B D^{-\beta}$ is the data-limited excess. All coefficients, exponents, counting conventions, and the fitted domain are part of the model.
+</Theorem>
+
+Kaplan et al. documented power-law behavior across model size, dataset size, and training compute <Cite key="kaplan2020scaling" />. Hoffmann et al. fit the separable form above to final losses and used it to study model/data allocation <Cite key="hoffmann2022chinchilla" />. Those results motivate the functional form; they do not make its parameters invariant across tokenizers, data mixtures, architectures, or training recipes.
+
+<MarginNote variant="pattern" label="Fit, not law">Read $\widehat L$ as “the fitted loss in this regime.” Extrapolation is an additional empirical claim, never a consequence of the algebra below.</MarginNote>
+
+<Theorem kind="remark" name="What the fit does not identify" id="rem-scaling-law-boundaries">
+The fit in <XRef id="def-separable-scaling-law" /> does not by itself identify a downstream-task score, a capability threshold, a wall-clock runtime, or a universal optimum. Here $D$ counts token presentations, not necessarily distinct documents. The positive real domain is a continuous relaxation: deployable widths, depths, batch sizes, and dataset sizes are discrete and constrained. A smooth fitted pretraining loss also does not prove that every downstream behavior changes smoothly.
+</Theorem>
+
+The fit supplies an objective. To turn it into an allocation problem, we need a budget contour.
+
+## Put the fit on a compute contour
+
+For dense autoregressive transformers, a widely used first-order training estimate is approximately six floating-point operations per parameter per token. We keep the constant symbolic so the derivation exposes exactly what depends on it.
+
+<Theorem kind="definition" name="Dense-training compute proxy" id="def-training-compute-proxy">
+For $\kappa>0$, define the **training-compute proxy**
+$$
+\widehat C(N,D) \defeq \kappa ND.
+$$
+Given a proxy budget $C>0$, the feasible continuous allocations are
+$$
+\mathcal S_C
+\defeq \{(N,D)\in(0,\infty)^2:\kappa ND=C\}.
+$$
+Inside the surrogate optimization, $\widehat C=C$ is the exact constraint. For dense autoregressive training, $\kappa\approx6$ is an empirical FLOP approximation <Cite key="hoffmann2022chinchilla" />, not an exact equation for wall time, utilization, communication, memory, sparse activation, or serving cost.
+</Theorem>
+
+<Figure
+  src="/figures/scaling-allocation.svg"
+  alt="A fixed-compute line on log parameter-count and log token-count axes, with a balanced optimum between model-heavy and data-heavy allocations."
+  desc="The horizontal axis is log parameter count and the vertical axis is log seen-token count. A descending fixed-compute line contains one marked balanced optimum, with arrows toward data-heavy and model-heavy alternatives. The upper-left direction is data-heavy and model-light, the lower-right direction is model-heavy and data-light, and the emphasized middle point is the fitted-loss minimum where the weighted marginal improvements balance."
+  caption="A fixed compute proxy permits many model/data allocations. The fitted optimum is the point where the weighted parameter-limited and data-limited improvements balance; moving either way along the contour creates a bottleneck."
+  id="fig-scaling-allocation"
+  width="88%"
+/>
+
+The fixed-compute line does not prefer a point by itself. The loss fit decides where the parameter-limited and data-limited penalties balance.
+
+<MarginNote variant="tip" label="Self-explanation">Use $D=C/(\kappa N)$ and then set $u=\log N$. Which exponential dominates as $u\to-\infty$, and which dominates as $u\to+\infty$?</MarginNote>
+
+<Theorem kind="theorem" name="General compute-optimal allocation" id="thm-compute-optimal-allocation">
+Fix $A,B,\alpha,\beta,\kappa,C>0$ and finite $E$. The unique global minimizer of $\widehat L$ over $\mathcal S_C$ satisfies the **weighted marginal-balance identity**
+$$
+\alpha A(N^\star)^{-\alpha}
+=\beta B(D^\star)^{-\beta},
+$$
+and is
+$$
+N^\star
+=\left(\frac{\alpha A}{\beta B\kappa^\beta}\right)^{\!1/(\alpha+\beta)}
+C^{\beta/(\alpha+\beta)},
+$$
+$$
+D^\star
+=\left(\frac{\beta B}{\alpha A\kappa^\alpha}\right)^{\!1/(\alpha+\beta)}
+C^{\alpha/(\alpha+\beta)}.
+$$
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Apply the Lagrange multiplier rule).** The constraint gradient is nonzero on $(0,\infty)^2$. For
+$$
+\mathscr J(N,D,\lambda)
+=A N^{-\alpha}+B D^{-\beta}+\lambda(\kappa ND-C),
+$$
+stationarity gives
+$$
+-\alpha A N^{-\alpha-1}+\lambda\kappa D=0,
+\qquad
+-\beta B D^{-\beta-1}+\lambda\kappa N=0.
+$$
+Multiplying the first equation by $N$, the second by $D$, and using $\kappa ND=C$ yields
+$$
+\lambda C=\alpha A N^{-\alpha}=\beta B D^{-\beta},
+$$
+which is the stated balance identity.
+
+**Step 2 (Solve the balance and budget equations).** Substitute $D=C/(\kappa N)$ into the balance:
+$$
+\alpha A N^{-\alpha}
+=\beta B\left(\frac{\kappa N}{C}\right)^\beta.
+$$
+Therefore
+$$
+N^{\alpha+\beta}
+=\frac{\alpha A}{\beta B\kappa^\beta}C^\beta,
+$$
+and the positive root is the stated $N^\star$. Substitution into $D=C/(\kappa N)$ gives the stated $D^\star$.
+
+**Step 3 (Prove global existence and uniqueness).** Parameterize every feasible point by $u=\log N$, so $D=C/(\kappa e^u)$. Apart from the constant $E$, the constrained objective is
+$$
+g_C(u)
+=A e^{-\alpha u}
++B\left(\frac{\kappa}{C}\right)^\beta e^{\beta u}.
+$$
+It tends to $+\infty$ as $u\to\pm\infty$, and
+$$
+g_C''(u)
+=\alpha^2 A e^{-\alpha u}
++\beta^2 B\left(\frac{\kappa}{C}\right)^\beta e^{\beta u}>0.
+$$
+Thus $g_C$ is coercive and strictly convex, so its stationary point exists and is the unique global minimum. $\qquad\blacksquare$
+</Theorem>
+
+The identity balances **exponent-weighted** excess-loss terms. It reduces to equality of the raw parameter and data terms only when $\alpha=\beta$.
+
+<MarginNote variant="formula" label="One-budget multiplier">At the optimum, $\lambda^\star C=\alpha A(N^\star)^{-\alpha}=\beta B(D^\star)^{-\beta}$. If $V(C)$ is minimized loss, $-V'(C)=\lambda^\star>0$: the multiplier is marginal loss reduction per additional proxy-budget unit.</MarginNote>
+
+## When square-root scaling is exact
+
+The powers of $C$ in <XRef id="thm-compute-optimal-allocation" /> are $\beta/(\alpha+\beta)$ for parameters and $\alpha/(\alpha+\beta)$ for tokens. Each becomes $1/2$ only under a symmetry of the fitted exponents.
+
+<Theorem kind="corollary" name="Equal-exponent square-root allocation" id="cor-equal-exponent-allocation">
+If $\alpha=\beta=q>0$, then
+$$
+N^\star
+=\left(\frac{A}{B}\right)^{\!1/(2q)}
+\left(\frac{C}{\kappa}\right)^{\!1/2}.
+$$
+Likewise,
+$$
+D^\star
+=\left(\frac{B}{A}\right)^{\!1/(2q)}
+\left(\frac{C}{\kappa}\right)^{\!1/2},
+$$
+so both scale exactly as $C^{1/2}$ and
+$$
+\frac{D^\star}{N^\star}=\left(\frac{B}{A}\right)^{1/q}
+$$
+is independent of $C$. When $\alpha\ne\beta$, the optimal ratio instead scales as
+$$
+\frac{D^\star}{N^\star}
+\propto C^{(\alpha-\beta)/(\alpha+\beta)}.
+$$
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Impose the symmetry).** Put $\alpha=\beta=q$ into the two closed forms of <XRef id="thm-compute-optimal-allocation" /> and collect the $C$ and $\kappa$ powers. Both budget exponents become $q/(2q)=1/2$.
+
+**Step 2 (Take the ratio).** Dividing the two equal-exponent forms cancels $(C/\kappa)^{1/2}$ and leaves $(B/A)^{1/q}$. Without the symmetry, subtracting the budget exponents gives $\alpha/(\alpha+\beta)-\beta/(\alpha+\beta)$, which yields the stated ratio law. $\qquad\blacksquare$
+</Theorem>
+
+Near-equal fitted exponents make the two budget powers near $1/2$; they do not make them equal. The empirical conclusion that model size and token count should grow at similar rates <Cite key="hoffmann2022chinchilla" /> therefore motivates an approximate rule in that fitted regime, not a universal constant token-to-parameter ratio.
+
+<MarginNote variant="warning" label="No universal ratio">“About twenty tokens per parameter” is fit-dependent, not a corollary. Change the fit, counting convention, or deployment objective and the ratio changes.</MarginNote>
+
+The same substitution gives the best fitted loss attainable as the budget grows.
+
+<Theorem kind="proposition" name="Optimal excess-loss rate" id="prop-optimal-excess-loss-rate">
+For fixed $A,B,\alpha,\beta,\kappa>0$, define
+$$
+\gamma\defeq\frac{\alpha\beta}{\alpha+\beta}.
+$$
+There is a constant $K>0$, independent of $C$, such that
+$$
+\widehat L(N^\star,D^\star)-E
+=K C^{-\gamma}.
+$$
+Thus the fitted optimum has diminishing returns in the proxy budget.
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Separate constants from budget powers).** Write
+$N^\star=c_N C^{\beta/(\alpha+\beta)}$ and
+$D^\star=c_D C^{\alpha/(\alpha+\beta)}$, where $c_N,c_D>0$ contain only the fixed coefficients.
+
+**Step 2 (Substitute into both excess terms).** Then
+$$
+A(N^\star)^{-\alpha}
+=A c_N^{-\alpha} C^{-\gamma},
+\qquad
+B(D^\star)^{-\beta}
+=B c_D^{-\beta} C^{-\gamma}.
+$$
+Adding gives the result with $K=A c_N^{-\alpha}+B c_D^{-\beta}>0$. $\qquad\blacksquare$
+</Theorem>
+
+## A complete unequal-exponent trace
+
+<Theorem kind="example" name="Unequal-exponent allocation trace" id="ex-scaling-allocation-trace">
+Take $A=B=\kappa=1$, $\alpha=1$, $\beta=2$, and $C=32$. Then the constraint is $ND=32$, while <XRef id="thm-compute-optimal-allocation" /> gives
+$$
+N^\star
+=\left(\frac{32^2}{2}\right)^{1/3}=8,
+\qquad
+D^\star=\frac{32}{8}=4.
+$$
+The weighted terms balance:
+$$
+\alpha A(N^\star)^{-\alpha}=\frac18,
+\qquad
+\beta B(D^\star)^{-\beta}=\frac{2}{16}=\frac18.
+$$
+The optimal excess loss is
+$$
+\frac1{8}+\frac1{4^2}=\frac3{16}.
+$$
+For comparison, the feasible model-heavy allocation $(16,2)$ has excess $5/16$, and the data-heavy allocation $(4,8)$ has excess $17/64$. The equal split $(\sqrt{32},\sqrt{32})$ is feasible but not optimal. Unequal exponents move the optimum away from the square-root allocation.
+</Theorem>
+
+## Training-only optimum versus deployment objectives
+
+The theorem optimized one fitted training loss under one training-compute proxy. A deployed system can have a different objective: training happens once, while inference may be paid for many times.
+
+<Theorem kind="remark" name="Inference-aware allocation and deliberate over-training" id="rem-lifecycle-allocation">
+Inference-aware scaling adds expected serving demand to the allocation objective. In the regime studied by Sardana et al., sufficiently large expected inference demand favored smaller models trained on more tokens than the training-only Chinchilla allocation <Cite key="sardana2024beyondchinchilla" />. Separately, Gadre et al. fit and tested scaling behavior for models trained beyond a training-only compute-optimal token allocation <Cite key="gadre2024overtraining" />. These are scoped empirical results, not a new universal optimizer.
+
+Here **over-training** means using more training tokens, at a fixed model size, than a selected training-only compute-optimal rule prescribes. A lifecycle objective may choose this deliberately. It does not necessarily mean training past convergence, repeatedly cycling identical data, or spending extra test-time reasoning compute.
+</Theorem>
+
+<MarginNote variant="cross-ref" label="Replace the proxy">Training memory (<XRef id="def-train-memory" />), per-token serving cost (<XRef id="def-cost-eq" />), and sparse activated arithmetic (<XRef id="prop-moe-flops" />) require the next chapters' detailed accounting; $\kappa ND$ represents none exactly.</MarginNote>
+
+The allocation theorem is exact only for its stated surrogate. Choosing its form and coefficients—and whether lifetime cost is the real objective—requires empirical and product judgment.
+
+## Exercises
+
+Attempt each before expanding its solution.
+
+**Exercise 13.1 (Prove).** Eliminate $D$ from the fixed-compute constraint, set $u=\log N$, and prove that the resulting one-variable objective has exactly one global minimizer. Recover the marginal-balance identity without quoting <XRef id="thm-compute-optimal-allocation" />.
+
+<SolutionBox>
+
+The constraint gives $D=C/(\kappa e^u)$ and hence
+$$
+g_C(u)=A e^{-\alpha u}+B(\kappa/C)^\beta e^{\beta u}.
+$$
+Both terms are positive, the first diverges as $u\to-\infty$, and the second diverges as $u\to+\infty$. Moreover,
+$$
+g_C''(u)=\alpha^2 A e^{-\alpha u}+\beta^2B(\kappa/C)^\beta e^{\beta u}>0.
+$$
+Thus $g_C$ is coercive and strictly convex, so it has one global minimizer. Setting
+$g_C'(u)=0$ gives
+$\alpha A e^{-\alpha u}=\beta B(\kappa/C)^\beta e^{\beta u}$, which is exactly
+$\alpha A N^{-\alpha}=\beta B D^{-\beta}$. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 13.2 (Compute).** For $A=2$, $B=\kappa=1$, $\alpha=2$, $\beta=1$, and $C=54$, compute $N^\star$, $D^\star$, both weighted excess terms, the optimal excess loss, and the losses at the feasible allocations $(9,6)$ and $(3,18)$.
+
+<SolutionBox>
+
+The theorem gives
+$N^\star=(4\cdot54)^{1/3}=6$ and $D^\star=54/6=9$.
+The weighted terms are $2\cdot2/6^2=1/9$ and $1/9$.
+The excess losses are
+$$
+\ell^\star=\frac2{6^2}+\frac1{9}=\frac16.
+$$
+At the two comparison points,
+$$
+\ell(9,6)=\frac2{9^2}+\frac16=\frac{31}{162},
+$$
+and
+$$
+\ell(3,18)=\frac2{3^2}+\frac1{18}=\frac5{18}.
+$$
+Both misallocations are worse than $1/6$. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 13.3 (Compare).** Increase the budget by a factor of $8$. Compare the growth factors for $N^\star$ and $D^\star$ when $(\alpha,\beta)=(1,2)$ with the factors when $\alpha=\beta$. Explain why “scale both equally” fails in the first case.
+
+<SolutionBox>
+
+For $(\alpha,\beta)=(1,2)$,
+$$
+N^\star\propto C^{2/3},
+\qquad
+D^\star\propto C^{1/3}.
+$$
+Multiplying $C$ by $8$ therefore multiplies $N^\star$ by $8^{2/3}=4$ and $D^\star$ by $8^{1/3}=2$. With equal exponents, both factors are $8^{1/2}=2\sqrt2$. The unequal-exponent allocation changes its token-to-parameter ratio, so equal scaling is not optimal. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 13.4 (Derive).** Starting from the two closed forms for $N^\star$ and $D^\star$, derive the exponent $\gamma=\alpha\beta/(\alpha+\beta)$ for the optimal excess loss. State what is held fixed in this asymptotic claim.
+
+<SolutionBox>
+
+Write the closed forms as $N^\star=c_NC^{\beta/(\alpha+\beta)}$ and $D^\star=c_DC^{\alpha/(\alpha+\beta)}$. Then
+$$
+(N^\star)^{-\alpha}\propto C^{-\alpha\beta/(\alpha+\beta)},
+\qquad
+(D^\star)^{-\beta}\propto C^{-\alpha\beta/(\alpha+\beta)}.
+$$
+Their positive weighted sum has the same exponent. The statement holds $A,B,\alpha,\beta,\kappa$, the counting conventions, and the fitted regime fixed; changing them changes the constant or invalidates the extrapolation. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 13.5 (Analyze).** Analyze four claims: (i) $D$ is the number of unique documents; (ii) $6ND$ is exact wall-clock cost; (iii) the optimal token-to-parameter ratio is universal; (iv) a smooth pretraining-loss fit rules out abrupt downstream behavior. Rewrite each at the evidence level supported here.
+
+<SolutionBox>
+
+(i) $D$ counts seen token presentations; deduplication and repeated epochs determine how those presentations relate to unique documents. (ii) $6ND$ is a dense-training FLOP proxy; hardware utilization, communication, memory traffic, attention overhead, and sparsity need separate accounting. (iii) the ratio depends on fitted coefficients and exponents and is constant in $C$ only when $\alpha=\beta$. (iv) the fit models one measured pretraining loss in a stated regime; it does not determine the shape of downstream-task metrics. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 13.6 (Compare).** Compare the objective of <XRef id="thm-compute-optimal-allocation" /> with an inference-aware lifecycle objective. Explain why training a smaller model on more tokens can be rational without contradicting the theorem, and distinguish that choice from test-time reasoning compute.
+
+<SolutionBox>
+
+The theorem fixes a training proxy budget and minimizes a fitted final pretraining loss. A lifecycle objective adds the repeated cost of serving the trained model; many future requests can make a smaller model cheaper enough at inference to justify spending more once on training tokens. That changes the objective and usually the feasible cost model, so a different optimum does not contradict the training-only theorem. The extra tokens are consumed during pretraining; test-time reasoning compute is spent after deployment while answering a particular request and is outside this chapter's model. $\qquad\blacksquare$
+
+</SolutionBox>

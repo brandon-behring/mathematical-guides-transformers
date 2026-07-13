@@ -35,6 +35,8 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 **Where we are.** Training optimized a loss; inference must turn each output-logit row into a token and minimize the time to emit it on fixed hardware. We first fix the roofline equation that prices emission, then define the four standard tokenwise rules — greedy, temperature, top-$k$, and top-$p$. We next derive four serving techniques — the **KV-cache** (actual persisted width, compute saved, and approximate selection versus exact reuse), **quantization** (the affine map and round-off bound), **FlashAttention** (exact online softmax without materializing the $n\times n$ score matrix), and **speculative decoding** (draft-then-verify acceptance and expected speedup). Throughout, $\softmax$, scaled dot-product attention, and the standing dimensions $n,d,d_k$ are as fixed in earlier chapters.
 
+<MarginNote variant="cross-ref" label="Two roles for inference">Lifetime serving demand can change pretraining allocation (<XRef id="rem-lifecycle-allocation" />). Here the trained model is fixed and $T_{\text{token}}$ prices one serving step; test-time cost is not another $D$.</MarginNote>
+
 ## The cost-per-token equation
 
 A device finishes an operation no faster than the slower of two clocks: the rate at which it can do arithmetic, and the rate at which it can stream the operands in from memory. A single decode step performs some number of floating-point operations and reads some number of bytes; its time is governed by whichever of the two is the binding constraint. This is the roofline picture, and it is the entire conceptual frame for the chapter.
