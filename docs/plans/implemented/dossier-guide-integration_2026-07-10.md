@@ -2,7 +2,8 @@
 
 **Status:** complete 2026-07-13; A0–A6 merged and A7 closes the track with the reader apparatus,
 completeness additions, narrative repairs, and end-to-end print audit. Supersedes
-`docs/notes/sparse-attention-chapter-ideas_2026-07-09.md`. Companion: `topic-gap-expansion_2026-07-10.md` (Track B).
+`docs/notes/sparse-attention-chapter-ideas_2026-07-09.md`. Companion: `topic-gap-expansion_2026-07-10.md` (Track B),
+whose B0 acceptance record now freezes the accepted evidence owners, commits, and claim IDs.
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
 (`docs/audits/roadmap-readiness_2026-07-11.md`) returned NO-GO for the backlog *as phased* (direction
