@@ -1,6 +1,6 @@
 # Dossier→guide integration (Track A) — 6-part restructure, review-hardened
 
-**Status:** execution in progress (A0 verification foundation). Supersedes
+**Status:** execution in progress; A0–A2 complete, A3 semantic-ID + final-number migration next. Supersedes
 `docs/notes/sparse-attention-chapter-ideas_2026-07-09.md`. Companion: `topic-gap-expansion_2026-07-10.md` (Track B).
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass

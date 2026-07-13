@@ -979,7 +979,7 @@
       "slug": "detection-encoders",
       "title": "Encoder Readouts, Contrastive Alignment, and Detection",
       "chapter": 10,
-      "part": 4,
+      "part": 3,
       "labelIds": [
         "def-tf10-auroc",
         "def-tf10-contrastive",
@@ -1286,7 +1286,7 @@
       "slug": "selective-state-spaces",
       "title": "Selective State Spaces and State Space Duality",
       "chapter": 13,
-      "part": 4,
+      "part": 5,
       "labelIds": [
         "def-tf13-selective-ssm",
         "def-tf13-transfer-matrix",
@@ -1406,7 +1406,7 @@
       "slug": "hybrid-architectures",
       "title": "Modern Recurrent Models and Hybrid Architectures",
       "chapter": 14,
-      "part": 4,
+      "part": 5,
       "labelIds": [
         "cor-tf14-gated-deltanet",
         "def-tf14-delta",
@@ -1521,7 +1521,7 @@
       "slug": "connectors-resamplers",
       "title": "Connectors and Resamplers",
       "chapter": 15,
-      "part": 5,
+      "part": 6,
       "labelIds": [
         "def-tf15-connector",
         "def-tf15-gated-xattn",
@@ -1621,7 +1621,7 @@
       "slug": "discrete-visual-tokenization",
       "title": "Discrete Visual Tokenization",
       "chapter": 16,
-      "part": 5,
+      "part": 6,
       "labelIds": [
         "def-tf16-codebook",
         "def-tf16-ste",
@@ -1723,7 +1723,7 @@
       "slug": "unified-multimodal-models",
       "title": "Unified Multimodal Models",
       "chapter": 17,
-      "part": 5,
+      "part": 6,
       "labelIds": [
         "def-tf17-interleaved",
         "def-tf17-mixed-mask",
@@ -1824,7 +1824,7 @@
       "slug": "multimodal-evaluation",
       "title": "Multimodal Evaluation",
       "chapter": 18,
-      "part": 5,
+      "part": 6,
       "labelIds": [
         "def-tf18-perplexity",
         "def-tf18-retrieval",

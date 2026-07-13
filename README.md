@@ -4,30 +4,32 @@ A **formal, Definition–Theorem–Proof** treatment of sequence models — a si
 [mathematical-guides](https://github.com/brandon-behring/mathematical-guides) family. Deploys to
 `/transformers/` under the family hub.
 
-The guide carries one arc from end to end: **recurrent networks and state space models → attention
-and the transformer → encoders and decoders across architecture families → selective state spaces
-and hybrid architectures → vision-language models**. Every construction the guide relies on is
-proved; reading order follows the arc.
+The guide carries one arc from end to end: **foundations → recurrence and linear state → transformer
+architectures and objectives → efficient and conditional computation → sub-quadratic and selective
+sequence models → multimodal models**. Every construction the guide relies on is proved; reading
+order follows the arc.
 
 Authoring follows the family's dossier-grounded
 [formal style guide](https://github.com/brandon-behring/mathematical-guides/blob/main/docs/style-guide-formal-v0.3.md).
 
-## Structure: 19 chapters, 5 parts
+## Structure: 19 chapters, 6 parts
 
 - **Part 1 — Foundations.** Notation and prerequisites; input representations (the modality-agnostic
   embedding interface, positional encodings, RoPE).
-- **Part 2 — Sequence models before attention.** Recurrent networks and the seq2seq lineage
+- **Part 2 — Recurrence & Linear State.** Recurrent networks and the seq2seq lineage
   (BPTT, the vanishing-gradient bound, LSTM/GRU, the fixed-vector bottleneck, additive attention);
   linear recurrences and state space models (ZOH discretization, the recurrence/convolution/scan
   trinity, HiPPO, the LTI obstruction).
-- **Part 3 — The transformer.** Scaled dot-product attention; multi-head attention; the transformer
-  block; architecture composition; encoders and decoders across architecture families (causality as
-  prefix-consistency, abstracted over any sequence mixer); training.
-- **Part 4 — Encoders in practice & efficiency.** Encoder readouts, contrastive alignment, and detection; training optimizations;
-  inference optimizations (the KV-cache, quantization, speculative decoding); selective state spaces
-  and state space duality (Mamba, linear-attention/SSM duality, the chunked algorithm); modern
-  recurrent models and hybrid architectures (RWKV, xLSTM, DeltaNet, sliding-window hybrids).
-- **Part 5 — Vision-language.** Connectors and resamplers; discrete visual tokenization; unified
+- **Part 3 — Transformer Architectures & Objectives.** Scaled dot-product attention; multi-head
+  attention; the transformer block; architecture composition; encoders and decoders across
+  architecture families (causality as prefix-consistency, abstracted over any sequence mixer);
+  training; encoder readouts, contrastive alignment, and detection.
+- **Part 4 — Efficient & Conditional Computation.** Training optimizations; inference optimizations
+  (the KV-cache, quantization, speculative decoding, and conditional expert computation).
+- **Part 5 — Sub-Quadratic & Selective Sequence Models.** Selective state spaces and state space
+  duality (Mamba, linear-attention/SSM duality, the chunked algorithm); modern recurrent models and
+  hybrid architectures (RWKV, xLSTM, DeltaNet, sliding-window hybrids).
+- **Part 6 — Multimodal Models.** Connectors and resamplers; discrete visual tokenization; unified
   multimodal models; multimodal evaluation.
 
 Chapter files live in `src/content/transformers/` (number-free slugs → stable URLs). Minimum
