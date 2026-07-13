@@ -3,8 +3,8 @@ title: "Selective State Spaces and State Space Duality"
 slug: selective-state-spaces
 chapter: 13
 part: 4
-description: "Input-dependent dynamics and the duality with attention: the selective (Mamba) state space model and why it escapes the LTI obstruction, the exact-ZOH gate identity g = sigma(z) recovering the GRU convex combination, the parallel scan surviving time-varying coefficients while the convolution face dies, causal linear attention as a constant-size matrix-state recurrence with a gamma-decay retention variant, the semiseparable transfer matrix and its rank bound, the state-space-duality factorization T = L o (CB^T)diag(Delta) identifying the selective SSM with masked linear attention, and the derived chunked block algorithm with its balanced cost."
-last_verified: 2026-07-09
+description: "Input-dependent dynamics and the duality with attention: the selective (Mamba) state space model and why it escapes the LTI obstruction, the exact-ZOH gate identity g = sigma(z) recovering the GRU convex combination, the parallel scan surviving time-varying coefficients while the convolution face dies, causal linear attention as a constant-size matrix-state recurrence with a gamma-decay retention variant, the semiseparable transfer matrix and its rank bound, the state-space-duality factorization T = L o (CB^T)diag(Delta) identifying the selective SSM with masked linear attention, and the derived chunked block algorithm with distinct arithmetic-optimal and hardware-shaped chunk choices."
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, recurrent-networks, state-space-models, attention, architecture-composition, encoder-decoder-families, inference-optimizations]
 notation_introduced: ['\Delta_t', '\mathbf B_t', '\mathbf C_t', 'g_t', '\mathbf S_t', '\mathbf z_t', '\gamma', '\mathbf T', '\mathbf L', 'c']
@@ -17,7 +17,7 @@ los:
   - id: TF-13.3
     statement: "Prove the equivalence of causal linear attention and a matrix-state recurrence with O(D d_v) state and O(1) per-token cost, including the gamma-decay retention variant."
   - id: TF-13.4
-    statement: "Define the transfer matrix, prove its d_s-semiseparability and the duality factorization T = L o (CB^T)diag(Delta), and derive the chunked block algorithm's cost and balancing chunk size."
+    statement: "Define the transfer matrix, prove its d_s-semiseparability and the duality factorization T = L o (CB^T)diag(Delta), and distinguish the chunked algorithm's arithmetic-minimizing size from its hardware-shaped plateau."
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
@@ -354,14 +354,22 @@ $$
 \mathbf w_k\defeq\sum_{j\in\mathcal I_k}\Bigl(\prod_{s\in\mathcal I_k,\,s>j}a_s\Bigr)\Delta_j\inputmat_j\,u_j .
 $$
 The resulting algorithm costs, counting multiplications across all $d$ channels (boundary states stacked as $\statevec_{p_k}\in\R^{d_s\times d}$):
-1. **intra-chunk masked matmuls** — the diagonal blocks of $\mathbf T$ in SSD form: $O(c^2(d_s+d))$ per chunk, total $O(n\,c\,d)$ for $d_s\le d$;
+1. **intra-chunk masked matmuls** — the diagonal blocks of $\mathbf T$ in SSD form: $O(c^2(d_s+d))$ per chunk, total $O\bigl(n\,c(d_s+d)\bigr)$;
 2. **chunk summaries and boundary broadcasts**: $O(c\,d_s\,d)$ per chunk, total $O(n\,d_s\,d)$;
 3. **the cross-chunk scan** on the pairs $(\Pi_k,\mathbf w_k)$: $n/c$ combines at $O(d_s\,d)$ each, total $O\bigl((n/c)\,d_s\,d\bigr)$ — sequential, or $\lceil\log_2(n/c)\rceil$ rounds by <XRef id="prop-tf13-selective-scan" />.
 
-Total $O\bigl(n\,d\,(c+d_s+d_s/c)\bigr)=O\bigl(n\,d\,(c+d_s)\bigr)$. The balance $c=\Theta(d_s)$ equalizes (1) with (2), the scan term is then lower-order, and the total is $O(n\,d_s\,d)$ — the arithmetic of the pure scan, reorganized into dense matmuls. The endpoints recover the duality's two faces: $c=n$ is the full masked matmul at $O(n^2d)$, and $c=1$ the pure recurrence at $O(n\,d_s\,d)$.
+Ignoring lower-order mask bookkeeping but retaining the $\mathbf C\mathbf B^\top$ formation, a scalar-multiplication proxy for these three terms is
+$$
+P(c)=n\,c(d+d_s)+2n\,d_s d+\frac{n}{c}d_s d.
+$$
+Its unconstrained positive minimizer is
+$$
+c_* = \sqrt{\frac{d_s d}{d+d_s}},
+$$
+which approaches $\sqrt{d_s}$ only in the wide-channel regime $d\gg d_s$. The continuous legal target is $\widehat c_*=\min(n,\max(1,c_*))$. Among divisors of $n$, the proxy is minimized by the divisor closest to $\widehat c_*$ **multiplicatively** (minimizing $|\log(c/\widehat c_*)|$), not necessarily the one with smallest additive distance. For $d_s\le d$, every admissible $1\le c\le\min(d_s,n)$ lies on the same $\Theta(n\,d_s\,d)$ asymptotic plateau. When $d_s\le n$ and a divisor exists at that scale, the hardware-shaped choice $c=\Theta(d_s)$ equalizes the dense intra-chunk scale (1) with the summary/broadcast scale (2) and makes the scan term lower-order; it is not the scalar-count minimizer. The endpoints recover the duality's two faces: $c=n$ is the full masked matmul at $O\bigl(n^2(d+d_s)\bigr)=O(n^2d)$ for $d_s\le d$, and $c=1$ the pure recurrence at $O(n\,d_s\,d)$.
 </Theorem>
 
-<MarginNote variant="pattern" label="The dial">$c=1$: pure scan. $c=n$: pure masked matmul. $c=\Theta(d_s)$: scan cost, matmul shape — the duality as a dial.</MarginNote>
+<MarginNote variant="pattern" label="Two balances">$\widehat c_*=\operatorname{clamp}_{[1,n]}\sqrt{d_sd/(d+d_s)}$ minimizes the legal continuous multiplication proxy. In the interior wide-channel regime it is $\approx\sqrt{d_s}$; when $d_s\le n$, $c\asymp d_s$ favors larger dense blocks on the same $\Theta(nd_sd)$ plateau.</MarginNote>
 
 <Theorem kind="proof">
 **Step 1 (Split the sum at the chunk boundary).** For $t\in\mathcal I_k$, split $y_t=\sum_{j\le t}T_{tj}u_j$ into $j\in\mathcal I_k$ and $j\le p_k$. In the second sum, factor the decay at $p_k$ (associativity of the product, $j\le p_k< t$):
@@ -373,12 +381,16 @@ the underbraced sum being the unrolled state at time $p_k$ (Step 1 of <XRef id="
 
 **Step 2 (Boundary states are a scan).** Grouping the unrolled $\statevec_{p_{k+1}}$ by whether $j\le p_k$ or $j\in\mathcal I_k$: every early term acquires the whole chunk's decay $\Pi_k$, and the in-chunk terms sum to $\mathbf w_k$; hence $\statevec_{p_{k+1}}=\Pi_k\statevec_{p_k}+\mathbf w_k$. This is a length-$(n/c)$ recurrence in the elements $(\Pi_k,\mathbf w_k)$, evaluable sequentially or by $\bullet$ — associativity holding by <XRef id="prop-tf13-selective-scan" />.
 
-**Step 3 (Count).** *(1)* Diagonal block $k$: form $\mathbf C^{(k)}\mathbf B^{(k)\top}$ from the chunk's rows of $\mathbf C,\mathbf B$ ($O(c^2d_s)$), apply the chunk's mask $\mathbf L^{(k)}$ ($O(c^2)$), multiply into the chunk's value block in $\R^{c\times d}$ ($O(c^2d)$): $O(c^2(d_s+d))$; times $n/c$ chunks: $O(nc(d_s+d))=O(ncd)$ for $d_s\le d$. *(2)* Each $\mathbf w_k$ is $\mathbf B^{(k)\top}$ times the chunk's decay-and-$\Delta$-scaled values: $O(c\,d_s\,d)$; each broadcast is $\mathbf C^{(k)}$ (decay-scaled) times $\statevec_{p_k}\in\R^{d_s\times d}$: $O(c\,d_s\,d)$; totals $O(n\,d_s\,d)$. *(3)* Each combine multiplies a $d_s\times d$ state by a scalar and adds: $O(d_s d)$, times $n/c$.
+**Step 3 (Count).** *(1)* Diagonal block $k$: form $\mathbf C^{(k)}\mathbf B^{(k)\top}$ from the chunk's rows of $\mathbf C,\mathbf B$ ($c^2d_s$ multiplications), apply the chunk's mask $\mathbf L^{(k)}$ (lower-order $O(c^2)$ bookkeeping), and multiply into the chunk's value block in $\R^{c\times d}$ ($c^2d$ multiplications). Across $n/c$ chunks, the two matrix products therefore contribute $nc(d_s+d)$ multiplications. *(2)* Each $\mathbf w_k$ is $\mathbf B^{(k)\top}$ times the chunk's decay-and-$\Delta$-scaled values ($c\,d_s\,d$ multiplications); each broadcast is $\mathbf C^{(k)}$ (decay-scaled) times $\statevec_{p_k}\in\R^{d_s\times d}$ (another $c\,d_s\,d$), totaling $2n\,d_s\,d$. *(3)* Each combine scales a $d_s\times d$ state, contributing $d_s d$ multiplications, for the proxy $(n/c)d_s d$ across the chunk-level scan. Summing gives the stated $P(c)$; operation fusion and the fact that a length-$n/c$ sequential scan has one fewer combine affect constants or endpoints, not the balance.
 
-**Step 4 (Balance and endpoints).** Summing, $n c d + 2n\,d_s d + (n/c)\,d_s d = n d\,(c + 2d_s + d_s/c)$. The term (2) is a floor independent of $c$; (1) crosses it at $c=\Theta(d_s)$, below which shrinking $c$ only adds scan steps and above which intra-chunk work dominates — so $c=\Theta(d_s)$ minimizes the total at $\Theta(n\,d_s\,d)$. At $c=n$ there is one chunk and no scan: the full masked matmul, $O(n^2d)$ (the attention face). At $c=1$ the diagonal blocks are trivial and the scan is the whole algorithm (the recurrent face). $\qquad\blacksquare$
+**Step 4 (Arithmetic optimum, hardware shape, and endpoints).** Only $c(d+d_s)+d_s d/c$ varies with $c$. By AM–GM,
+$$
+c(d+d_s)+\frac{d_s d}{c}\ge2\sqrt{d_s d(d+d_s)},
+$$
+with equality at $c=c_*$. Writing $c=c_*e^u$ makes the variable term $2\sqrt{d_s d(d+d_s)}\cosh u$. Restricting first to $1\le c\le n$ clamps the target to $\widehat c_*$; among divisors of $n$, strict monotonicity of $\cosh |u|$ makes the optimum exactly the divisor with smallest $|\log(c/\widehat c_*)|$. The constant $2n d_s d$ term is a floor. When $d_s\le d$ and $1\le c\le\min(d_s,n)$, the intra term is at most $2n d_s d$ and the scan term at most $n d_s d$, while the constant state terms supply a matching lower bound; hence the total remains $\Theta(n\,d_s\,d)$. If also $d_s\le n$ and the divisor constraint admits $c=\Theta(d_s)$, that hardware-shaped choice is asymptotically optimal: it equalizes the intra-chunk and state-summary scales and pushes work into larger dense products, although it does more scalar multiplications than the interior $c_*\approx\sqrt{d_s}$ when $d\gg d_s$. At $c=n$ there is one chunk, so cross-chunk summaries, broadcasts, and scans can be omitted; forming the full $\mathbf C\mathbf B^\top$ factor and multiplying the masked matrix by $\mathbf U$ costs $O\bigl(n^2(d_s+d)\bigr)$ (the attention face). At $c=1$ the diagonal blocks are trivial and the scan is the whole algorithm (the recurrent face). $\qquad\blacksquare$
 </Theorem>
 
-Why prefer the balanced middle when the count already matches the scan? Because the *shape* of the arithmetic changes: the balanced algorithm spends its operations in dense $c\times c$ and $c\times d$ products — high arithmetic intensity, the compute-bound side of <XRef id="def-tf12-cost-eq" /> — where the elementwise sequential scan streams its state through memory. Same count, different achieved throughput; this matmul-rich reorganization is the training-time algorithm of <Cite key="dao2024ssd" />. The chapter's arc is closed: the selective SSM escapes the LTI obstruction, keeps the scan, *is* masked linear attention with a semiseparable mask, and evaluates anywhere on the dial between its recurrent and attention faces. What remains for the next chapter is the model zoo this machinery generates — and what a constant-size state can and cannot remember.
+Why choose the hardware-shaped middle of the plateau rather than the scalar-count minimizer? Because the *shape* of the arithmetic changes: larger chunks spend more operations in dense $c\times c$ and $c\times d$ products — high arithmetic intensity, the compute-bound side of <XRef id="def-tf12-cost-eq" /> — where the elementwise sequential scan streams its state through memory. Same asymptotic count, different exact count and achieved throughput; this matmul-rich reorganization is the training-time algorithm of <Cite key="dao2024ssd" />. The chapter's arc is closed: the selective SSM escapes the LTI obstruction, keeps the scan, *is* masked linear attention with a semiseparable mask, and evaluates anywhere on the dial between its recurrent and attention faces. What remains for the next chapter is the model zoo this machinery generates — and what a constant-size state can and cannot remember.
 
 ## Exercises
 
@@ -452,10 +464,18 @@ matching (a) to rounding — <XRef id="thm-tf13-ssd" /> in numbers. $\qquad\blac
 
 </SolutionBox>
 
-**Exercise 13.6 (Compute).** For $n=8192$, $d=1024$, $d_s=16$, use <XRef id="prop-tf13-chunked" /> to count multiplications (intra-chunk, summaries + broadcasts, scan) at $c=16$ and $c=256$; identify the balancing chunk size; and compare the balanced total with the $c=n$ masked-matmul mode.
+**Exercise 13.6 (Compute).** For $n=8192$, $d=1024$, $d_s=16$, use the multiplication proxy $P(c)$ of <XRef id="prop-tf13-chunked" /> to count intra-chunk products, summaries + broadcasts, and scan products at $c=4$, $c=16$, and $c=256$. Identify the arithmetic-minimizing admissible chunk size, explain why $c=16$ is still a hardware-shaped choice on the same asymptotic plateau, and compare both with the $c=n$ masked-matmul mode.
 
 <SolutionBox>
 
-At $c=16$: intra $ncd=8192\cdot 16\cdot 1024\approx 1.34\times 10^{8}$; summaries $n\,d_s\,d\approx 1.34\times 10^{8}$ and broadcasts the same; scan $(n/c)\,d_s\,d=512\cdot 16\cdot 1024\approx 8.4\times 10^{6}$; total $\approx 4.1\times 10^{8}$. At $c=256$: intra $\approx 2.15\times 10^{9}$ dominates (summaries + broadcasts $\approx 2.7\times 10^{8}$, scan $\approx 5.2\times 10^{5}$); total $\approx 2.4\times 10^{9}$. The balance is $c=\Theta(d_s)=16$, where intra equals each state term. At $c=n$ the count is $n^2d=8192^2\cdot 1024\approx 6.9\times 10^{10}$ — about $167\times$ the balanced total: the quadratic attention face, purchased only when one actually wants the materialized matrix. $\qquad\blacksquare$
+The summary and broadcast terms are independent of $c$: each is $n\,d_s\,d=8192\cdot16\cdot1024=134{,}217{,}728$, together $268{,}435{,}456$. The intra term is $nc(d+d_s)$ and the scan term is $(n/c)d_sd$:
+
+| $c$ | intra | summaries + broadcasts | scan | total $P(c)$ |
+|---:|---:|---:|---:|---:|
+| $4$ | $34{,}078{,}720$ | $268{,}435{,}456$ | $33{,}554{,}432$ | $336{,}068{,}608$ |
+| $16$ | $136{,}314{,}880$ | $268{,}435{,}456$ | $8{,}388{,}608$ | $413{,}138{,}944$ |
+| $256$ | $2{,}181{,}038{,}080$ | $268{,}435{,}456$ | $524{,}288$ | $2{,}449{,}997{,}824$ |
+
+The continuous optimum is $c_*=\sqrt{16\cdot1024/(1024+16)}\approx3.969$; among divisors of $8192$, $c=4$ is the multiplicatively closest and therefore minimizes $P$. The $c=d_s=16$ choice instead makes the intra term comparable to each state term and gives larger dense blocks; both $c=4$ and $c=16$ lie on the $\Theta(n\,d_s\,d)$ plateau. In the $c=n$ mode the cross-chunk terms disappear, while forming $\mathbf C\mathbf B^\top$ and multiplying by $\mathbf U$ costs $n^2(d+d_s)=69{,}793{,}218{,}560$ multiplications under the same proxy — about $207.7\times$ the $c=4$ total and $168.9\times$ the $c=16$ total. $\qquad\blacksquare$
 
 </SolutionBox>

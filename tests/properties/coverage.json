@@ -15,6 +15,31 @@
       "id": "rem-tf12-prefill-decode",
       "test": "tests/properties/test_roofline.py",
       "statementSha256": "5f81bb795a41b20415c429eed2774ed129a373aa73075b06438cbcd0e8170f3f"
+    },
+    {
+      "id": "prop-tf5-kv-cache",
+      "test": "tests/properties/test_kv_cache.py",
+      "statementSha256": "9f5a4be14a25408b43d43abcd22b0700bfe960a3c4b8949f0be46cf2c868c2f1"
+    },
+    {
+      "id": "prop-tf12-kv-memory",
+      "test": "tests/properties/test_kv_cache.py",
+      "statementSha256": "aed4da9a071ea261e106c8c77157761c8e156d8deec9000d288871ee79c7ed5f"
+    },
+    {
+      "id": "def-tf12-moe",
+      "test": "tests/properties/test_moe_cost.py",
+      "statementSha256": "92620b1606938fa45011382fc562456c7f55b3d7a13f364307cf0bca39fa9954"
+    },
+    {
+      "id": "prop-tf12-moe-flops",
+      "test": "tests/properties/test_moe_cost.py",
+      "statementSha256": "487a6a7c19043e476254b21b5af133ee931a6e6a3a7e97de8f3f5a087417c364"
+    },
+    {
+      "id": "prop-tf13-chunked",
+      "test": "tests/properties/test_ssd_chunking.py",
+      "statementSha256": "d914c594088498f9559cd26a92498d6b85582c8e71a0b3e0efba2af4a512cc34"
     }
   ]
 }

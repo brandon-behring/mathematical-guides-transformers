@@ -4,10 +4,10 @@ slug: multi-head-attention
 chapter: 5
 part: 3
 description: "Multi-head attention as parallel scaled dot-product attention in h rank-d_k subspaces: the split-concatenate-project construction, the parameter count that is independent of h, the per-head low-rank factorization, and the MQA/GQA cache-saving variants."
-last_verified: 2026-06-03
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention]
-notation_introduced: ['\operatorname{MHA}', '\operatorname{Concat}', 'h', 'd_k', 'd_v', 'W^O', 'KV cache']
+notation_introduced: ['\operatorname{MHA}', '\operatorname{Concat}', 'h', 'h_k', 'h_v', 'd_k', 'd_v', 'W^O', 'd_{\text{cache}}', 'KV cache']
 theorems: ['def-tf5-attention-head', 'def-tf5-mha', 'prop-tf5-mha-params', 'thm-tf5-low-rank', 'def-tf5-mqa', 'def-tf5-gqa', 'prop-tf5-kv-cache']
 los:
   - id: TF-5.1
@@ -15,7 +15,7 @@ los:
   - id: TF-5.2
     statement: "Prove the low-rank factorization theorem: each head's logit matrix has rank at most d_k."
   - id: TF-5.3
-    statement: "Compare MHA, MQA, and GQA in terms of parameter sharing and KV cache memory."
+    statement: "Define the per-token cache width d_cache and compare MHA, MQA, and GQA in terms of parameter sharing and KV-cache memory."
   - id: TF-5.4
     statement: "Trace tensor dimensions through a multi-head attention layer and verify the parameter count."
 ---
@@ -136,33 +136,41 @@ $$
 **GQA** partitions the $h$ heads into $g$ groups ($1\le g\le h$); heads within a group share one key projection and one value projection.<Sidenote>The interpolating family between MHA and MQA <Cite key="ainslie2023gqa" />.</Sidenote> MHA is the case $g = h$ (no sharing) and MQA is the case $g = 1$ (full sharing).
 </Theorem>
 
-<MarginNote variant="tip" label="Self-explanation">Before the next proof: in MHA the cache stores $\mathbf K_i,\mathbf V_i\in\R^{n\times d_k}$ for each of the $h$ heads. If $g$ groups share K and V, how many distinct such matrices remain?</MarginNote>
+<MarginNote variant="tip" label="Self-explanation">Before the next proof: in MHA the cache stores $\mathbf K_i\in\R^{n\times d_k}$ and $\mathbf V_i\in\R^{n\times d_v}$ for each of the $h$ heads. If $g$ groups share K and V, how many distinct such matrices remain?</MarginNote>
 
 The cache cost follows immediately from counting distinct key/value matrices: sharing replaces "$h$ copies" by "$g$ copies," and everything else in the cache is unchanged.
 
-<Theorem kind="proposition" name="KV cache memory" id="prop-tf5-kv-cache">
-Per layer, the number of scalar entries stored in the key and value caches for a sequence of length $n$ (with $d_k = d_v$) is
+<Theorem kind="proposition" name="KV-cache width and memory" id="prop-tf5-kv-cache">
+Let a layer have $h_k$ distinct key heads of width $d_k$ and $h_v$ distinct value heads of width $d_v$. Define its **per-token cache width**
 $$
-\text{MHA: } 2n\,h\,d_k, \qquad \text{GQA}(g): 2n\,g\,d_k, \qquad \text{MQA: } 2n\,d_k,
+d_{\text{cache}} \defeq h_kd_k+h_vd_v.
 $$
-so GQA uses a fraction $g/h$ of the MHA cache and MQA a fraction $1/h$.
+At sequence length $n$, one layer stores $n\,d_{\text{cache}}$ scalar entries. When keys and values use the same number of distinct heads,
+$$
+\begin{aligned}
+\text{MHA: }&n\,h(d_k+d_v),&
+\text{GQA}(g):&n\,g(d_k+d_v),&
+\text{MQA: }&n(d_k+d_v).
+\end{aligned}
+$$
+Thus GQA uses a fraction $g/h$ of the MHA cache and MQA a fraction $1/h$, for fixed head widths. In the common special case $d_k=d_v$, these reduce to $2nhd_k$, $2ngd_k$, and $2nd_k$.
 </Theorem>
 
 <Theorem kind="proof">
-The cache holds one key matrix and one value matrix per *distinct* K/V projection, each of shape $n\times d_k$, hence $2n\,d_k$ entries per distinct projection. MHA has $h$ distinct projections, giving $2n\,h\,d_k$. GQA has $g$ of them, giving $2n\,g\,d_k$. MQA is GQA at $g=1$, giving $2n\,d_k$. Dividing by the MHA total yields the fractions $g/h$ and $1/h$. $\qquad\blacksquare$
+Each position contributes $d_k$ scalars to every distinct key head and $d_v$ to every distinct value head, hence $h_kd_k+h_vd_v=d_{\text{cache}}$ scalars. Multiplying by $n$ gives the first claim. MHA has $h_k=h_v=h$, GQA has $h_k=h_v=g$, and MQA has $h_k=h_v=1$, which gives the three displayed formulas. Dividing the GQA and MQA totals by the MHA total cancels $n(d_k+d_v)$ and yields $g/h$ and $1/h$. Setting $d_k=d_v$ yields the final simplifications. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="formula" label="Cache savings">For $h=32$, MQA cuts KV cache $32\times$; GQA with $g=8$ keeps $1/4$ of it while staying closer to MHA quality.</MarginNote>
+<MarginNote variant="formula" label="Cache savings">$d_{\text{cache}}=h_kd_k+h_vd_v$. For equal K/V head counts, $h=32$ to $g=8$ keeps $1/4$ of the MHA cache; MQA keeps $1/32$.</MarginNote>
 
 <MarginNote variant="pattern" label="What sharing cannot fix">MQA/GQA shrink the cache by $g/h$, but it still grows with $n$. Removing the $n$-dependence itself needs a state that does not grow — the recurrent route (<XRef id="thm-tf13-linattn-rnn" />; priced for hybrids in <XRef id="prop-tf14-decode-state" />).</MarginNote>
 
-Two points sharpen the trade-off. First, the savings are about *bandwidth*, not chiefly parameters: the query and output projections are untouched, so the projection-parameter count moves only from $4d^2$ (MHA) to $2d^2 + 2(g/h)\,d^2$, a modest change; the real win is that fewer distinct K/V heads mean fewer cache reads and writes per generated token. Second, this is why GQA is the common middle ground — it retains most of that bandwidth gain while recovering much of MHA's quality, by reading K/V groups rather than collapsing to a single shared head <Cite key="ainslie2023gqa" />.
+Two points sharpen the trade-off. First, the savings are about *bandwidth*, not chiefly parameters. Under the standard projection widths $hd_k=hd_v=d$, the query and output projections are untouched, so the projection-parameter count moves only from $4d^2$ (MHA) to $2d^2 + 2(g/h)\,d^2$, a modest change; the real win is that fewer distinct K/V heads mean fewer cache reads and writes per generated token. Second, this is why GQA is the common middle ground — it retains most of that bandwidth gain while recovering much of MHA's quality, by reading K/V groups rather than collapsing to a single shared head <Cite key="ainslie2023gqa" />.
 
 <Figure
   src="/figures/kv-sharing.svg"
   alt="MHA, GQA, and MQA compared: query heads stay fixed while the row of shared key/value heads shrinks from h to g to 1."
-  desc="Three panels — MHA, GQA with g groups, MQA — each with h=4 query heads on top mapping down to a row of distinct key/value heads below: 4 for MHA (one per query head), 2 for GQA (each shared by a group of two), 1 for MQA (shared by all). Only the number of KV heads changes; the queries stay per-head. Per-layer cache is 2n·h·d_k / 2n·g·d_k / 2n·d_k — 1 : ½ : ¼ of the MHA cache at h=4, g=2."
-  caption="Sharing key/value heads across MHA, GQA, and MQA (prop-tf5-kv-cache). The query projection stays per-head; only the number of distinct KV heads shrinks (h → g → 1), and the KV cache is proportional to it. Fewer distinct KV heads mean fewer cache reads per generated token — the decode-bandwidth win."
+  desc="Three panels — MHA, GQA with g groups, MQA — each with h=4 query heads on top mapping down to a row of distinct key/value heads below: 4 for MHA (one per query head), 2 for GQA (each shared by a group of two), 1 for MQA (shared by all). Only the number of KV heads changes; the queries stay per-head. In the illustrated d_k=d_v case, per-layer cache is 2n·h·d_k / 2n·g·d_k / 2n·d_k — 1 : ½ : ¼ of the MHA cache at h=4, g=2."
+  caption="Sharing key/value heads across MHA, GQA, and MQA (prop-tf5-kv-cache). The query projection stays per-head; only the number of distinct KV heads shrinks (h → g → 1), so $d_{\text{cache}}$ and the KV-cache traffic shrink with it. The printed $2nd_k$ formulas are the $d_k=d_v$ specialization."
   id="fig-kv-sharing"
   width="92%"
 />
@@ -171,9 +179,9 @@ The three variants differ only in the number of *distinct* key/value heads; the 
 
 | Variant | Query heads | KV heads | KV cache / layer | Quality |
 |---|---|---|---|---|
-| MHA | $h$ | $h$ | $2nh\,d_k$ | baseline |
-| GQA | $h$ | $g$ ($g \mid h$) | $2ng\,d_k$ — $g/h$ of MHA | near-MHA <Cite key="ainslie2023gqa" /> |
-| MQA | $h$ | $1$ | $2n\,d_k$ — $1/h$ of MHA | largest drop <Cite key="shazeer2019mqa" /> |
+| MHA | $h$ | $h$ | $nh(d_k+d_v)$ | baseline |
+| GQA | $h$ | $g$ ($g \mid h$) | $ng(d_k+d_v)$ — $g/h$ of MHA | near-MHA <Cite key="ainslie2023gqa" /> |
+| MQA | $h$ | $1$ | $n(d_k+d_v)$ — $1/h$ of MHA | largest drop <Cite key="shazeer2019mqa" /> |
 
 The cache column is exact (<XRef id="prop-tf5-kv-cache" />); the quality column is *empirical* — a measured trade-off, not implied by the cache formula.
 
@@ -208,11 +216,11 @@ For one head $\mathbf Q_i,\mathbf K_i\in\R^{n\times d_k}$, so $\mathbf L_i = \ma
 
 </SolutionBox>
 
-**Exercise 5.3 (Derive).** Express the per-layer KV-cache size for MHA, GQA($g$), and MQA, and state each as a fraction of the MHA cache. Which variant saves cache by the factor $h$?
+**Exercise 5.3 (Derive).** Starting from $d_{\text{cache}}=h_kd_k+h_vd_v$, express the per-layer KV-cache size for MHA, GQA($g$), and MQA, and state each as a fraction of the MHA cache. Which variant saves cache by the factor $h$?
 
 <SolutionBox>
 
-The cache stores one key and one value matrix per distinct K/V projection, each $n\times d_k$, i.e. $2n\,d_k$ entries per distinct projection: MHA $2n\,h\,d_k$, GQA $2n\,g\,d_k$, MQA $2n\,d_k$. As fractions of MHA these are $1$, $g/h$, $1/h$. **MQA** saves the cache by the full factor $h$; GQA interpolates. $\qquad\blacksquare$
+One position stores $h_kd_k+h_vd_v$ scalars and $n$ positions multiply this by $n$. For equal K/V head counts, MHA has $d_{\text{cache}}=h(d_k+d_v)$, GQA has $g(d_k+d_v)$, and MQA has $d_k+d_v$; their per-layer caches are therefore $nh(d_k+d_v)$, $ng(d_k+d_v)$, and $n(d_k+d_v)$. As fractions of MHA these are $1$, $g/h$, and $1/h$. **MQA** saves the cache by the full factor $h$; GQA interpolates. When $d_k=d_v$, the formulas simplify to $2nhd_k$, $2ngd_k$, and $2nd_k$. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -224,10 +232,10 @@ With $d=512$, $h=8$, head width $64$. From $(B,T,512)$: Q/K/V projection $\to (B
 
 </SolutionBox>
 
-**Exercise 5.5 (Construct).** Give the GQA parameter count for $g$ groups as a function of $d$, $h$, $g$, and verify it interpolates between the MHA value at $g = h$ and the MQA value at $g = 1$.
+**Exercise 5.5 (Construct).** Under the standard-width assumption $hd_k=hd_v=d$, give the GQA parameter count for $g$ groups as a function of $d$, $h$, and $g$, and verify it interpolates between the MHA value at $g = h$ and the MQA value at $g = 1$.
 
 <SolutionBox>
 
-Query and output projections are unchanged across variants, each $d^2$. Only K,V shrink with grouping: $g$ groups give $2(g/h)d^2$. Hence $P_{\text{GQA}}(g) = d^2 + 2\tfrac{g}{h}d^2 + d^2 = 2d^2 + 2\tfrac{g}{h}d^2$. At $g=h$ this is $4d^2$ (MHA); at $g=1$ it is $2d^2 + 2d^2/h$ (MQA); affine and increasing in $g$, it interpolates monotonically. $\qquad\blacksquare$
+Because $hd_k=hd_v=d$, query and output projections are unchanged across variants, each $d^2$. Only K,V shrink with grouping: $g$ groups give $gd_kd+gd_vd=2(g/h)d^2$. Hence $P_{\text{GQA}}(g) = d^2 + 2\tfrac{g}{h}d^2 + d^2 = 2d^2 + 2\tfrac{g}{h}d^2$. At $g=h$ this is $4d^2$ (MHA); at $g=1$ it is $2d^2 + 2d^2/h$ (MQA); affine and increasing in $g$, it interpolates monotonically. $\qquad\blacksquare$
 
 </SolutionBox>

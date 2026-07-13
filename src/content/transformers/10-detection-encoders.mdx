@@ -1,10 +1,10 @@
 ---
-title: "Encoders for Detection"
+title: "Encoder Readouts, Contrastive Alignment, and Detection"
 slug: detection-encoders
 chapter: 10
 part: 4
-description: "Transformer encoders as detectors: the pooled [CLS] representation as a document embedding, the CLIP-style contrastive objective as a temperature-scaled softmax-plus-cross-entropy over in-batch candidates and as the canonical cross-modal (image–text) alignment objective, and embedding-geometry score functions for out-of-distribution detection."
-last_verified: 2026-06-28
+description: "Readouts and geometry for transformer encoders: pooled representations and classifier heads, the CLIP-style contrastive objective as temperature-scaled cross-entropy over in-batch candidates, the distinction between unconstrained-logit margins and normalized spherical embeddings, and score functions for out-of-distribution detection."
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, input-representations, attention]
 notation_introduced: ['\operatorname{pool}', '\mathbf r', '\tau', 'InfoNCE', 's(\cdot)']
@@ -15,7 +15,7 @@ los:
   - id: TF-10.2
     statement: "Define the symmetric contrastive objective and prove it is cross-entropy over in-batch pair indices with a temperature-scaled similarity logit."
   - id: TF-10.3
-    statement: "Prove that the contrastive minimizer aligns paired embeddings and separates mismatched ones, and identify the role of the temperature."
+    statement: "Separate the unconstrained-logit contrastive infimum from the normalized-embedding optimum, derive the alignment/separation gradient directions, and identify the role of temperature."
   - id: TF-10.4
     statement: "Define an embedding-geometry score function for out-of-distribution detection and prove AUROC equals the probability the score ranks an anomaly above an inlier."
   - id: TF-10.5
@@ -29,7 +29,7 @@ import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Encoders for Detection
+# Encoder Readouts, Contrastive Alignment, and Detection
 
 **Where we are.** Earlier chapters built the encoder as a sequence-to-sequence map whose every layer is bidirectional and whose attention rows are convex averages of value vectors (<XRef id="prop-row-stochastic-convex" />). This chapter turns that map into a *detector*: a function from a whole document to a single class label or anomaly score. Three pieces do the work, and each reuses machinery we already proved. First, a **pooling** rule collapses the encoder's contextual states into one document vector $\mathbf r$, on which a linear head and a softmax produce class probabilities — the same softmax and cross-entropy from the notation chapter, now over labels instead of vocabulary. Second, a **contrastive objective** trains $\mathbf r$ without labels by making it identify its true partner among a batch of candidates; we prove this is exactly a temperature-scaled softmax-plus-cross-entropy, so it inherits every property of <XRef id="def-softmax" /> and <XRef id="prop-ce-kl" />. Third, the geometry of the learned embedding gives a **score function** for out-of-distribution detection, whose threshold-free quality is captured by a single ranking probability. We write $\mathbf r$ for a pooled representation, $\tau$ for a temperature, and $s(\cdot)$ for a score; everything else is fixed in the notation chapter.
 
@@ -115,29 +115,47 @@ $$
 which is exactly the $i$-th summand of $\mathcal L_{\textsf{row}}$. Averaging over $i$ gives $\mathcal L_{\textsf{row}}$ as a mean cross-entropy. The transpose argument — read $\mathbf M$ columnwise, target $j$ on column $j$ — gives $\mathcal L_{\textsf{col}}$ identically, and $\mathcal L_{\textsf{con}}$ is their average. $\qquad\blacksquare$
 </Theorem>
 
-Because the objective is cross-entropy with softmax logits, every property of that machinery transfers verbatim. Translation invariance of the softmax (<XRef id="prop-softmax-translation-inv" />) says adding a constant to a whole row of $\mathbf M$ — a per-anchor similarity offset — leaves $\mathcal L_{\textsf{row}}$ unchanged, so the row loss sees the similarities only through the row gaps $M_{ii} - M_{ij}$; the symmetric objective is likewise invariant to *column* shifts through $\mathcal L_{\textsf{col}}$, so it depends on the row and column gaps together. The softmax Jacobian (<XRef id="prop-softmax-jacobian" />) governs the gradient: the loss pushes the matched logit $M_{ii}$ up and every mismatched $M_{ij}$ down, with the push on a negative proportional to the probability mass $p(j\mid i)$ it currently steals — hard negatives, those with large current similarity, receive the largest gradient.
+Because the objective is cross-entropy with softmax logits, every property of that machinery transfers verbatim. Translation invariance of the softmax (<XRef id="prop-softmax-translation-inv" />) says adding a constant to a whole row of $\mathbf M$ leaves $\mathcal L_{\textsf{row}}$ unchanged, so the row loss sees only the row gaps $M_{ii}-M_{ij}$. Transposing gives the corresponding statement for $\mathcal L_{\textsf{col}}$ and column gaps. The full symmetric objective contains both families; it is not invariant to an arbitrary row shift, because that same shift changes the column softmaxes (nor to an arbitrary column shift, by symmetry). The softmax Jacobian (<XRef id="prop-softmax-jacobian" />) governs the gradient: each directional loss pushes its matched logit up and every mismatched logit down, with the push on a negative proportional to the probability mass it currently steals — hard negatives receive the largest gradient.
 
-<MarginNote variant="tip" label="Self-explanation">Before reading the next proof: the loss is $-\log p(i\mid i)$ and $p(i\mid i)\le 1$, so $\mathcal L_{\textsf{row}}\ge 0$. When is the per-row loss exactly zero, and what must the similarities $M_{ij}$ do to achieve it?</MarginNote>
+<MarginNote variant="tip" label="Self-explanation">Before reading the next proof: an unconstrained logit gap can diverge, but two unit vectors have inner product only in $[-1,1]$. What does that bounded range do to the zero-loss limit at fixed temperature?</MarginNote>
 
-<Theorem kind="proposition" name="Contrastive minimizer aligns pairs and separates mismatches" id="prop-tf10-contrastive-alignment">
-The per-row loss $-\log p(i\mid i)$ is bounded below by $0$, and for fixed $\tau>0$ its infimum over the logits is approached if and only if $M_{ii} - \max_{j\ne i} M_{ij} \to +\infty$, i.e. the matched similarity exceeds every mismatched similarity by an unbounded margin. Equivalently, on $L^2$-normalized embeddings the objective drives the matched cosine $\inner{\mathbf u_i}{\mathbf v_i}$ toward its maximum $1$ (**alignment**) and the mismatched cosines $\inner{\mathbf u_i}{\mathbf v_j}$ downward (**separation**), with the temperature $\tau$ setting how large the cosine gap must be to make the softmax confident.
+<Theorem kind="proposition" name="Unconstrained margins versus normalized contrastive geometry" id="prop-tf10-contrastive-alignment">
+Assume $B\ge2$ and fix $\tau>0$.
+1. Treating a row's logits as unconstrained, its loss $\ell_i=-\log p(i\mid i)$ has infimum $0$, approached if and only if $M_{ii}-\max_{j\ne i}M_{ij}\to+\infty$.
+2. For $L^2$-normalized embeddings, every logit gap is at most $2/\tau$, so
+$$
+\ell_i \ge \log\!\bigl(1+(B-1)e^{-2/\tau}\bigr)>0.
+$$
+The normalized symmetric objective is continuous on a compact product of spheres and therefore attains a strictly positive minimum. Holding the remaining logits fixed, each directional loss is strictly decreasing in its matched logit and strictly increasing in every mismatched logit. Thus **alignment** and **separation** describe its local optimization pressures; the global optimum is a coupled spherical-code problem, not an equivalent unbounded-margin limit.
 </Theorem>
 
 <Theorem kind="proof">
-Since $p(i\mid i)\in(0,1]$, $-\log p(i\mid i)\ge 0$, with the bound attained in the limit $p(i\mid i)\to 1$. Writing $p(i\mid i) = \big(1 + \sum_{j\ne i} e^{M_{ij}-M_{ii}}\big)^{-1}$, we have $p(i\mid i)\to 1$ iff every exponent $M_{ij}-M_{ii}\to-\infty$ for $j\ne i$, i.e. iff $M_{ii}-\max_{j\ne i}M_{ij}\to+\infty$. Substituting $M_{ij} = \inner{\mathbf u_i}{\mathbf v_j}/\tau$ and noting that on the unit sphere $\inner{\mathbf u_i}{\mathbf v_j}\in[-1,1]$ with maximum $1$ at $\mathbf u_i=\mathbf v_i$, the gap is increased by raising the matched cosine toward $1$ and lowering the mismatched cosines; the fixed factor $1/\tau$ converts a cosine gap of size $\delta$ into a logit gap $\delta/\tau$, so smaller $\tau$ reaches a confident softmax at a smaller cosine margin. $\qquad\blacksquare$
+Write
+$$
+\ell_i=\log\!\left(1+\sum_{j\ne i}e^{M_{ij}-M_{ii}}\right).
+$$
+For unconstrained logits, $\ell_i\to0$ exactly when every exponential tends to zero, equivalently when the minimum row gap $M_{ii}-\max_{j\ne i}M_{ij}$ diverges.
+
+For normalized embeddings, $M_{ii},M_{ij}\in[-1/\tau,1/\tau]$, hence $M_{ij}-M_{ii}\ge-2/\tau$. Every one of the $B-1$ negative terms is therefore at least $e^{-2/\tau}$, giving the displayed positive lower bound. The feasible set $(S^{d-1})^{2B}$ is compact and the symmetric loss is continuous, so the extreme-value theorem supplies an attained minimum. Finally,
+$$
+\frac{\partial\ell_i}{\partial M_{ii}}=p(i\mid i)-1<0,
+\qquad
+\frac{\partial\ell_i}{\partial M_{ij}}=p(j\mid i)>0\quad(j\ne i),
+$$
+which proves the directional alignment/separation pressure. Because changing one unit vector moves several entries of $\mathbf M$ at once, those coordinatewise preferences do not characterize the coupled global minimizer. The factor $1/\tau$ only converts a cosine gap $\delta$ into logit gap $\delta/\tau$; smaller $\tau$ makes a fixed feasible gap more decisive. $\qquad\blacksquare$
 </Theorem>
 
-<Theorem kind="remark" name="Why the embedding separates classes" id="rem-tf10-separation-geometry">
-Alignment-plus-separation is precisely a geometric statement: matched views are pulled together on the unit sphere while unmatched ones are pushed apart. A downstream classifier or score then operates on an embedding where same-content points cluster and different-content points are far — the linear head of <XRef id="def-tf10-encoder-classifier" /> needs only to cut between clusters, and the distance-based score below treats *far from every cluster* as evidence of anomaly. The contrastive objective is, in this sense, a labels-free way to manufacture the geometry that detection exploits.
+<Theorem kind="remark" name="What contrastive geometry does — and does not — imply" id="rem-tf10-separation-geometry">
+The proved geometric pressure is **instance-level**: matched views are favored over the other examples in the batch. It does not imply that semantic classes form linearly separable clusters. Indeed, an in-batch negative can share the anchor's class, and the objective still treats that particular pair as mismatched. Empirically, suitable augmentations, data, and optimization often produce features on which linear heads and distance-based OOD scores work well, but that class geometry is a measured representation-learning outcome rather than a consequence of <XRef id="prop-tf10-contrastive-alignment" />. The score definitions below therefore apply to any embedding; whether a contrastively trained embedding makes them discriminative must be validated on held-out data.
 </Theorem>
 
 <Theorem kind="remark" name="Contrastive alignment is the canonical cross-modal objective" id="rem-tf10-crossmodal-canonical">
-Take the two views of <XRef id="def-tf10-contrastive" /> to be **two modalities**: $\mathbf U$ the pooled embeddings of images (a Vision Transformer, <XRef id="rem-tf7-vit" />) and $\mathbf V$ the pooled embeddings of their captions (a text encoder), each formed through the embedding interface (<XRef id="def-tf1-embedding-interface" />) and an encoder, each pooled to $\R^{d}$ by <XRef id="def-tf10-pooled-rep" />. Then the symmetric InfoNCE of <XRef id="prop-tf10-contrastive-ce" /> is **exactly** the CLIP image–text objective <Cite key="radford2021clip" />, and the alignment-plus-separation minimizer of <XRef id="prop-tf10-contrastive-alignment" /> produces a **shared embedding space** in which a picture of a dog and the string "a dog" are neighbors. This geometry is the dual-footing payoff: it powers zero-shot classification (<XRef id="def-tf18-zeroshot" />) — score an image against text-prompt embeddings, the same retrieval game — and supplies the projection (<XRef id="def-tf15-connector" />) that injects visual evidence into a language model's space for the generative vision-language models of <XRef id="ex-tf9-captioning" />. The contrastive head, the autoregressive head (<XRef id="def-tf9-autoregressive-lm" />), and cross-attention (<XRef id="def-tf7-cross-attention" />) are the three read-out interfaces of the modality-agnostic core; this chapter's objective is the cross-modal one.
+Take the two views of <XRef id="def-tf10-contrastive" /> to be **two modalities**: $\mathbf U$ the pooled embeddings of images (a Vision Transformer, <XRef id="rem-tf7-vit" />) and $\mathbf V$ the pooled embeddings of their captions (a text encoder), each formed through the embedding interface (<XRef id="def-tf1-embedding-interface" />) and an encoder, each pooled to $\R^{d}$ by <XRef id="def-tf10-pooled-rep" />. Then the symmetric InfoNCE of <XRef id="prop-tf10-contrastive-ce" /> is **exactly** the CLIP image–text objective <Cite key="radford2021clip" />. Its alignment/separation gradients (<XRef id="prop-tf10-contrastive-alignment" />) train a **shared embedding space** in which matched image–caption pairs are favored over mismatches; the familiar picture of a dog neighboring the string "a dog" is the empirical geometry that successful optimization produces, not a theorem about every minimizer. This geometry directly supports zero-shot classification (<XRef id="def-tf18-zeroshot" />): score an image against text-prompt embeddings in the same retrieval game. Generative vision-language models take a separate route: a connector (<XRef id="def-tf15-connector" />) is learned to map vision features into a language model's space; contrastive pretraining may supply the vision tower, but its objective does not itself supply that projector. The contrastive head, the autoregressive head (<XRef id="def-tf9-autoregressive-lm" />), and cross-attention (<XRef id="def-tf7-cross-attention" />) are distinct interfaces around the modality-agnostic core; this chapter's objective is the cross-modal contrastive one.
 </Theorem>
 
 ## Embedding geometry for out-of-distribution detection
 
-The final picture leaves classification entirely. Suppose we have an embedding $\mathbf r = \operatorname{pool}(Q(\mathbf X))$ and a sample of *inlier* (in-distribution) embeddings. An out-of-distribution input is one the encoder was never shaped to represent, so its embedding should fall in a sparsely populated region of the embedding space — far from the inlier cluster, or low under a density fit to the inliers. Detection is then a one-dimensional thresholding problem on a **score** that measures this outlyingness, and the score is read straight off the geometry.
+The final picture leaves classification entirely. Suppose we have an embedding $\mathbf r = \operatorname{pool}(Q(\mathbf X))$ and a sample of *inlier* (in-distribution) embeddings. If the representation places anomalies in regions that are sparse under the inlier distribution, distance or fitted-density geometry can expose them; neither contrastive training nor encoder architecture guarantees that separation. Conditional on a chosen embedding, detection is a one-dimensional thresholding problem on a **score** that measures outlyingness, and its usefulness is an empirical property of the resulting score distributions.
 
 <Theorem kind="definition" name="Embedding-geometry OOD score" id="def-tf10-ood-score">
 Let $\{\mathbf r^{(1)},\dots,\mathbf r^{(m)}\}\subset\R^{d}$ be inlier embeddings with mean $\boldsymbol\mu$ and (full-rank) covariance $\boldsymbol\Sigma$. An **out-of-distribution score** $s:\R^{d}\to\R$ assigns each embedding $\mathbf r$ a value increasing in its outlyingness; an input is flagged anomalous when $s(\mathbf r)$ exceeds a threshold. Three standard score functions are

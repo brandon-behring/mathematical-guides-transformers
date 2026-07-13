@@ -4,7 +4,7 @@ slug: architecture-composition
 chapter: 7
 part: 3
 description: "Stacking transformer blocks into encoders and decoders: bidirectional vs causal self-attention, cross-attention (and vision-language fusion as an instance of it), the three standard architectures, the Vision Transformer as an encoder over patch embeddings, the universal-approximation theorem and what depth buys, and the per-layer complexity that makes attention the quadratic bottleneck."
-last_verified: 2026-06-28
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, input-representations, attention]
 notation_introduced: ['\operatorname{CrossAttn}', '\mathbf H^{(\ell)}', 'N', 'd_{\text{ff}}']
@@ -126,7 +126,7 @@ A **decoder-only transformer** is a single stack of $N$ blocks with causal self-
 <MarginNote variant="tip" label="Conditioning">A decoder-only model has no encoder to inject context, so conditioning happens inside the sequence itself — the prompt. In-context learning replaces explicit cross-attention.</MarginNote>
 
 <Theorem kind="remark" name="The three architectures as design choices" id="rem-tf7-three-archs">
-The three standard architectures are three settings of two binary switches — is self-attention bidirectional or causal, and is cross-attention present?
+The three standard encoder/generator architectures are three settings of two binary switches — is the output stack's self-attention bidirectional or causal, and does it have cross-attention to a separate source?
 
 | Architecture | Self-attention | Cross-attention | Typical use |
 |---|---|---|---|
@@ -134,22 +134,22 @@ The three standard architectures are three settings of two binary switches — i
 | Encoder-decoder | causal decoder + bidirectional encoder | decoder → encoder | sequence-to-sequence (T5 <Cite key="raffel2020t5" />, the original transformer <Cite key="vaswani2017attention" />) |
 | Decoder-only | causal | none | autoregressive generation (GPT, LLaMA <Cite key="touvron2023llama" />) |
 
-Notice that neither switch mentions attention: "causal or bidirectional" and "is there a conditioning channel" are properties a mixer can have, not properties of this mixer. The encoder–decoder-families chapter abstracts both switches to arbitrary sequence mixers (<XRef id="def-tf8-patterns" />) and instantiates the same three patterns across the attention, recurrent, and state-space families.
+The table names the three standard *representation or autoregressive-generation* patterns, not every usable cell of the switch space. A bidirectional output stack with cross-attention is perfectly valid for two-stream fusion or reranking; it is non-autoregressive because its output rows can read future output positions. This is distinct from the usual **cross-encoder**, which concatenates both inputs into one bidirectional self-attention stack and therefore occupies the bidirectional/no-cross-attention cell. The encoder–decoder-families chapter abstracts the causal/bidirectional and conditioning choices to arbitrary sequence mixers (<XRef id="def-tf8-patterns" />) and instantiates the same three standard patterns across attention, recurrent, and state-space families.
 
-An encoder-only model typically adds a learned summary position (a $\texttt{[CLS]}$ token) and trains a small head on that position's final hidden state. The remaining switch — "is there an encoder?" — is implied: an encoder exists exactly when cross-attention is present to consume its output.
+An encoder-only model typically adds a learned summary position (a $\texttt{[CLS]}$ token) and trains a small head on that position's final hidden state. It is itself an encoder despite having no cross-attention. In an encoder–decoder model, a *separate source encoder* feeds the decoder through cross-attention; a concatenation-based multimodal model may likewise use an upstream vision encoder even though its language stack has no cross-attention.
 </Theorem>
 
 <Figure
   src="/figures/three-architectures.svg"
-  alt="The three standard architectures as a 2×2 grid over two switches: self-attention (bidirectional/causal) × cross-attention (absent/present), with the fourth cell unused."
-  desc="A 2×2 grid. Rows are the generating stack's self-attention (bidirectional, causal); columns are cross-attention (absent, present). Encoder-only sits at bidirectional/absent (BERT); Decoder-only at causal/absent (GPT, LLaMA); Encoder-decoder at causal/present (T5, the original transformer), its cell showing a bidirectional-masked encoder feeding a causal-masked decoder. The bidirectional/present cell is greyed as non-standard. Each cell carries an attention-mask icon: a full grid for bidirectional, a lower-triangular grid for causal."
-  caption="The three standard architectures are three settings of two binary switches — self-attention bidirectional vs causal, and cross-attention present vs absent (rem-tf7-three-archs). Encoder-only, Decoder-only, and Encoder-decoder fill three cells; the fourth — a bidirectional generator with cross-attention — is unused, since bidirectional self-attention is incompatible with the autoregressive generation cross-attention serves. The mask icons show what each self-attention setting attends to."
+  alt="A 2×2 grid over output-stack self-attention and cross-attention. Encoder-only, decoder-only, and encoder-decoder are the three standard representation or generative patterns; bidirectional cross-attention is shown as a valid non-autoregressive two-stream fusion pattern."
+  desc="A 2×2 grid. Rows are the output stack's self-attention (bidirectional, causal); columns are cross-attention (absent, present). Encoder-only sits at bidirectional/absent (BERT); Decoder-only at causal/absent (GPT, LLaMA); Encoder-decoder at causal/present (T5, the original transformer), its cell showing a bidirectional encoder feeding a causal decoder. The bidirectional/present cell shows two-stream cross-attention fusion or reranking and is labeled valid but non-autoregressive. Mask icons distinguish full from lower-triangular self-attention."
+  caption="Three standard representation/generation patterns within a larger switch space (rem-tf7-three-archs). Encoder-only, Decoder-only, and Encoder-decoder occupy three cells. The fourth is not unused: a bidirectional stack may cross-attend for fusion or reranking, but it is not an autoregressive generator because it is not prefix-consistent. The mask icons show what each output-stack self-attention setting reads."
   id="fig-three-architectures"
   width="82%"
 />
 
 <Theorem kind="remark" name="Two fusion routes are two switch settings" id="rem-tf7-unified-sequence">
-A generative vision-language model couples the two modalities by one of two routes, and they are the two settings of the cross-attention switch in <XRef id="rem-tf7-three-archs" />. **Cross-attention present:** a decoder attends to a separate image stream (<XRef id="rem-tf7-multimodal-crossattn" />) — the encoder-decoder pattern with a vision encoder in place of a text one. **Cross-attention absent:** project the image features — in practice a frozen vision encoder's output features, as in LLaVA, not raw patch embeddings — into the token space and **concatenate** them with the text tokens into one sequence $\mathbf X = [\,\mathbf X_{\text{img}};\,\mathbf X_{\text{txt}}\,]$, processed by a single decoder-only stack (<XRef id="def-tf7-decoder-only" />) — the embedding interface of <XRef id="def-tf1-embedding-interface" /> used twice, with no new operation <Cite key="liu2023llava" />. The "is there an encoder?" switch decides between them. Both routes are built out in full later: the projector and learned-query resampler that fill the concatenation route (<XRef id="def-tf15-connector" />), and the single interleaved stream that subsumes both into one decoder (<XRef id="def-tf17-interleaved" />).
+A generative vision-language model couples the two modalities by one of two routes, corresponding to the two settings of the language stack's cross-attention switch in <XRef id="rem-tf7-three-archs" />. **Cross-attention present:** a decoder attends to a separate image stream (<XRef id="rem-tf7-multimodal-crossattn" />) — the encoder-decoder pattern with a vision encoder in place of a text one. **Cross-attention absent:** project the image features — in practice a frozen vision encoder's output features, as in LLaVA, not raw patch embeddings — into the token space and **concatenate** them with the text tokens into one sequence $\mathbf X = [\,\mathbf X_{\text{img}};\,\mathbf X_{\text{txt}}\,]$, processed by a single decoder-only stack (<XRef id="def-tf7-decoder-only" />) — the embedding interface of <XRef id="def-tf1-embedding-interface" /> used twice, with no new operation <Cite key="liu2023llava" />. Thus cross-attention decides *how the already-encoded visual features enter the language stack*, not whether an upstream encoder exists. Both routes are built out in full later: the projector and learned-query resampler that fill the concatenation route (<XRef id="def-tf15-connector" />), and the single interleaved stream that subsumes both into one decoder (<XRef id="def-tf17-interleaved" />).
 </Theorem>
 
 ## Universal approximation
@@ -278,7 +278,7 @@ Cross-attention is $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ with $\m
 
 <SolutionBox>
 
-The switches are (a) self-attention causal vs bidirectional and (b) cross-attention present vs absent (an encoder exists exactly when (b) is present). **Encoder-only:** bidirectional, no cross-attention (BERT). **Encoder-decoder:** bidirectional encoder + causal decoder with cross-attention pulling $\mathbf K,\mathbf V$ from $\mathbf H_{\text{enc}}$ (original transformer, T5). **Decoder-only:** causal, no cross-attention; conditioning is in-context via the prompt (GPT, LLaMA). The fourth setting (bidirectional + cross-attention) is non-standard, since bidirectional self-attention is incompatible with the autoregressive generation cross-attention conditioning serves. $\qquad\blacksquare$
+The switches are (a) output-stack self-attention causal vs bidirectional and (b) cross-attention present vs absent. **Encoder-only:** bidirectional, no cross-attention (BERT). **Encoder-decoder:** bidirectional source encoder + causal decoder with cross-attention pulling $\mathbf K,\mathbf V$ from $\mathbf H_{\text{enc}}$ (original transformer, T5). **Decoder-only:** causal, no cross-attention; conditioning is in-context via the prompt (GPT, LLaMA). The fourth setting, bidirectional + cross-attention, is valid for fusion or reranking but is not a fourth autoregressive architecture: bidirectional output self-attention can read future output positions, so the stack is not prefix-consistent. $\qquad\blacksquare$
 
 </SolutionBox>
 
