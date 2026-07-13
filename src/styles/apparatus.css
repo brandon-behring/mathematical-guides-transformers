@@ -85,6 +85,13 @@
     margin-block: 0;
   }
 
+  /* Authors may opt a prompt and its collapsed answer row into one atomic
+   * print group when a page boundary would otherwise strand either one. */
+  .print-edition .exercise-solution-pair {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   .print-backmatter {
     break-before: page;
   }

@@ -12,10 +12,10 @@ order follows the arc.
 Authoring follows the family's dossier-grounded
 [formal style guide](https://github.com/brandon-behring/mathematical-guides/blob/main/docs/style-guide-formal-v0.3.md).
 
-## Structure: 22 chapters, 6 parts
+## Structure: 23 chapters, 6 parts
 
-Published chapter numbers deliberately reserve **11** (RLHF/DPO) and **13** (scaling laws).
-The current 22-chapter corpus therefore occupies **00–10, 12, and 14–23**. Source filenames carry
+Published chapter numbers deliberately reserve **13** (scaling laws).
+The current 23-chapter corpus therefore occupies **00–12 and 14–23**. Source filenames carry
 those final display numbers, while frontmatter `slug` values are number-free, so filling a reserved
 slot does not change an existing chapter URL.
 
@@ -29,8 +29,8 @@ slot does not change an existing chapter URL.
   attention; the transformer block; architecture composition; in-context learning through
   associative lookup, copying and induction, and a controlled linear-attention gradient-descent
   construction; encoders and decoders across architecture families (causality as
-  prefix-consistency, abstracted over any sequence mixer); training; encoder readouts, contrastive
-  alignment, and detection.
+  prefix-consistency, abstracted over any sequence mixer); token-level training; pairwise preference
+  optimization through RLHF and DPO; encoder readouts, contrastive alignment, and detection.
 - **Part 4 — Efficient & Conditional Computation.** Training optimizations; inference optimizations
   (greedy, temperature, top-$k$, and top-$p$ decoding; the KV-cache, quantization, FlashAttention,
   and speculative decoding); mixture-of-experts

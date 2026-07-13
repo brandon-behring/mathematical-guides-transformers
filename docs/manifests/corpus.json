@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "generatedBy": "scripts/corpus-manifest.mjs",
   "totals": {
-    "chapters": 22,
-    "labels": 289,
-    "learningObjectives": 101,
-    "proofMarkers": 210,
-    "printedNumberHits": 135
+    "chapters": 23,
+    "labels": 300,
+    "learningObjectives": 105,
+    "proofMarkers": 217,
+    "printedNumberHits": 143
   },
   "chapters": [
     {
@@ -854,6 +854,7 @@
         "prop-ce-kl",
         "prop-ce-kl-training",
         "prop-ce-logit-gradient",
+        "prop-dpo-pair-gradient",
         "prop-label-smoothing-decomposition",
         "prop-sequential-depth",
         "prop-softmax-jacobian",
@@ -873,24 +874,104 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 256,
+          "line": 120,
+          "text": "Chapter 11"
+        },
+        {
+          "line": 258,
           "text": "Exercise 10.1"
         },
         {
-          "line": 268,
+          "line": 270,
           "text": "Exercise 10.2"
         },
         {
-          "line": 276,
+          "line": 278,
           "text": "Exercise 10.3"
         },
         {
-          "line": 288,
+          "line": 290,
           "text": "Exercise 10.4"
         },
         {
-          "line": 296,
+          "line": 298,
           "text": "Exercise 10.5"
+        }
+      ]
+    },
+    {
+      "path": "src/content/transformers/11-preference-optimization.mdx",
+      "slug": "preference-optimization",
+      "title": "Preference Optimization: RLHF and DPO",
+      "chapter": 11,
+      "part": 3,
+      "labelIds": [
+        "cor-reward-policy-inversion",
+        "def-bradley-terry-preference",
+        "def-kl-regularized-reward-objective",
+        "def-pairwise-preference-data",
+        "fig-preference-optimization-paths",
+        "prop-dpo-pair-gradient",
+        "prop-dpo-population-optimum",
+        "rem-dpo-not-ppo-reduction",
+        "rem-preference-frontier",
+        "thm-dpo-objective",
+        "thm-kl-regularized-policy-optimum"
+      ],
+      "objectiveIds": [
+        "lo-dpo-derivation",
+        "lo-dpo-gradient-and-scope",
+        "lo-kl-regularized-policy-optimum",
+        "lo-preference-optimization-pipelines"
+      ],
+      "xrefs": [
+        "cor-reward-policy-inversion",
+        "def-autoregressive-lm",
+        "def-bradley-terry-preference",
+        "def-kl",
+        "def-kl-regularized-reward-objective",
+        "def-pairwise-preference-data",
+        "prop-ce-logit-gradient",
+        "thm-dpo-objective",
+        "thm-kl-regularized-policy-optimum"
+      ],
+      "kindCounts": {
+        "corollary": 1,
+        "definition": 3,
+        "proof": 5,
+        "proposition": 2,
+        "remark": 2,
+        "theorem": 2
+      },
+      "proofMarkers": 7,
+      "printedNumberHits": [
+        {
+          "line": 32,
+          "text": "Chapter 10"
+        },
+        {
+          "line": 426,
+          "text": "Exercise 11.1"
+        },
+        {
+          "line": 453,
+          "text": "Exercise 11.2"
+        },
+        {
+          "line": 474,
+          "text": "Exercise 11.3"
+        },
+        {
+          "line": 493,
+          "text": "Exercise 11.4"
+        },
+        {
+          "line": 521,
+          "text": "Exercise 11.5"
+        },
+        {
+          "line": 542,
+          "text": "Exercise 11.6"
         }
       ]
     },
@@ -945,7 +1026,8 @@
         "prop-softmax-translation-inv",
         "rem-separation-geometry",
         "rem-softmax-temperature",
-        "rem-vit"
+        "rem-vit",
+        "thm-dpo-objective"
       ],
       "kindCounts": {
         "definition": 6,
@@ -956,23 +1038,23 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 213,
+          "line": 215,
           "text": "Exercise 12.1"
         },
         {
-          "line": 221,
+          "line": 223,
           "text": "Exercise 12.2"
         },
         {
-          "line": 229,
+          "line": 231,
           "text": "Exercise 12.3"
         },
         {
-          "line": 237,
+          "line": 239,
           "text": "Exercise 12.4"
         },
         {
-          "line": 245,
+          "line": 247,
           "text": "Exercise 12.5"
         }
       ]

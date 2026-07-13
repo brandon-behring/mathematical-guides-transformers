@@ -170,6 +170,41 @@
       "id": "prop-chunked",
       "test": "tests/properties/test_ssd_chunking.py",
       "statementSha256": "738adfb305e7228c18fed2f8a97950084a1e7ee2d5a5b90a68e7e35e571980cf"
+    },
+    {
+      "id": "def-bradley-terry-preference",
+      "test": "tests/properties/test_preference_optimization.py",
+      "statementSha256": "a300aeed9375183280fe8b0384585ae4262cad847e8df605980151b55ee9967f"
+    },
+    {
+      "id": "def-kl-regularized-reward-objective",
+      "test": "tests/properties/test_preference_optimization.py",
+      "statementSha256": "abd5597168f318c841a4be79dfb30186b96ae819a50ab19c1e4a36e9b1ddc333"
+    },
+    {
+      "id": "thm-kl-regularized-policy-optimum",
+      "test": "tests/properties/test_preference_optimization.py",
+      "statementSha256": "e52e9f7388fb8a869b65efdcee7fb851a8cc84885788472a8e6f7723e8064b21"
+    },
+    {
+      "id": "cor-reward-policy-inversion",
+      "test": "tests/properties/test_preference_optimization.py",
+      "statementSha256": "973573ed4bc788db9929d2fbe1dd5df1626963da644a7600f89a88f0a4b07388"
+    },
+    {
+      "id": "thm-dpo-objective",
+      "test": "tests/properties/test_preference_optimization.py",
+      "statementSha256": "8b6ce2591238d9c10b561097e6850144c2000e1267fd380337923ba436350479"
+    },
+    {
+      "id": "prop-dpo-pair-gradient",
+      "test": "tests/properties/test_preference_optimization.py",
+      "statementSha256": "7a8e49119aa488368a69fad0a3e6a4158ae2ea0d5615f5c6b3225ce02e5b8a66"
+    },
+    {
+      "id": "prop-dpo-population-optimum",
+      "test": "tests/properties/test_preference_optimization.py",
+      "statementSha256": "92510d7b4c3b03703fd14f9121ce0a7f064babe218b4997c2bff05a23e61e238"
     }
   ]
 }

@@ -64,6 +64,22 @@ import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 
 <div className="notation-print-break" aria-hidden="true" />
 
+**Objective-specific distributions and scores.**
+
+| Symbol | Meaning | Scope |
+|---|---|---|
+| $\mathcal D_{\mathrm{pref}}$ | dataset of same-prompt winner–loser preference triples | Preference Optimization (<XRef id="def-pairwise-preference-data" />) |
+| $\pi_\theta(y\mid x)$ | trainable policy probability of the whole completion $y$; the same conditional-model role written $p_\theta$ in Chapter 10 | Preference Optimization (<XRef id="thm-dpo-objective" />) |
+| $\pi_{\mathrm{ref}}(y\mid x)$ | frozen reference-policy completion probability | Preference Optimization (<XRef id="def-kl-regularized-reward-objective" />) |
+| $\pi_r(y\mid x)$ | exact exponential-tilt optimizer of the KL-regularized reward objective | Preference Optimization (<XRef id="thm-kl-regularized-policy-optimum" />) |
+| $r_\phi(x,y)$ | learned scalar reward for response $y$ to prompt $x$ | RLHF reward model (<XRef id="def-bradley-terry-preference" />) |
+| $\beta_{\mathrm{KL}}>0$ | forward-KL penalty coefficient; also the scale multiplying DPO's policy–reference gap under the unit-scale Bradley–Terry model | Preference Optimization (<XRef id="def-kl-regularized-reward-objective" />, <XRef id="thm-dpo-objective" />) |
+| $Z_r(x)$ | partition function normalizing the reward-tilted reference policy | Preference Optimization (<XRef id="thm-kl-regularized-policy-optimum" />) |
+| $s_\theta(x,y)$ | completion-level policy–reference log-ratio score | DPO (<XRef id="thm-dpo-objective" />) |
+| $\Delta_\theta$ | winner-minus-loser gap between completion-level policy–reference log ratios | DPO (<XRef id="thm-dpo-objective" />) |
+
+<div className="notation-print-break" aria-hidden="true" />
+
 **Column-vector switches.** Rows of $\mathbf X\in\R^{n\times d}$ are the default. The following scopes temporarily use columns so left-acting matrices, Jacobians, or outer products have their conventional orientation.
 
 | Scope | Objects treated as columns | Reason |

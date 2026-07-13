@@ -2,13 +2,14 @@
 
 **Status:** B0 evidence reconciliation and the atomic structure-design exit gate cleared on 2026-07-13. The accepted
 `research-dossiers` snapshot, per-owner provenance commits, and exact evidence IDs are frozen in the B0 record below;
-no Track B guide prose was authored before clearance. **B1 (BPE in ch01) and B2 (ICL in ch08) completed on
-2026-07-13; B3 RLHF/DPO is next**, followed serially by B4 Scaling, with each PR based on its merged predecessor.
+no Track B guide prose was authored before clearance. **B1 (BPE in ch01), B2 (ICL in ch08), and B3 (RLHF/DPO in
+ch11) completed on 2026-07-13; B4 Scaling is next**, based on the merged B3 predecessor.
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
 (`docs/audits/roadmap-readiness_2026-07-11.md`) flagged two fixes, folded in below: the structure-design
 pass becomes a hard **B0 exit gate** (not an at-execution afterthought). Track A's A3/A7 prerequisites and the B0
-evidence/structure gate and B1–B2 are complete; the critical path is now the locked B3→B4 merge sequence.
+evidence/structure gate and B1–B3 are complete; the critical path is now B4 followed by the terminal whole-corpus
+proof and pagination audit.
 
 ## Context
 
@@ -167,6 +168,33 @@ primary papers rather than dossier slugs.
   accessibility text. In the 292-page print render, Chapter 08 is legible and atomic on pages 108–118, all six exercise
   prompts remain with their collapsed solution rows, and Chapter 09 begins cleanly on page 119.
 
+### B3 acceptance record — complete 2026-07-13
+
+- Chapter 11 now defines pairwise preference data and the Bradley–Terry likelihood; solves the forward-KL-regularized
+  reward objective with its exact Gibbs optimum and gap identity; retains the prompt normalizer in the absolute
+  reward–policy inversion; derives the whole-completion DPO loss, score/parameter gradients, and Hessian; and states
+  the connected-comparison, positive-support, realizability, and population/global-optimization assumptions required
+  for the same-optimum interpretation. DPO is explicitly not presented as an algebraic reduction of PPO.
+- Provenance is frozen to accepted dossier snapshot `ffd4e3a184ea364b95764a541830a0bba9489c4b`; RLHF owner
+  `research_rlhf` at `d13ceafd1200e19d106ff886ec6aace9cb5547a9` with pins `_0100`, `_0101`, `_0102`, and `_0105`;
+  and DPO owner
+  `research_post_training_preference` at equation top-up `bc9e1f631aa4aa4bfb02900a04c3d98c13fda3d0` plus
+  qualification follow-up `7ae77214e4af8128c8d4307d4c473fca0fd3c3b4`, with pins `_0001`–`_0007` and `_0010`–`_0013`.
+  The chapter cites the primary Christiano et al., Schulman et al., Ziegler et al., Ouyang et al., Rafailov et al.,
+  Hong et al., Gheshlaghi Azar et al., and Ethayarajh et al. papers.
+- The notation-free RLHF/DPO TikZ/PDF/SVG comparison, three glossary entries, notation and quick-reference entries,
+  neighboring cross-links, and six solved exercises are wired. The corpus now contains 23 chapters, 300 semantic
+  labels, 105 learning objectives, 41 guarded property claims, and 30 figures; slot 11 is occupied and only slot 13
+  remains reserved.
+- Acceptance checks passed: 15 chapter-specific numerical/property tests within the 87-test Python suite, including
+  randomized Gibbs-gap, DPO-substitution, gradient/Hessian, support/counterexample, graph-identification, and full
+  population-risk recovery guards; corpus/property/semantic-ID, SVG-ID, print-HTML, and migration checks; a
+  zero-collision 600 dpi figure audit; scaffold validation; the full production build; and `git diff --check`.
+  Independent mathematics, pedagogy, and repository-QA reviews reported no findings. The 375 px render has no
+  page-level overflow and synchronized figure accessibility text. In the 307-page print render, Chapter 11 is legible
+  on pages 147–158, every exercise prompt remains with its collapsed solution row, and Chapter 12 begins cleanly on
+  page 159.
+
 ## Delivery — phased
 This order—not the topic-heading order above—is authoritative:
 
@@ -176,9 +204,9 @@ This order—not the topic-heading order above—is authoritative:
    structure-design exit gate above.
 3. **B1 (complete 2026-07-13):** add the BPE section to ch01 (no dossier); the corpus remains 21 chapters.
 4. **B2 (complete 2026-07-13):** add ICL as ch08; the corpus becomes 22 chapters and 08 is no longer reserved.
-5. **B3 (next):** add RLHF/DPO as ch11; the corpus becomes 23 chapters and 11 is no longer reserved.
-6. **B4:** add Scaling Laws as ch13; the corpus becomes 24 chapters and 13 is no longer reserved, then run the final
-   whole-corpus sweep.
+5. **B3 (complete 2026-07-13):** add RLHF/DPO as ch11; the corpus becomes 23 chapters and 11 is no longer reserved.
+6. **B4 (next):** add Scaling Laws as ch13; the corpus becomes 24 chapters and 13 is no longer reserved, then run the
+   final whole-corpus sweep.
 7. Run the pre-seeded terminal proof audit over the frozen 24-chapter corpus.
 
 Each B PR proceeds only after its predecessor merges and updates the shared `NotationIndex`/`QuickReference`, glossary
