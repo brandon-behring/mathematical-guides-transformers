@@ -2,9 +2,9 @@
 
 Per-guide sibling of the `mathematical-guides` family (formal lens). Built on
 `@brandon_m_behring/book-scaffold-astro` v4.26+; deploys to `/transformers/`. Titled
-**"Transformer Mathematics"**: 19 chapters across 5 parts carrying the full arc — recurrent
-networks and state space models → attention and the transformer → encoder/decoder families →
-selective SSMs and hybrid architectures → vision-language.
+**"Transformer Mathematics"**: 19 chapters across 6 parts carrying the full arc — foundations →
+recurrence and linear state → transformer architectures and objectives → efficient and conditional
+computation → sub-quadratic and selective sequence models → multimodal models.
 
 ## Authoring contract
 Follow `~/Claude/mathematical-guides/docs/style-guide-formal-v0.3.md`: motivated Definition–Theorem–Proof;
