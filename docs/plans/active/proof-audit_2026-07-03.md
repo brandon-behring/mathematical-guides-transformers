@@ -160,10 +160,14 @@ are the citation-grounded evidence base the sweep should draw on when checking p
 - **new ch17 Sparse chapter** → `research_sparse_attention_patterns` + `research_trainable_sparse_attention` (**MERGED** PR #4).
 
 Track-B evidence owners (see `topic-gap-expansion_2026-07-10.md`):
-- **new ch11 RLHF/DPO chapter** → `research_rlhf` + `research_post_training_preference`.
-- **new ch13 Scaling-laws chapter** → `research_llm_pretraining_scaling` plus its targeted top-up.
-- **new ch08 ICL chapter** → `research_incontext_associative_memory` (to build; full constructive trio locked in Track B).
+- **new ch11 RLHF/DPO chapter** → accepted `research_rlhf` + `research_post_training_preference` owners.
+- **new ch13 Scaling-laws chapter** → accepted `research_llm_pretraining_scaling` owner and targeted top-up.
+- **new ch08 ICL chapter** → accepted `research_incontext_associative_memory` owner; the full constructive trio is
+  locked, with empirical induction claims restricted to remarks.
 - **ch01 BPE section** → author from primaries (BPE/SentencePiece), no dossier.
+
+The exact accepted corpus SHA, per-owner provenance commits, and evidence IDs are frozen in the Track-B plan's
+`B0 acceptance record — cleared 2026-07-13`; use that record rather than inferring support from dossier names alone.
 
 When the sweep reaches a chapter, pull anchored excerpts + evidence IDs from its dossier's `evidence_ledger.yml`
 rather than re-deriving citations. The corrected/frontier claims flagged by the 2026-07-10 dossier-coverage audit
