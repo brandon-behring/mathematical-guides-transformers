@@ -23,7 +23,7 @@ Authoring follows the family's dossier-grounded
 - **Part 3 — The transformer.** Scaled dot-product attention; multi-head attention; the transformer
   block; architecture composition; encoders and decoders across architecture families (causality as
   prefix-consistency, abstracted over any sequence mixer); training.
-- **Part 4 — Encoders in practice & efficiency.** Detection encoders; training optimizations;
+- **Part 4 — Encoders in practice & efficiency.** Encoder readouts, contrastive alignment, and detection; training optimizations;
   inference optimizations (the KV-cache, quantization, speculative decoding); selective state spaces
   and state space duality (Mamba, linear-attention/SSM duality, the chunked algorithm); modern
   recurrent models and hybrid architectures (RWKV, xLSTM, DeltaNet, sliding-window hybrids).

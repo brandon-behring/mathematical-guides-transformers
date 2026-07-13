@@ -5,8 +5,8 @@
     "chapters": 19,
     "labels": 252,
     "learningObjectives": 86,
-    "proofMarkers": 182,
-    "printedNumberHits": 200
+    "proofMarkers": 183,
+    "printedNumberHits": 199
   },
   "chapters": [
     {
@@ -538,23 +538,23 @@
           "text": "TF-5.4"
         },
         {
-          "line": 195,
+          "line": 203,
           "text": "Exercise 5.1"
         },
         {
-          "line": 203,
+          "line": 211,
           "text": "Exercise 5.2"
         },
         {
-          "line": 211,
+          "line": 219,
           "text": "Exercise 5.3"
         },
         {
-          "line": 219,
+          "line": 227,
           "text": "Exercise 5.4"
         },
         {
-          "line": 227,
+          "line": 235,
           "text": "Exercise 5.5"
         }
       ]
@@ -808,7 +808,6 @@
         "def-tf8-bidirectional-scan",
         "def-tf8-patterns",
         "def-tf8-prefix-lm",
-        "def-tf9-autoregressive-lm",
         "def-tf9-teacher-forcing",
         "ex-tf8-incompatible-conditionals",
         "prop-tf12-decode-cost",
@@ -852,31 +851,31 @@
           "text": "TF-8.4"
         },
         {
-          "line": 318,
+          "line": 324,
           "text": "Exercise 8.1"
         },
         {
-          "line": 326,
+          "line": 332,
           "text": "Exercise 8.2"
         },
         {
-          "line": 334,
+          "line": 340,
           "text": "Exercise 8.3"
         },
         {
-          "line": 342,
+          "line": 348,
           "text": "Exercise 8.4"
         },
         {
-          "line": 354,
+          "line": 360,
           "text": "Exercise 8.5"
         },
         {
-          "line": 362,
+          "line": 368,
           "text": "Exercise 8.6"
         },
         {
-          "line": 370,
+          "line": 376,
           "text": "Exercise 8.7"
         }
       ]
@@ -978,7 +977,7 @@
     {
       "path": "src/content/transformers/10-detection-encoders.mdx",
       "slug": "detection-encoders",
-      "title": "Encoders for Detection",
+      "title": "Encoder Readouts, Contrastive Alignment, and Detection",
       "chapter": 10,
       "part": 4,
       "labelIds": [
@@ -1017,7 +1016,6 @@
         "def-tf7-cross-attention",
         "def-tf8-patterns",
         "def-tf9-autoregressive-lm",
-        "ex-tf9-captioning",
         "prop-ce-kl",
         "prop-row-stochastic-convex",
         "prop-softmax-jacobian",
@@ -1058,23 +1056,23 @@
           "text": "TF-10.5"
         },
         {
-          "line": 195,
+          "line": 213,
           "text": "Exercise 10.1"
         },
         {
-          "line": 203,
+          "line": 221,
           "text": "Exercise 10.2"
         },
         {
-          "line": 211,
+          "line": 229,
           "text": "Exercise 10.3"
         },
         {
-          "line": 219,
+          "line": 237,
           "text": "Exercise 10.4"
         },
         {
-          "line": 227,
+          "line": 245,
           "text": "Exercise 10.5"
         }
       ]
@@ -1216,11 +1214,11 @@
         "prop-tf12-decode-cost",
         "prop-tf12-kv-memory",
         "prop-tf12-memory-bound",
-        "prop-tf12-moe-flops",
         "prop-tf12-quant-error",
         "prop-tf12-spec-speedup",
         "prop-tf14-decode-state",
         "prop-tf14-state-recall",
+        "prop-tf5-kv-cache",
         "prop-tf8-prefix-reuse",
         "thm-tf12-online-softmax-exact"
       ],
@@ -1231,7 +1229,7 @@
         "remark": 6,
         "theorem": 1
       },
-      "proofMarkers": 12,
+      "proofMarkers": 13,
       "printedNumberHits": [
         {
           "line": 13,
@@ -1258,24 +1256,28 @@
           "text": "TF-12.7"
         },
         {
-          "line": 312,
+          "line": 335,
           "text": "Exercise 12.1"
         },
         {
-          "line": 320,
+          "line": 343,
           "text": "Exercise 12.2"
         },
         {
-          "line": 328,
+          "line": 351,
           "text": "Exercise 12.3"
         },
         {
-          "line": 336,
+          "line": 365,
           "text": "Exercise 12.4"
         },
         {
-          "line": 344,
+          "line": 373,
           "text": "Exercise 12.5"
+        },
+        {
+          "line": 381,
+          "text": "Exercise 12.6"
         }
       ]
     },
@@ -1374,27 +1376,27 @@
           "text": "Chapter 3"
         },
         {
-          "line": 387,
+          "line": 399,
           "text": "Exercise 13.1"
         },
         {
-          "line": 395,
+          "line": 407,
           "text": "Exercise 13.2"
         },
         {
-          "line": 403,
+          "line": 415,
           "text": "Exercise 13.3"
         },
         {
-          "line": 417,
+          "line": 429,
           "text": "Exercise 13.4"
         },
         {
-          "line": 431,
+          "line": 443,
           "text": "Exercise 13.5"
         },
         {
-          "line": 455,
+          "line": 467,
           "text": "Exercise 13.6"
         }
       ]
@@ -1796,23 +1798,23 @@
           "text": "TF-17.5"
         },
         {
-          "line": 158,
+          "line": 175,
           "text": "Exercise 17.1"
         },
         {
-          "line": 166,
+          "line": 192,
           "text": "Exercise 17.2"
         },
         {
-          "line": 174,
+          "line": 200,
           "text": "Exercise 17.3"
         },
         {
-          "line": 182,
+          "line": 208,
           "text": "Exercise 17.4"
         },
         {
-          "line": 190,
+          "line": 216,
           "text": "Exercise 17.5"
         }
       ]
@@ -1882,14 +1884,6 @@
         {
           "line": 19,
           "text": "TF-18.4"
-        },
-        {
-          "line": 77,
-          "text": "ch. 6"
-        },
-        {
-          "line": 118,
-          "text": "ch. 7"
         },
         {
           "line": 129,

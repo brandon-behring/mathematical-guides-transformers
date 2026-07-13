@@ -4,7 +4,7 @@ slug: encoder-decoder-families
 chapter: 8
 part: 3
 description: "Causality abstracted from attention: the sequence mixer and prefix-consistency, which standard mixers are causal and why causality survives composition, the encoder/decoder/encoder-decoder patterns instantiated across the attention, RNN, and SSM families, the one-pass training theorem and the sequential-depth comparison, bidirectional scans and masked language modeling with explicit conditional tables no joint realizes, and the prefix-reuse proposition that makes the KV-cache correct."
-last_verified: 2026-07-09
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, recurrent-networks, state-space-models, attention, architecture-composition]
 notation_introduced: ['F = (F_n)_{n\ge 1}', '\mathbf X_{1:m}', '\mathbf M^{(s)}']
@@ -110,10 +110,16 @@ the second equality by causality of $G$ (applied to the input $F_n(\mathbf X)$),
 
 With causality abstracted, the two switches of <XRef id="rem-tf7-three-archs" /> become settings available to *every* mixer family, and the three standard architectures become three patterns definable without naming attention.
 
+Only the bare chain rule is needed here. For a fixed sequence length $n$,
+$$
+p_\theta(x_{1:n}) = \prod_{t=1}^{n} p_\theta(x_t\mid x_{<t}),
+$$
+and, conversely, any family of normalized next-token conditionals defines a normalized joint through this product (sum successively over $x_n,x_{n-1},\dots,x_1$). The training chapter will package this identity into the full autoregressive-language-model definition and objective; here the identity itself is enough to characterize the decoder pattern.
+
 <Theorem kind="definition" name="Encoder, decoder, and encoder–decoder patterns" id="def-tf8-patterns">
 Fix a mixer family and stack its blocks as in <XRef id="prop-tf8-causal-closure" />.
 1. The **encoder pattern** is a stack whose mixers are unconstrained — typically bidirectional, so each output row may depend on the whole input. Its product is the full representation $\mathbf H\in\R^{n\times d}$, consumed by a head or by another stack.
-2. The **decoder pattern** is a stack whose every mixer is causal, with a position-wise readout turning row $t$ into the next-token conditional $p_\theta(\,\cdot\mid x_{1:t})$ of <XRef id="def-tf9-autoregressive-lm" />.
+2. The **decoder pattern** is a stack whose every mixer is causal, with a position-wise readout turning row $t$ into a next-token conditional $p_\theta(\,\cdot\mid x_{1:t})$; these conditionals compose into the chain-rule joint displayed above.
 3. The **encoder–decoder pattern** pairs an encoder producing $\mathbf H$ with a causal decoder whose blocks additionally apply a **conditioning channel**: a map that lets each decoder row consult all of $\mathbf H$ but no future decoder rows — the requirement being that for fixed $\mathbf H$ the dressed decoder remains a causal mixer in the decoder sequence. Cross-attention achieves this position-wise (for fixed $\mathbf H$ it acts within a decoder row, covered by <XRef id="prop-tf8-causal-closure" />); channels that route $\mathbf H$ through the decoder's own state — an initial state set from $\mathbf H$, or additive attention queried by the decoder state — are causal directly, consulting only settled decoder rows.
 </Theorem>
 
@@ -175,7 +181,7 @@ $$
 
 **Step 3 (readout is position-wise).** Taking row $t$ of the identity in Step 2 and applying $\mathbf W_{\text{out}}$ and the softmax — both functions of row $t$ alone — gives the claimed equality of distributions.
 
-**Failure for the bidirectional instances.** The witness of <XRef id="prop-tf8-causal-instances" /> makes the failure concrete (with a readout separating the differing rows — one that annihilated the discrepancy could mask it): under unmasked attention, row $1$ of the length-$2$ evaluation equals $c/2$, a nonconstant function of the second token. A teacher-forced "loss" at position $t$ would then score a quantity that has already read the target $x_{t+1}$ it is scored against — the factorization of <XRef id="def-tf9-autoregressive-lm" /> no longer describes what the network computes. $\qquad\blacksquare$
+**Failure for the bidirectional instances.** The witness of <XRef id="prop-tf8-causal-instances" /> makes the failure concrete (with a readout separating the differing rows — one that annihilated the discrepancy could mask it): under unmasked attention, row $1$ of the length-$2$ evaluation equals $c/2$, a nonconstant function of the second token. A teacher-forced "loss" at position $t$ would then score a quantity that has already read the target $x_{t+1}$ it is scored against — the chain-rule factorization above no longer describes what the network computes. $\qquad\blacksquare$
 </Theorem>
 
 The theorem holds for every column of the lattice — an RNN decoder enjoys the same one-pass license as a transformer. What separates the columns is the *cost structure* of that one pass: how much of it must happen serially.
@@ -224,7 +230,7 @@ $$
 each masked position predicted from its full two-sided context <Cite key="devlin2019bert" />.
 </Theorem>
 
-MLM learns conditionals of the form $p(x_t\mid x_{-t})$ — one token given *both* sides. Here is the structural asymmetry with the decoder: the causal family $\{p(x_t\mid x_{1:t-1})\}_t$ *always* assembles into a joint, because the chain-rule product of any next-token conditionals **is** a joint (<XRef id="def-tf9-autoregressive-lm" />). Two-sided conditionals instead carry a hidden compatibility constraint — they must all be conditionals *of one and the same* joint — and an unconstrained parameterization is free to violate it.
+MLM learns conditionals of the form $p(x_t\mid x_{-t})$ — one token given *both* sides. Here is the structural asymmetry with the decoder: the causal family $\{p(x_t\mid x_{1:t-1})\}_t$ *always* assembles into a joint, because the chain-rule product displayed at the start of this section is normalized for any collection of normalized next-token conditionals. Two-sided conditionals instead carry a hidden compatibility constraint — they must all be conditionals *of one and the same* joint — and an unconstrained parameterization is free to violate it.
 
 <MarginNote variant="tip" label="Self-explanation">Before the example: chain-rule conditionals compose into a joint by multiplication. What could even go wrong for two-sided conditionals — what shared object are they all answerable to?</MarginNote>
 
@@ -308,7 +314,7 @@ All conditional generation computes one object — a family of next-token condit
 </Theorem>
 
 <Theorem kind="remark" name="Why decoder-only, assembled from proved parts" id="rem-tf8-decoder-only">
-The dominance of the decoder-only pattern for general-purpose generation is a corollary of four facts already on the table; nothing new is claimed here. **(1) Exact, fully supervised factorization:** the chain rule makes the causal conditionals compose into a genuine joint with every position supervised (<XRef id="def-tf9-autoregressive-lm" />), where MLM supervises only the masked subset and learns conditionals with no coherence guarantee (<XRef id="ex-tf8-incompatible-conditionals" />). **(2) One-pass training:** all $n$ conditionals from a single evaluation (<XRef id="thm-tf8-one-pass" />). **(3) Exact cached decoding:** prefix reuse makes generation incremental at no cost in correctness (<XRef id="prop-tf8-prefix-reuse" />, priced by <XRef id="prop-tf12-decode-cost" />). **(4) Closure:** causality survives arbitrary depth and dressing (<XRef id="prop-tf8-causal-closure" />), so (1)–(3) are free at any scale. Controlled comparisons of architectures and objectives point the same way for zero-shot generative use <Cite key="wang2022architecture" />. The scope limit: the lattice has no globally best cell — bidirectional encoders remain the right pattern when the product is a representation of given text rather than a continuation of it.
+The dominance of the decoder-only pattern for general-purpose generation is a corollary of four facts already on the table; nothing new is claimed here. **(1) Exact, fully supervised factorization:** the chain rule makes the causal conditionals compose into a genuine joint with every position supervised, as shown at the start of this section, where MLM supervises only the masked subset and learns conditionals with no coherence guarantee (<XRef id="ex-tf8-incompatible-conditionals" />). **(2) One-pass training:** all $n$ conditionals from a single evaluation (<XRef id="thm-tf8-one-pass" />). **(3) Exact cached decoding:** prefix reuse makes generation incremental at no cost in correctness (<XRef id="prop-tf8-prefix-reuse" />, priced by <XRef id="prop-tf12-decode-cost" />). **(4) Closure:** causality survives arbitrary depth and dressing (<XRef id="prop-tf8-causal-closure" />), so (1)–(3) are free at any scale. Controlled comparisons of architectures and objectives point the same way for zero-shot generative use <Cite key="wang2022architecture" />. The scope limit: the lattice has no globally best cell — bidirectional encoders remain the right pattern when the product is a representation of given text rather than a continuation of it.
 </Theorem>
 
 ## Exercises
@@ -355,7 +361,7 @@ Check: $p_1(\mathtt a\mid\mathtt a) = \tfrac{1/3}{1/3+1/6} = \tfrac{2}{3}$, $p_1
 
 <SolutionBox>
 
-Unmasked attention: by <XRef id="prop-tf8-causal-instances" />, with identity projections and $\mathbf X = (0,c)^\top$, row $1$ of the length-$2$ evaluation is $c/2$, which varies with the second token; the readout $\softmax(F_2(\mathbf X)_1\mathbf W_{\text{out}})$ is therefore a nonconstant function of $x_2$ and cannot equal $p_\theta(\,\cdot\mid x_1)$, a function of $x_1$ alone. Bidirectional scan: row $t$ merges $\overleftarrow{\mathbf h}_t$, whose recursion consumes $\mathbf x_n,\dots,\mathbf x_{t+1},\mathbf x_t$; if the backward recurrence is nondegenerate, varying $x_{t+1}$ moves $\overleftarrow{\mathbf h}_t$ and hence the readout. In either case a teacher-forced "loss" at $t$ scores a quantity that has already read $x_{t+1}$ — the model can drive the loss down by copying the visible target rather than predicting it, so the objective no longer estimates the conditional of <XRef id="def-tf9-autoregressive-lm" />. $\qquad\blacksquare$
+Unmasked attention: by <XRef id="prop-tf8-causal-instances" />, with identity projections and $\mathbf X = (0,c)^\top$, row $1$ of the length-$2$ evaluation is $c/2$, which varies with the second token; the readout $\softmax(F_2(\mathbf X)_1\mathbf W_{\text{out}})$ is therefore a nonconstant function of $x_2$ and cannot equal $p_\theta(\,\cdot\mid x_1)$, a function of $x_1$ alone. Bidirectional scan: row $t$ merges $\overleftarrow{\mathbf h}_t$, whose recursion consumes $\mathbf x_n,\dots,\mathbf x_{t+1},\mathbf x_t$; if the backward recurrence is nondegenerate, varying $x_{t+1}$ moves $\overleftarrow{\mathbf h}_t$ and hence the readout. In either case a teacher-forced "loss" at $t$ scores a quantity that has already read $x_{t+1}$ — the model can drive the loss down by copying the visible target rather than predicting the next-token conditional in the chain-rule joint. $\qquad\blacksquare$
 
 </SolutionBox>
 

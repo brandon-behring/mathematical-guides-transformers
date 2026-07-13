@@ -1,16 +1,15 @@
 %! no-theme
-% three-architectures (ch07, rem-tf7-three-archs / Ex 7.2) — the three standard architectures ARE the switch
-% space itself: two binary switches (self-attention bidirectional vs causal) × (cross-attention absent vs
-% present) give four settings; three are standard, the fourth is non-standard. Drawing the 2×2 makes the
-% chapter's thesis literal and teaches WHY only three of four are used.
+% three-architectures (ch07, rem-tf7-three-archs / Ex 7.2) — two binary switches (self-attention
+% bidirectional vs causal) × (cross-attention absent vs present) give a larger four-cell switch space;
+% three cells are the standard representation/generation patterns, while the fourth
+% is a valid non-autoregressive fusion pattern. Drawing the 2×2 makes the scope distinction literal.
 %   (bi, absent)   = Encoder-only   · BERT
 %   (causal, absent)= Decoder-only  · GPT, LLaMA
 %   (causal, present)= Encoder-decoder · T5, original transformer
-%   (bi, present)  = NON-STANDARD (bidirectional self-attention is incompatible with the autoregressive
-%                    generation cross-attention serves — unused, not impossible)
+%   (bi, present)  = two-stream bidirectional cross-attention fusion (valid, not autoregressive)
 % Pedagogical mitigations: (i) each block carries an attention-mask icon (\tfmaskicon full/causal) so the
 % row switch is SHOWN, not just named; (ii) the enc-dec cell shows BOTH a bidirectional-masked encoder and a
-% causal-masked decoder (kills "enc-dec has no bidirectional part"); (iii) the 4th cell reads as unused+reason.
+% causal-masked decoder (kills "enc-dec has no bidirectional part"); (iii) the 4th cell is valid but non-autoregressive.
 % /authoring-figures standard: relative positioning + tokens, grayscale-safe (masks are shading; roles by
 % label+border), line-free title/caption lanes.
 \documentclass[tikz,border=10pt]{standalone}
@@ -21,7 +20,7 @@
 
   % ══ the 2×2 cells (rows: bidirectional / causal · cols: cross-attn absent / present) ══
   \node[tfpanel,    minimum width=\CW, minimum height=\CH]                       (cA1) {}; % bi, absent
-  \node[tfpaneloff, minimum width=\CW, minimum height=\CH, right=\GAP of cA1]     (cB1) {}; % bi, present  → non-standard
+  \node[tfpanel,    minimum width=\CW, minimum height=\CH, right=\GAP of cA1]     (cB1) {}; % bi, present  → fusion
   \node[tfpanel,    minimum width=\CW, minimum height=\CH, below=\GAP of cA1]     (cA2) {}; % causal, absent
   \node[tfpanel,    minimum width=\CW, minimum height=\CH, below=\GAP of cB1]     (cB2) {}; % causal, present
 
@@ -53,10 +52,14 @@
   \node[tfaxis, anchor=south] at ([yshift=6mm]b2d.center) {next token};
   \node[tfaxis, anchor=south] at ([yshift=1.5mm]cB2.south) {T5, original transformer};
 
-  % ── cell B1 — non-standard (greyed) ──
-  \node[tfrole, font=\small\bfseries, anchor=north, text=gray!60] at ([yshift=-2.5mm]cB1.north) {non-standard};
-  \node[align=center, font=\scriptsize, text=gray!58] at ([yshift=-1mm]cB1.center)
-       {bidirectional self-attention\\is incompatible with the\\autoregressive generation\\cross-attention serves};
+  % ── cell B1 — valid bidirectional fusion (not an autoregressive generator) ──
+  \node[tfrole, font=\small\bfseries, anchor=north] at ([yshift=-2.5mm]cB1.north) {Bidirectional fusion};
+  \node[tfstruct, minimum width=12mm, minimum height=11mm, align=center, font=\scriptsize] (b1e) at ([xshift=-11.5mm,yshift=1mm]cB1.center) {Source\\enc.};
+  \node[tfstruct, minimum width=12mm, minimum height=11mm, align=center, font=\scriptsize] (b1f) at ([xshift=11.5mm,yshift=1mm]cB1.center) {Fusion\\stack};
+  \coordinate (b1m) at ([yshift=-8mm]b1f.center); \tfmaskicon{full}{b1m}
+  \draw[tfflow] (b1e.east) -- (b1f.west) node[midway, tfoplabel, font=\tiny] {cross-\\attn};
+  \node[tfaxis, anchor=south] at ([yshift=6mm]b1f.center) {joint representation};
+  \node[tfaxis, anchor=south] at ([yshift=1.5mm]cB1.south) {fusion, reranking};
 
   % ══ axis headers ══
   \coordinate (gtop) at ([yshift=3mm]cA1.north);
@@ -72,12 +75,12 @@
   \node[tfrole, rotate=90, anchor=south] at ([xshift=-26mm]rowmid) {self-attention};
 
   % ══ title + mask legend + caption (line-free lanes) ══
-  \node[tfrole, font=\normalsize\bfseries, anchor=south] at ([yshift=13mm]colmid) {The three \emph{standard} architectures $=$ two binary switches};
+  \node[tfrole, font=\normalsize\bfseries, anchor=south] at ([yshift=13mm]colmid) {Three standard patterns inside a larger switch space};
 
   \coordinate (botmid) at ($(cA2.south)!0.5!(cB2.south)$);
   \node[tfcap, align=center, anchor=north] at ([yshift=-5mm]botmid)
-       {Row $=$ the self-attention of the \emph{generating} stack — encoder-decoder is causal because its decoder generates.\\
-        Three of the four settings are standard; a bidirectional generator with cross-attention (top-right) is unused.};
+       {Row $=$ the self-attention of the output stack — encoder-decoder is causal because its decoder generates.\\
+        Top-right is valid bidirectional fusion, but not an autoregressive generator.};
   \coordinate (legY) at ([yshift=-16mm]botmid);
   \coordinate (lm1) at ([xshift=-32mm]legY); \tfmaskicon{full}{lm1}
   \node[tfcap, anchor=west] at ([xshift=3.5mm]lm1) {attend all positions (bidirectional)};
