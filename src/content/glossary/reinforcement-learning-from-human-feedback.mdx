@@ -1,0 +1,8 @@
+---
+term: "Reinforcement learning from human feedback"
+aliases: ["RLHF"]
+see: [direct-preference-optimization, reference-policy]
+tags: [training, alignment, terminology]
+---
+
+Post-training that uses human feedback to update a policy. In the canonical language-model pipeline, preference comparisons train a scalar reward model, then a policy is updated to increase learned reward while controlling drift from a reference policy. PPO is common in that policy stage, but neither an explicit reward model nor PPO defines every RLHF method.

@@ -5,9 +5,11 @@ cost formulas. Each test file re-derives a proposition's arithmetic independentl
 and asserts the closed forms, limiting cases, and cross-chapter consistencies the
 prose claims. A failing test means the prose and the math have drifted apart.
 
-**Current scope:** nine quantitative families: BPE merge accounting and
+**Current scope:** ten quantitative families: BPE merge accounting and
 base-stream invariance; associative retrieval, finite-softmax induction, and
-the controlled linear-attention/gradient-step identity; the roofline
+the controlled linear-attention/gradient-step identity; KL-regularized reward
+optimization, Bradley–Terry/DPO substitution, gradients, and identification
+boundaries; the roofline
 cost-per-token equation; KV-cache width
 and memory (including unequal key/value widths, latent cached-state accounting,
 and a dense-exactness counterexample for strict cache selection); MoE routing

@@ -2,13 +2,13 @@
 
 Per-guide sibling of the `mathematical-guides` family (formal lens). Built on
 `@brandon_m_behring/book-scaffold-astro` v4.26+; deploys to `/transformers/`. Titled
-**"Transformer Mathematics"**: 22 chapters across 6 parts carrying the full arc — foundations →
+**"Transformer Mathematics"**: 23 chapters across 6 parts carrying the full arc — foundations →
 recurrence and linear state → transformer architectures and objectives → efficient and conditional
 computation → sub-quadratic and selective sequence models → multimodal models.
 
 ## Numbering contract
-Final display numbering intentionally reserves 11 (RLHF/DPO) and 13 (scaling laws). Until those
-remaining planned chapters land, the 22 current chapters occupy 00–10, 12, and 14–23. Keep each frontmatter
+Final display numbering intentionally reserves 13 (scaling laws). Until that remaining planned chapter
+lands, the 23 current chapters occupy 00–12 and 14–23. Keep each frontmatter
 `slug` number-free: filenames and `chapter:` values may fill the reserved slots, but existing URLs
 must remain stable.
 

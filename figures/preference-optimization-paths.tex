@@ -1,0 +1,66 @@
+%! no-theme
+% preference-optimization-paths (ch11 opening figure) — a notation-free comparison
+% that precedes the formal definitions.  Both paths begin with the same kind of
+% preference pair and a frozen baseline policy.  Canonical RLHF fits an explicit
+% scalar reward, samples the evolving policy, then applies PPO to the reward-minus-
+% drift objective.  DPO compares policy change relative to the reference, forms a
+% binary winner/loser loss, and updates the policy directly.  The bottom boundary is
+% load-bearing: the later DPO derivation uses the KL optimum and Bradley--Terry; it is
+% not an algebraic simplification of PPO.
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+  \tikzset{
+    inputbox/.style={minimum width=36mm, minimum height=9mm, text width=30mm},
+    stage/.style={minimum width=40mm, minimum height=10mm, text width=34mm},
+    lane/.style={tfpanel, inner sep=3mm},
+  }
+  \newcommand{\rowgap}{3.5mm}
+  \newcommand{\colgap}{5mm}
+
+  % Left column — canonical reward-model RLHF.
+  \node[tfproj, stage] (reward) {fit scalar reward};
+  \node[tfstruct, stage, below=\rowgap of reward] (sample)
+       {sample\\evolving policy};
+  \node[tfoutput, stage, below=\rowgap of sample] (ppo)
+       {PPO policy update\\[1.5pt]{\scriptsize reward minus reference drift}};
+  \draw[tfflow] (reward.south) -- (sample.north);
+  \draw[tfflow] (sample.south) -- (ppo.north);
+
+  % Right column — DPO, aligned stage-for-stage with the RLHF column.
+  \node[tfstruct, stage, right=\colgap of reward] (compare)
+       {{\small compare policy change}\\[2pt]relative to reference};
+  \node[tfstruct, stage, below=\rowgap of compare] (pairloss)
+       {binary winner/loser\\loss};
+  \node[tfoutput, stage, below=\rowgap of pairloss] (direct)
+       {direct policy update};
+  \draw[tfflow] (compare.south) -- (pairloss.north);
+  \draw[tfflow] (pairloss.south) -- (direct.north);
+
+  % Solid versus dashed panel frames make the two routes distinct in grayscale.
+  \node[lane, fit=(reward)(sample)(ppo)] (rlhfpanel) {};
+  \node[lane, dashed, fit=(compare)(pairloss)(direct)] (dpopanel) {};
+  \node[tfrole, font=\small\bfseries, above=\tflabelgap of rlhfpanel]
+       {canonical RLHF};
+  \node[tfrole, font=\small\bfseries, above=\tflabelgap of dpopanel]
+       {DPO};
+
+  % Shared ingredients in words only: the nearby formal section introduces symbols.
+  \coordinate (columnmid) at ($(reward)!0.5!(compare)$);
+  \node[tfinput, inputbox, above=21mm of columnmid, xshift=-20.5mm] (preferences)
+       {same-prompt\\preference pair};
+  \node[tfK, inputbox, right=3mm of preferences] (reference)
+       {frozen baseline\\policy};
+  \node[tfpanel, inner sep=3mm, fit=(preferences)(reference)] (shared) {};
+  \node[tfrole, font=\small\bfseries, above=\tflabelgap of shared]
+       {shared inputs};
+
+  % Scope boundary in a reserved bottom lane.
+  \coordinate (lanemid) at ($(rlhfpanel.south)!0.5!(dpopanel.south)$);
+  \node[tfrole, font=\small\bfseries, text width=94mm, align=center,
+        below=4mm of lanemid]
+       {Derived later from the \mbox{KL-regularized} optimum\\$+$ Bradley--Terry; not a reduction of PPO.};
+
+\end{tikzpicture}
+\end{document}

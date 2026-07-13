@@ -65,6 +65,8 @@ $$
 with a **classifier head** $\mathbf W_{\textsf{cls}}\in\R^{d\times C}$, bias $\mathbf b\in\R^{C}$, and $Q$ a bidirectional encoder. Training minimizes the cross-entropy $H(\mathbf e_y,\hat{\mathbf y}) = -\log \hat y_{y}$ (<XRef id="def-cross-entropy" />) of the true label $y$ under $\hat{\mathbf y}$.
 </Theorem>
 
+This readout classifies one pooled representation among $C$ fixed labels. DPO also uses a classification loss, but its two candidates are whole completions and its logit is their policy–reference score gap (<XRef id="thm-dpo-objective" />). The shared cross-entropy calculus does not make the learned objects interchangeable.
+
 <Theorem kind="remark" name="Bidirectionality is the design choice, not the formalism" id="rem-bidirectional">
 A detector reads a document that already exists, so there is no reason to forbid a position from attending to its right context: the causal mask of the generation setting is simply omitted, and the encoder is bidirectional. Formally this changes nothing in <XRef id="def-encoder-classifier" /> — the same pooling and head apply — but it is what lets a single position aggregate evidence from the entire sequence, which is exactly what a document-level decision needs.
 </Theorem>

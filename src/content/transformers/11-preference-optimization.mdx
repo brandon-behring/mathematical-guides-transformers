@@ -1,0 +1,550 @@
+---
+title: "Preference Optimization: RLHF and DPO"
+slug: preference-optimization
+chapter: 11
+part: 3
+description: "Pairwise preference data, the canonical reward-model-and-PPO RLHF pipeline, the Gibbs-form optimum of a KL-regularized reward objective, reward–policy inversion, the DPO log-ratio classification loss and gradient, and the assumptions behind its population same-optimum interpretation."
+last_verified: 2026-07-13
+rigor_level: rigorous
+prerequisites: [notation, training]
+notation_introduced: ['\mathcal D_{\mathrm{pref}}', '\pi_\theta', '\pi_{\mathrm{ref}}', '\pi_r', 'r_\phi', '\beta_{\mathrm{KL}}', 'Z_r(x)', 's_\theta', '\Delta_\theta']
+theorems: ['def-pairwise-preference-data', 'def-bradley-terry-preference', 'def-kl-regularized-reward-objective', 'thm-kl-regularized-policy-optimum', 'cor-reward-policy-inversion', 'thm-dpo-objective', 'prop-dpo-pair-gradient', 'prop-dpo-population-optimum', 'rem-dpo-not-ppo-reduction', 'rem-preference-frontier']
+los:
+  - id: lo-preference-optimization-pipelines
+    statement: "Compare reward-model-plus-policy-optimization RLHF with DPO by identifying their learned objects, data flow, and sampling requirements."
+  - id: lo-kl-regularized-policy-optimum
+    statement: "Prove the closed-form optimizer of a KL-regularized expected-reward objective and derive the reward–policy log-ratio inversion."
+  - id: lo-dpo-derivation
+    statement: "Derive the DPO binary classification loss from the Bradley–Terry preference model and the reward–policy inversion."
+  - id: lo-dpo-gradient-and-scope
+    statement: "Compute the DPO pairwise score gradient and analyze the assumptions under which population DPO recovers the KL-regularized reward optimum."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import Figure from '../../components/Figure.astro';
+import SolutionBox from '../../components/SolutionBox.astro';
+
+# Preference Optimization: RLHF and DPO
+
+**Where we are.** Chapter 10 trained a model by asking which token occurred. Instruction-following adds a different signal: for one prompt, a person or another judge may prefer one complete response to another without supplying a tokenwise target or a numerical reward. This chapter turns that comparison into mathematics. We first define pairwise preference data and the Bradley–Terry likelihood used to fit an explicit reward model. We then solve a KL-regularized reward objective exactly, invert its optimal policy back into a reward difference, and substitute that difference into the preference likelihood to obtain Direct Preference Optimization (DPO). The final proposition states the assumptions under which the two idealized population optima coincide. It does **not** identify DPO with PPO, finite-data training, or a guarantee that the preference signal is correctly specified.
+
+<Figure
+  src="/figures/preference-optimization-paths.svg"
+  alt="Two training paths from same-prompt preference pairs and a frozen baseline policy. Canonical RLHF fits a reward and updates with sampled responses, while DPO directly classifies relative policy change."
+  desc="A left–right comparison with shared inputs above it. The left canonical-RLHF column fits a scalar reward, samples from the evolving policy, and applies a PPO policy update for reward minus reference drift. The right DPO column compares policy change relative to the reference, applies a binary winner–loser loss, and directly updates the policy. A qualification says the later DPO derivation uses the KL-regularized optimum and Bradley–Terry and is not a reduction of PPO."
+  caption="Canonical RLHF and DPO use the same kind of preference record but move it through different training loops. DPO removes the separate reward-model and online-rollout stages from preference fine-tuning; it does not remove preference-data collection or reduce PPO algebraically."
+  id="fig-preference-optimization-paths"
+  width="94%"
+/>
+
+## From demonstrations to comparisons
+
+A next-token record supplies the answer token itself. A preference record supplies only an ordering between two whole completions. The common prompt is load-bearing: later, a prompt-dependent normalizer will cancel between the two responses precisely because their prompt is the same.
+
+<Theorem kind="definition" name="Pairwise preference data" id="def-pairwise-preference-data">
+A **pairwise preference dataset** is a collection
+$$
+\mathcal D_{\mathrm{pref}}
+\defeq\big\{(x_i,y_{w,i},y_{\ell,i})\big\}_{i=1}^{N},
+$$
+where each $x_i$ is a prompt, $y_{w,i}$ and $y_{\ell,i}$ are complete responses to that same prompt, and the observed judgment is $y_{w,i}\succ y_{\ell,i}$ (“winner preferred to loser”). Each record is ordinal: by itself it gives neither an absolute reward nor the probability that a fresh judge would make the same choice.
+</Theorem>
+
+The canonical RLHF pipeline makes the missing scalar explicit. It gathers comparisons, fits a reward model $r_\phi(x,y)$ by binary classification, and then updates a policy to raise expected learned reward while penalizing drift from a reference policy. PPO is a widely used optimizer for that policy-update stage <Cite key="schulman2017ppo" />; human-preference reward learning predates its language-model use <Cite key="christiano2017preferences" />, and the reward-model-plus-policy-update pattern was transferred to language generation and instruction following <Cite key="ziegler2019finetuning" /><Cite key="ouyang2022instructgpt" />. These citations establish the pipeline, not a theorem that its learned reward equals human utility.
+
+<Theorem kind="definition" name="Bradley–Terry preference model" id="def-bradley-terry-preference">
+For a fixed prompt $x$, the **Bradley–Terry model** assigns a scalar reward $r(x,y)$ to each response and models a pairwise choice by
+$$
+\Pr(y_a\succ y_b\mid x)
+=\frac{e^{r(x,y_a)}}{e^{r(x,y_a)}+e^{r(x,y_b)}}
+=\sigma_{\mathrm{sig}}\!\big(r(x,y_a)-r(x,y_b)\big),
+$$
+where $\sigma_{\mathrm{sig}}(z)=1/(1+e^{-z})$. For an observed winner $y_w$, the per-pair negative log-likelihood is
+$$
+\ell_{\mathrm{BT}}
+=-\log\sigma_{\mathrm{sig}}\!\big(r(x,y_w)-r(x,y_\ell)\big)
+=\operatorname{softplus}\!\big(r(x,y_\ell)-r(x,y_w)\big).
+$$
+A reward model $r_\phi$ is fit by averaging this loss over $\mathcal D_{\mathrm{pref}}$.
+</Theorem>
+
+<MarginNote variant="formula" label="Only differences are visible">Adding the same $c(x)$ to every response reward for a prompt changes neither Bradley–Terry probability nor any observed preference likelihood.</MarginNote>
+
+The model assumes a scalar, transitive utility and a logistic link. Human judgments can violate both. Even under the model, a stored hard winner label does not mean the true choice probability is $1$: finite rewards always give a probability strictly between $0$ and $1$.
+
+## Solve the KL-regularized reward objective
+
+The policy stage must balance two desires: move toward high reward, but remain anchored to a policy whose support and language competence we trust. The standard idealized objective writes that balance as expected reward minus a **forward** policy-to-reference KL penalty. We use $\beta_{\mathrm{KL}}$ to avoid colliding with unrelated $\beta$ symbols elsewhere in the guide; the DPO paper writes this coefficient simply as $\beta$.
+
+<Theorem kind="definition" name="KL-regularized reward objective" id="def-kl-regularized-reward-objective">
+Fix a prompt $x$ and a finite, nonempty response set $\mathcal Y_x$. Let $\pi_{\mathrm{ref}}(y\mid x)>0$ for every $y\in\mathcal Y_x$, let $r(x,y)\in\R$, and let $\beta_{\mathrm{KL}}>0$. For any policy $\pi(\cdot\mid x)$ on $\mathcal Y_x$, define
+$$
+J_x(\pi)
+\defeq
+\E_{y\sim\pi(\cdot\mid x)}[r(x,y)]
+-\beta_{\mathrm{KL}}
+D_{\mathrm{KL}}\!\left(
+\pi(\cdot\mid x)\,\middle\|\,\pi_{\mathrm{ref}}(\cdot\mid x)
+\right).
+$$
+</Theorem>
+
+<MarginNote variant="warning" label="Direction matters">The penalty is $D_{\mathrm{KL}}(\pi\,\|\,\pi_{\mathrm{ref}})$, not the reverse. Zero reference probability makes a response unreachable at finite objective value.</MarginNote>
+
+The optimum is not a closed-form neural-network parameter vector. It is the exact optimal **distribution** when we may optimize over the full probability simplex. Completing one KL divergence proves the result and gives an exact optimality-gap certificate.
+
+<MarginNote variant="tip" label="Self-explanation">If $\pi_r\propto\pi_{\mathrm{ref}}e^{r/\beta_{\mathrm{KL}}}$, expand $D_{\mathrm{KL}}(\pi\,\|\,\pi_r)$. Which terms become expected reward and reference KL?</MarginNote>
+
+<Theorem kind="theorem" name="KL-regularized optimal policy" id="thm-kl-regularized-policy-optimum">
+Under <XRef id="def-kl-regularized-reward-objective" />, define
+$$
+Z_r(x)
+\defeq
+\sum_{y\in\mathcal Y_x}
+\pi_{\mathrm{ref}}(y\mid x)e^{r(x,y)/\beta_{\mathrm{KL}}},
+\qquad
+\pi_r(y\mid x)
+\defeq
+\frac{\pi_{\mathrm{ref}}(y\mid x)e^{r(x,y)/\beta_{\mathrm{KL}}}}{Z_r(x)}.
+$$
+Then $\pi_r$ is a probability distribution and, for every policy $\pi$,
+$$
+J_x(\pi)
+=\beta_{\mathrm{KL}}\log Z_r(x)
+-\beta_{\mathrm{KL}}D_{\mathrm{KL}}(\pi\,\|\,\pi_r).
+$$
+Consequently $\pi_r$ is the unique maximizer and
+$$
+J_x(\pi_r)-J_x(\pi)
+=\beta_{\mathrm{KL}}D_{\mathrm{KL}}(\pi\,\|\,\pi_r)\ge0.
+$$
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Normalize the exponential tilt).** Positive reference mass and finite rewards make every term in $Z_r(x)$ positive and finite. Dividing by their sum therefore gives $\sum_y\pi_r(y\mid x)=1$.
+
+**Step 2 (Complete the KL divergence).** Suppress the fixed prompt $x$. From the definition of $\pi_r$,
+$$
+\begin{aligned}
+D_{\mathrm{KL}}(\pi\,\|\,\pi_r)
+&=\sum_y\pi(y)\log
+\frac{\pi(y)}
+{\pi_{\mathrm{ref}}(y)e^{r(y)/\beta_{\mathrm{KL}}}/Z_r}\\
+&=D_{\mathrm{KL}}(\pi\,\|\,\pi_{\mathrm{ref}})
+-\frac{1}{\beta_{\mathrm{KL}}}\E_\pi[r]
++\log Z_r.
+\end{aligned}
+$$
+Multiplying by $-\beta_{\mathrm{KL}}$ and rearranging yields
+$$
+J_x(\pi)
+=\beta_{\mathrm{KL}}\log Z_r
+-\beta_{\mathrm{KL}}D_{\mathrm{KL}}(\pi\,\|\,\pi_r).
+$$
+
+**Step 3 (Optimize).** Gibbs' inequality gives $D_{\mathrm{KL}}(\pi\,\|\,\pi_r)\ge0$, with equality only at $\pi=\pi_r$ (<XRef id="def-kl" />). Thus $J_x(\pi)\le\beta_{\mathrm{KL}}\log Z_r=J_x(\pi_r)$, uniquely. Subtracting the identity from its value at $\pi_r$ gives the stated gap. $\qquad\blacksquare$
+</Theorem>
+
+The exponential tilt says exactly how the coefficient acts: larger $\beta_{\mathrm{KL}}$ divides reward by a larger number, so the optimum stays closer to the reference. At the matched optimum, however, multiplying the difference of the two log policy-to-reference ratios by $\beta_{\mathrm{KL}}$ gives $r(x,y_w)-r(x,y_\ell)$, so the corresponding Bradley–Terry logit and preference probability do not change. At a fixed nonoptimal difference of log policy-to-reference ratios, changing $\beta_{\mathrm{KL}}$ does change the gradient scale and saturation.
+
+<Theorem kind="corollary" name="Reward–policy inversion and prompt gauge" id="cor-reward-policy-inversion">
+For the optimal policy of <XRef id="thm-kl-regularized-policy-optimum" />,
+$$
+r(x,y)
+=\beta_{\mathrm{KL}}
+\log\frac{\pi_r(y\mid x)}{\pi_{\mathrm{ref}}(y\mid x)}
++\beta_{\mathrm{KL}}\log Z_r(x).
+$$
+Hence for two responses to the same prompt,
+$$
+r(x,y_a)-r(x,y_b)
+=\beta_{\mathrm{KL}}\left[
+\log\frac{\pi_r(y_a\mid x)}{\pi_{\mathrm{ref}}(y_a\mid x)}
+-\log\frac{\pi_r(y_b\mid x)}{\pi_{\mathrm{ref}}(y_b\mid x)}
+\right].
+$$
+Adding any prompt-dependent constant $c(x)$ to every reward leaves both $\pi_r(\cdot\mid x)$ and all Bradley–Terry probabilities unchanged.
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Invert the tilt).** Taking logarithms of the definition of $\pi_r$ gives
+$$
+\log\pi_r(y\mid x)
+=\log\pi_{\mathrm{ref}}(y\mid x)
++\frac{r(x,y)}{\beta_{\mathrm{KL}}}
+-\log Z_r(x).
+$$
+Solve for $r(x,y)$ to obtain the absolute identity, including the $+\beta_{\mathrm{KL}}\log Z_r(x)$ term.
+
+**Step 2 (Take a within-prompt difference).** Subtract the identity for $y_b$ from that for $y_a$. The one normalizer $Z_r(x)$ cancels because the prompt is shared.
+
+**Step 3 (Check the gauge).** Replacing $r$ by $r+c(x)$ multiplies every unnormalized tilted weight by $e^{c(x)/\beta_{\mathrm{KL}}}$, which cancels from the normalized policy. It also cancels from every reward difference in <XRef id="def-bradley-terry-preference" />. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="warning" label="Do not drop the normalizer">The term $+\beta_{\mathrm{KL}}\log Z_r(x)$ belongs to the absolute reward identity. It disappears only after a reward gauge is chosen or a same-prompt difference is taken.</MarginNote>
+
+## From implicit reward differences to DPO
+
+For an autoregressive policy, $\pi_\theta(y\mid x)$ is the probability of the **whole completion**:
+$$
+\log\pi_\theta(y\mid x)
+=\sum_{t=1}^{\lvert y\rvert+1}
+\log\pi_\theta(y_t\mid x,y_{<t}),
+$$
+where $y_{\lvert y\rvert+1}\defeq\mathrm{EOS}$, so the final term scores the end-of-sequence token (<XRef id="def-autoregressive-lm" />). Averaging by completion length would define a different objective. Assume below that the trainable policy and the frozen reference give positive probability to every compared completion.
+
+The intuitive classifier asks one question: did the trainable policy raise the winner's completion log-probability **more, relative to the reference**, than it raised the loser's? The gap $\Delta_\theta$ below is that comparison.
+
+<MarginNote variant="tip" label="Self-explanation">The absolute inversion contains one prompt normalizer. What cancels when winner and loser share $x$ and their implicit rewards are subtracted?</MarginNote>
+
+<Theorem kind="theorem" name="Direct Preference Optimization objective" id="thm-dpo-objective">
+For one preference triple $(x,y_w,y_\ell)$, define the policy–reference log-ratio score and its pairwise gap
+$$
+s_\theta(x,y)
+\defeq
+\log\frac{\pi_\theta(y\mid x)}{\pi_{\mathrm{ref}}(y\mid x)},
+\qquad
+\Delta_\theta
+\defeq
+s_\theta(x,y_w)-s_\theta(x,y_\ell).
+$$
+Substituting the reward–policy inversion into the Bradley–Terry likelihood gives the DPO preference probability and loss
+$$
+p_\theta(y_w\succ y_\ell\mid x)
+=\sigma_{\mathrm{sig}}(\beta_{\mathrm{KL}}\Delta_\theta),
+$$
+$$
+\mathcal L_{\mathrm{DPO}}(\theta)
+\defeq
+-\E_{(x,y_w,y_\ell)\sim\mathcal D_{\mathrm{pref}}}
+\log\sigma_{\mathrm{sig}}(\beta_{\mathrm{KL}}\Delta_\theta).
+$$
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Use the policy as an implicit reward).** Apply <XRef id="cor-reward-policy-inversion" /> with $\pi_r$ represented by $\pi_\theta$. Each completion has implicit reward
+$$
+r_\theta(x,y)
+=\beta_{\mathrm{KL}}s_\theta(x,y)
++\beta_{\mathrm{KL}}\log Z_r(x).
+$$
+
+**Step 2 (Cancel only within the shared prompt).** The two completions in <XRef id="def-pairwise-preference-data" /> share $x$, so
+$$
+r_\theta(x,y_w)-r_\theta(x,y_\ell)
+=\beta_{\mathrm{KL}}\big(s_\theta(x,y_w)-s_\theta(x,y_\ell)\big)
+=\beta_{\mathrm{KL}}\Delta_\theta.
+$$
+Cross-prompt comparisons would carry different normalizers and do not justify this cancellation.
+
+**Step 3 (Insert the Bradley–Terry likelihood).** Substitute the last difference into <XRef id="def-bradley-terry-preference" />. The probability is $\sigma_{\mathrm{sig}}(\beta_{\mathrm{KL}}\Delta_\theta)$; taking the negative log-likelihood and averaging over the dataset gives the displayed loss. $\qquad\blacksquare$
+</Theorem>
+
+This is the DPO construction of Rafailov et al. <Cite key="rafailov2023dpo" />. One pair is computed stably as $\operatorname{softplus}(-\beta_{\mathrm{KL}}\Delta_\theta)$; evaluating $-\log\sigma_{\mathrm{sig}}(z)$ through exponentials separately is numerically fragile at large negative $z$.
+
+The objective is a binary classification loss, so the same “prediction minus target” shape from <XRef id="prop-ce-logit-gradient" /> returns. The difference is its score: a completion-level policy–reference log ratio rather than one vocabulary logit.
+
+<Theorem kind="proposition" name="DPO pairwise gradient" id="prop-dpo-pair-gradient">
+For one observed winner pair, write
+$$
+z_\theta\defeq\beta_{\mathrm{KL}}\Delta_\theta,
+\qquad
+\ell_{\mathrm{DPO}}(\theta)\defeq-\log\sigma_{\mathrm{sig}}(z_\theta).
+$$
+Then
+$$
+\nabla_\theta\ell_{\mathrm{DPO}}
+=-\beta_{\mathrm{KL}}\sigma_{\mathrm{sig}}(-z_\theta)
+\left[
+\nabla_\theta\log\pi_\theta(y_w\mid x)
+-\nabla_\theta\log\pi_\theta(y_\ell\mid x)
+\right].
+$$
+Equivalently, treating the two log-ratio scores $s_w,s_\ell$ as independent scalar inputs and writing $p=\sigma_{\mathrm{sig}}(z_\theta)$,
+$$
+\frac{\partial\ell}{\partial s_w}
+=\beta_{\mathrm{KL}}(p-1),
+\qquad
+\frac{\partial\ell}{\partial s_\ell}
+=\beta_{\mathrm{KL}}(1-p),
+$$
+and
+$$
+\frac{\partial^2\ell}{\partial\Delta_\theta^2}
+=\beta_{\mathrm{KL}}^2p(1-p)
+\le\frac{\beta_{\mathrm{KL}}^2}{4}.
+$$
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Differentiate binary cross-entropy).** Since $\ell=-\log\sigma_{\mathrm{sig}}(z)$,
+$$
+\frac{d\ell}{dz}
+=\sigma_{\mathrm{sig}}(z)-1
+=-\sigma_{\mathrm{sig}}(-z).
+$$
+
+**Step 2 (Differentiate the gap).** The frozen reference terms have zero parameter gradient, so
+$$
+\nabla_\theta z_\theta
+=\beta_{\mathrm{KL}}\left[
+\nabla_\theta\log\pi_\theta(y_w\mid x)
+-\nabla_\theta\log\pi_\theta(y_\ell\mid x)
+\right].
+$$
+The chain rule gives the parameter gradient. Since $\partial z/\partial s_w=\beta_{\mathrm{KL}}$ and $\partial z/\partial s_\ell=-\beta_{\mathrm{KL}}$, the two score derivatives follow. One more derivative gives $\beta_{\mathrm{KL}}^2p(1-p)$, whose maximum is $\beta_{\mathrm{KL}}^2/4$. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="warning" label="A score gradient, not a token guarantee">Shared parameters couple token probabilities. The proposition controls the completion-score direction; it does not guarantee independent winner-token increases or loser-token decreases.</MarginNote>
+
+## A complete two-response trace
+
+Take two completions $A,B$ with
+$$
+\pi_{\mathrm{ref}}(A\mid x)=\frac34,
+\qquad
+\pi_{\mathrm{ref}}(B\mid x)=\frac14,
+\qquad
+r(x,A)=0,
+\qquad
+r(x,B)=\log3,
+\qquad
+\beta_{\mathrm{KL}}=1.
+$$
+The tilted normalizer and optimum are
+$$
+Z_r(x)
+=\frac34e^0+\frac14e^{\log3}
+=\frac32,
+\qquad
+\pi_r(A\mid x)=\pi_r(B\mid x)=\frac12.
+$$
+The reward has exactly overcome the reference's $3{:}1$ prior preference for $A$. Bradley–Terry assigns
+$$
+\Pr(B\succ A\mid x)
+=\sigma_{\mathrm{sig}}(\log3)
+=\frac34.
+$$
+Now compute the implicit log-ratio scores:
+$$
+s(B)=\log\frac{1/2}{1/4}=\log2,
+\qquad
+s(A)=\log\frac{1/2}{3/4}=\log\frac23.
+$$
+Their gap is $\Delta=s(B)-s(A)=\log3$, so DPO gives the same probability $3/4$. If the observed record says $B\succ A$, its loss and score derivatives are
+$$
+\ell_{\mathrm{DPO}}
+=-\log\frac34
+=\log\frac43,
+\qquad
+\frac{\partial\ell}{\partial s(B)}=-\frac14,
+\qquad
+\frac{\partial\ell}{\partial s(A)}=\frac14.
+$$
+This one trace checks the exponential tilt, reward inversion, same-prompt cancellation, preference probability, loss, and gradient. It also shows why raw policy odds are insufficient: DPO measures change **relative to the reference odds**.
+
+## When “the same optimum” is true
+
+The derivation so far constructs a classification objective from an ideal reward optimum. To conclude that minimizing population DPO risk recovers that optimum, the comparison data must identify all response-score differences. A connected comparison graph supplies exactly that missing condition.
+
+<MarginNote variant="tip" label="Self-explanation">Matching each edge probability fixes one score difference. What graph property turns those local equalities into one global score vector?</MarginNote>
+
+<Theorem kind="proposition" name="Population DPO recovers the KL-regularized optimum" id="prop-dpo-population-optimum">
+Fix a prompt $x$ and a finite response set $\mathcal Y_x$. Assume:
+
+1. $\beta_{\mathrm{KL}}>0$ and $\pi_{\mathrm{ref}}(y\mid x)>0$ for every response;
+2. comparisons follow a finite-reward Bradley–Terry model
+   $q_{ij}=\sigma_{\mathrm{sig}}(r_i-r_j)$;
+3. the graph $G_x$ whose edges are response pairs sampled with positive probability is connected;
+4. the policy class contains the tilted policy $\pi_r$ of <XRef id="thm-kl-regularized-policy-optimum" />; and
+5. optimization reaches a global minimum of the exact population comparison risk.
+
+Then the unique distribution-level population DPO minimizer is $\pi_\theta(\cdot\mid x)=\pi_r(\cdot\mid x)$.
+</Theorem>
+
+<Theorem kind="proof">
+**Step 1 (Decompose every edge risk).** For an edge $\{i,j\}$, let
+$$
+p_{ij,\theta}
+=\sigma_{\mathrm{sig}}\!\left(
+\beta_{\mathrm{KL}}[s_\theta(x,y_i)-s_\theta(x,y_j)]
+\right).
+$$
+The population binary cross-entropy on that edge decomposes as
+$$
+H_{\mathrm{Ber}}(q_{ij},p_{ij,\theta})
+=H_{\mathrm{Ber}}(q_{ij})
++D_{\mathrm{KL}}\!\left(
+\operatorname{Ber}(q_{ij})\,\middle\|\,\operatorname{Ber}(p_{ij,\theta})
+\right).
+$$
+The first term is fixed and the second is nonnegative, so any global minimizer that can realize the truth must satisfy $p_{ij,\theta}=q_{ij}$ on every positive-weight edge.
+
+**Step 2 (Recover edge differences).** The logistic sigmoid is injective. Thus equality of the probabilities gives
+$$
+\beta_{\mathrm{KL}}
+\big(s_\theta(x,y_i)-s_\theta(x,y_j)\big)
+=r_i-r_j
+$$
+on every edge.
+
+**Step 3 (Use graph connectivity).** Define $g_i\defeq\beta_{\mathrm{KL}}s_\theta(x,y_i)-r_i$. The edge identity says $g_i=g_j$ along every edge. Since $G_x$ is connected, $g_i=c(x)$ for every response, so
+$$
+\log\frac{\pi_\theta(y_i\mid x)}{\pi_{\mathrm{ref}}(y_i\mid x)}
+=\frac{r_i+c(x)}{\beta_{\mathrm{KL}}}.
+$$
+
+**Step 4 (Normalize the policy).** Exponentiating and summing over $i$ forces
+$e^{c(x)/\beta_{\mathrm{KL}}}=1/Z_r(x)$. Hence
+$$
+\pi_\theta(y_i\mid x)
+=\frac{\pi_{\mathrm{ref}}(y_i\mid x)e^{r_i/\beta_{\mathrm{KL}}}}{Z_r(x)}
+=\pi_r(y_i\mid x),
+$$
+which is unique as a distribution. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="warning" label="Why connectedness is load-bearing">Disconnected components admit independent score shifts: policy mass between components changes while every observed within-component preference probability stays fixed.</MarginNote>
+
+The proposition is deliberately a population theorem with soft choice probabilities. A finite dataset of hard winner labels can be separable: increasing every observed winner margin can keep decreasing the empirical loss toward zero without reaching a finite optimum. Misspecified preferences, a restricted policy class, disconnected comparisons, a moving reference, or optimization error likewise break the conclusion. “Same optimum” therefore does not mean same gradients, same training path, or same finite-data result.
+
+<Theorem kind="remark" name="DPO is not a reduction of PPO" id="rem-dpo-not-ppo-reduction">
+Canonical RLHF fits an explicit reward model and then uses policy-generated responses while an RL optimizer such as PPO approximately optimizes learned reward minus reference KL. DPO instead uses a fixed dataset of preference pairs, the frozen reference, and the classification loss of <XRef id="thm-dpo-objective" />; it needs neither a separate reward model nor sampling from the evolving policy **during that preference-fine-tuning loop** <Cite key="rafailov2023dpo" />. The loss was derived from the KL-optimal policy plus Bradley–Terry, not by simplifying PPO's clipped surrogate. Preference data still had to be generated and judged upstream, and the theorem gives no guarantee against misspecified or strategically exploitable preference proxies.
+</Theorem>
+
+<Theorem kind="remark" name="The preference-optimization frontier" id="rem-preference-frontier">
+DPO is one point in a broader design space. ORPO presents a reference-model-free, monolithic odds-ratio objective <Cite key="hong2024orpo" />; $\Psi$PO supplies a general pairwise-preference objective whose instances include IPO <Cite key="azar2023ipo" />; and KTO develops human-aware losses that can learn from a binary desirable/undesirable signal rather than paired responses <Cite key="ethayarajh2024kto" />. These descriptions orient the methods. They do not establish equation-level equivalence, benchmark rankings, or a universal winner.
+</Theorem>
+
+## Exercises
+
+Attempt each before expanding its solution.
+
+**Exercise 11.1 (Prove).** Starting from the definition of $D_{\mathrm{KL}}(\pi\,\|\,\pi_r)$, derive the exact identity
+$J_x(\pi_r)-J_x(\pi)=\beta_{\mathrm{KL}}D_{\mathrm{KL}}(\pi\,\|\,\pi_r)$ and explain why it proves uniqueness.
+
+<SolutionBox>
+
+Substitute
+$\pi_r(y)=\pi_{\mathrm{ref}}(y)e^{r(y)/\beta_{\mathrm{KL}}}/Z_r$
+into the divergence:
+$$
+\begin{aligned}
+D_{\mathrm{KL}}(\pi\,\|\,\pi_r)
+&=\sum_y\pi(y)\left[
+\log\frac{\pi(y)}{\pi_{\mathrm{ref}}(y)}
+-\frac{r(y)}{\beta_{\mathrm{KL}}}
++\log Z_r
+\right]\\
+&=D_{\mathrm{KL}}(\pi\,\|\,\pi_{\mathrm{ref}})
+-\frac{\E_\pi[r]}{\beta_{\mathrm{KL}}}
++\log Z_r.
+\end{aligned}
+$$
+Rearrangement gives
+$J_x(\pi)=\beta_{\mathrm{KL}}\log Z_r-\beta_{\mathrm{KL}}D_{\mathrm{KL}}(\pi\,\|\,\pi_r)$.
+At $\pi=\pi_r$ the divergence vanishes, so subtraction yields the requested gap. Gibbs' inequality has equality only at $\pi=\pi_r$, proving uniqueness. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 11.2 (Compute).** Transfer the full trace to
+$\pi_{\mathrm{ref}}=(1/2,1/2)$, $r=(\log4,0)$, and $\beta_{\mathrm{KL}}=1/2$: compute $Z_r$, $\pi_r$, the probability of $A\succ B$, the DPO loss for that observed winner, and both pair-score derivatives.
+
+<SolutionBox>
+
+The unnormalized weights are
+$((1/2)e^{2\log4},(1/2)e^0)=(8,1/2)$, so $Z_r=17/2$ and
+$\pi_r=(16/17,1/17)$. Bradley–Terry gives
+$\sigma_{\mathrm{sig}}(\log4)=4/5$. The implicit scores are
+$s(A)=\log(32/17)$ and $s(B)=\log(2/17)$, hence $\Delta=\log16$ and
+$\beta_{\mathrm{KL}}\Delta=\log4$. Therefore
+$$
+\ell=-\log(4/5)=\log(5/4),
+\qquad
+\frac{\partial\ell}{\partial s(A)}=\frac12\left(\frac45-1\right)=-\frac1{10},
+\qquad
+\frac{\partial\ell}{\partial s(B)}=\frac12\left(1-\frac45\right)=\frac1{10}.
+$$
+
+</SolutionBox>
+
+**Exercise 11.3 (Derive).** Substitute the absolute reward–policy inversion into the Bradley–Terry probability for $(x,y_w,y_\ell)$ and derive <XRef id="thm-dpo-objective" />. Then explain exactly why the same cancellation is invalid for two responses attached to different prompts.
+
+<SolutionBox>
+
+For either completion,
+$$
+r(x,y)=\beta_{\mathrm{KL}}\log\frac{\pi_\theta(y\mid x)}
+{\pi_{\mathrm{ref}}(y\mid x)}
++\beta_{\mathrm{KL}}\log Z_r(x).
+$$
+Subtracting loser from winner cancels the shared $\beta_{\mathrm{KL}}\log Z_r(x)$ and leaves
+$\beta_{\mathrm{KL}}\Delta_\theta$. Bradley–Terry therefore gives
+$\sigma_{\mathrm{sig}}(\beta_{\mathrm{KL}}\Delta_\theta)$, and negative log-likelihood gives the DPO loss. If the prompts were $x_a\ne x_b$, the difference would retain
+$\beta_{\mathrm{KL}}[\log Z_r(x_a)-\log Z_r(x_b)]$; omitting it would change the modeled preference probability. $\qquad\blacksquare$
+
+</SolutionBox>
+
+<div class="exercise-solution-pair">
+
+**Exercise 11.4 (Compute).** Let
+$(\pi_{\mathrm{ref}}(y_w\mid x),\pi_{\mathrm{ref}}(y_\ell\mid x))=(0.9,0.1)$,
+$(\pi_\theta(y_w\mid x),\pi_\theta(y_\ell\mid x))=(0.8,0.2)$, and $\beta_{\mathrm{KL}}=1$.
+Compute the raw policy odds, DPO gap, preference probability, loss, and pair-score derivatives. Explain why omitting the reference terms reverses the reading.
+
+<SolutionBox>
+
+The raw policy odds favor the winner $0.8/0.2=4{:}1$. Relative to the reference,
+$$
+\Delta
+=\log\frac{0.8}{0.9}-\log\frac{0.2}{0.1}
+=\log\frac49.
+$$
+Thus
+$$
+p=\sigma_{\mathrm{sig}}(\log(4/9))=\frac4{13},
+\qquad
+\ell=-\log\frac4{13}=\log\frac{13}{4},
+$$
+and the score derivatives are
+$\partial\ell/\partial s_w=p-1=-9/13$ and
+$\partial\ell/\partial s_\ell=1-p=9/13$.
+The policy still favors $y_w$ absolutely, but less strongly than the reference's $9{:}1$ odds; DPO therefore reads the relative change as evidence against the winner. Omitting the reference would incorrectly use $4/5$ instead of $4/13$.
+
+</SolutionBox>
+
+</div>
+
+**Exercise 11.5 (Construct).** On four responses with uniform reference, comparisons observe only edges $A\!-\!B$ and $C\!-\!D$. Construct two different policies with the same score gaps on both observed edges. Then give a separate zero-reference-support example for which the DPO log ratio is undefined.
+
+<SolutionBox>
+
+Use unnormalized implicit score vectors
+$$
+\mathbf s=(1,0,1,0),
+\qquad
+\mathbf s'=(1,0,3,2),
+$$
+and set $\pi_i\propto\pi_{\mathrm{ref},i}e^{s_i}$, with the analogous normalization for $\mathbf s'$. Both have observed gaps
+$s_A-s_B=s'_A-s'_B=1$ and
+$s_C-s_D=s'_C-s'_D=1$, so every observed Bradley–Terry/DPO probability agrees. They assign different mass to the disconnected components because the second vector shifts $C,D$ together by $2$. Thus the population policy is not identified without a connecting edge.
+
+For support failure, take a compared completion $y_w$ with
+$\pi_{\mathrm{ref}}(y_w\mid x)=0$ but $\pi_\theta(y_w\mid x)>0$. Then
+$\log[\pi_\theta(y_w\mid x)/\pi_{\mathrm{ref}}(y_w\mid x)]$
+is undefined (formally $+\infty$), and the forward-KL reward optimum cannot place finite-cost mass outside reference support.
+
+</SolutionBox>
+
+**Exercise 11.6 (Compare).** Compare canonical reward-model-plus-PPO RLHF with DPO along four axes: the learned objects, when policy sampling occurs, the role of the reference, and what the idealized same-optimum theorem does **not** imply. Rewrite the claim “DPO is PPO with the reward model canceled out” at the evidence level proved in this chapter.
+
+<SolutionBox>
+
+Canonical RLHF first learns an explicit $r_\phi$ from comparisons and then updates a policy using responses sampled from the evolving policy; PPO is one optimizer for the learned-reward-minus-KL objective. DPO learns the policy directly from a fixed preference-pair dataset, evaluates each completion under a frozen reference, and needs no online policy rollout or explicit reward model in that fine-tuning loop. Both use a reference anchor, but only the ideal KL objective displays a literal forward-KL penalty; the empirical DPO pair loss does not guarantee a prescribed realized KL.
+
+The population theorem does not imply identical gradients, trajectories, finite-data optima, robustness to preference misspecification, or recovery of a uniquely true reward. A supported conclusion is: “Under Bradley–Terry preferences, positive reference support, connected comparisons, sufficient policy expressivity, and global population optimization, the DPO risk recovers the policy that optimizes the corresponding KL-regularized reward objective. DPO derives that classifier from the ideal optimum; it is not an algebraic reduction of PPO.”
+
+</SolutionBox>

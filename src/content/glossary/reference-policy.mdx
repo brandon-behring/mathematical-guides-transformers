@@ -1,0 +1,8 @@
+---
+term: "Reference policy"
+aliases: ["reference model", "baseline policy"]
+see: [direct-preference-optimization, reinforcement-learning-from-human-feedback]
+tags: [training, probability, terminology]
+---
+
+A frozen conditional policy used as the anchor for preference optimization. In a KL-regularized reward objective it supplies the baseline distribution in the forward KL penalty; in DPO its completion log probabilities form the denominator of each policy–reference log ratio.

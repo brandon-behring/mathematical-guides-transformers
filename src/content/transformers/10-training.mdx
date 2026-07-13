@@ -117,6 +117,8 @@ $$
 
 The form $\mathbf q_t - \mathbf e_{x_t}$ is distribution matching read off directly: the update pushes the correct-class logit up by an amount proportional to $1 - q_{t,x_t}$ and pushes every incorrect logit down in proportion to the probability it currently holds. The gradient vanishes exactly when $\mathbf q_t = \mathbf e_{x_t}$, i.e. when the model already places all mass on the right token. This same expression returns below: replacing the one-hot target $\mathbf e_{x_t}$ by any target distribution $\mathbf y$ leaves the gradient $\mathbf q_t - \mathbf y$ — the identical mechanism with a different target.
 
+<MarginNote variant="cross-ref" label="From tokens to preferences">Chapter 11 lifts this derivative to a winner–loser completion-score gap whose logit is a policy–reference ratio, not a token score (<XRef id="prop-dpo-pair-gradient" />).</MarginNote>
+
 Nothing in the objective above named what the sequence *is*. Conditioning on an image is the same loss with one extra symbol in the conditioning set.
 
 <Theorem kind="example" name="Image captioning is conditional autoregressive modeling" id="ex-captioning">
