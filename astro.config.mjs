@@ -34,6 +34,8 @@ const mathematicalGuidesFamilyStyle = defineStyle({
 
 export default await defineBookConfig({
   styles: [researchPortfolioStyle, mathematicalGuidesFamilyStyle],
+  routes: { glossary: true, print: false },
+  apparatusRoutes: ['glossary', 'quick-reference'],
   base: '/transformers/',
   title: 'Transformer Mathematics',
   description:

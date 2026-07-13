@@ -1,14 +1,16 @@
 # Topic-gap expansion (Track B) — four convergent gaps + evidence lock
 
-**Status:** evidence reconciliation in progress. Track B content merges after Track A, while evidence validation and
-drafting run in parallel. Repository inspection found that DPO/RLHF and scaling already have authoritative strict-live
-dossiers; issues #5/#6 must resolve against those owners rather than by creating duplicates.
+**Status:** B0 evidence reconciliation is next; Track A is complete. No Track B guide prose is authored until the
+atomic B0 exit gate clears. Repository inspection found that DPO/RLHF and scaling already have authoritative
+strict-live dossier owners, `research_rlhf` + `research_post_training_preference` and
+`research_llm_pretraining_scaling`; any missing evidence must be reconciled against those owners rather than by
+creating duplicates.
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
 (`docs/audits/roadmap-readiness_2026-07-11.md`) flagged two fixes, folded in below: the structure-design
-pass becomes a hard **B0 exit gate** (not an at-execution afterthought), and evidence reconciliation **runs in parallel
-with Track A**. The A3 prerequisite is now complete; evidence acceptance and the locked merge sequence remain the
-authoring gates, so the critical path is evidence readiness, not Track A completion.
+pass becomes a hard **B0 exit gate** (not an at-execution afterthought). Track A's A3 and A7 prerequisites are now
+complete; evidence acceptance and the locked merge sequence remain the authoring gates, so the critical path is B0
+evidence readiness.
 
 ## Context
 
@@ -85,14 +87,28 @@ fills 16 (MoE) and 17 (Sparse). Because IDs and slugs are semantic/chapter-free,
 - the **DPO and scaling claims are pinned** to specific `evidence_ledger` ids in their dossiers.
 Only then does authoring (B1–B4) begin.
 
+**B0 acceptance record.** Clearing the gate requires recording, in this plan, the accepted commit SHA and the exact
+`evidence_ledger.yml` identifiers for the DPO, RLHF, scaling, and constructive-ICL claims. Before that record exists,
+the only permitted Track B artifacts are evidence reconciliation/top-ups in the owning dossier repository and chapter
+outlines used to test the structure; at-risk guide prose is not started. The gate is atomic, including dossier-free BPE,
+so the four guide changes retain one unambiguous serial baseline.
+
 ## Delivery — phased
-(B0-evidence) validate the existing DPO/RLHF and scaling owners, add only missing top-ups, and build/validate the ICL
-evidence base without duplicating another dossier's ownership. **Run this in parallel with Track A.**
-(B0-gate) the structure-design **exit gate** above clears.
-(B1) BPE ch01 section (no dossier). (B2) ICL chapter. (B3) RLHF/DPO chapter. (B4) Scaling-laws chapter — each authored
-only after the gate clears; the A3 prerequisite has landed. Drafts may run beside A4–A7, but content merges wait for A7 and proceed
-serially. Each B PR updates apparatus/metadata after rebasing; B4 performs the final whole-corpus sweep.
-Then the pre-seeded proof-audit runs over the full ~24-chapter corpus.
+This order—not the topic-heading order above—is authoritative:
+
+1. **B0-evidence:** validate the existing DPO/RLHF and scaling owners, add only missing top-ups, and build/validate the
+   ICL evidence base without duplicating another dossier's ownership.
+2. **B0-gate:** record the accepted dossier commits and ledger IDs, then clear the structure-design exit gate above.
+3. **B1:** add the BPE section to ch01 (no dossier); the corpus remains 21 chapters.
+4. **B2:** add ICL as ch08; the corpus becomes 22 chapters and 08 is no longer reserved.
+5. **B3:** add RLHF/DPO as ch11; the corpus becomes 23 chapters and 11 is no longer reserved.
+6. **B4:** add Scaling Laws as ch13; the corpus becomes 24 chapters and 13 is no longer reserved, then run the final
+   whole-corpus sweep.
+7. Run the pre-seeded terminal proof audit over the frozen 24-chapter corpus.
+
+Each B PR proceeds only after its predecessor merges and updates the shared `NotationIndex`/`QuickReference`, glossary
+entries where new terms warrant them, README/CLAUDE chapter metadata and occupied/reserved slots, corpus/property
+manifests, and the prose-number sweep. Deployment remains a separate post-content task and is not part of this sequence.
 
 ## Verification (at execution)
 Each new chapter: cited claims resolve to its authoritative dossier evidence ledgers (BPE from primaries); Codex-5.6 + Sonnet +

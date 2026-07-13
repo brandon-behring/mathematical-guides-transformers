@@ -1,0 +1,8 @@
+---
+term: "Exact computation"
+aliases: ["exact", "function-preserving"]
+see: [lossless-prefix-memory]
+tags: [correctness, systems]
+---
+
+Equality to a stated reference computation under the stated arithmetic model. Prefix reuse and FlashAttention are exact in this sense: they reorganize work without changing the mathematical output. Exactness is a relation between computations; it does not imply that an intermediate representation preserves every detail of its input.

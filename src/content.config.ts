@@ -5,7 +5,10 @@
  */
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
-import { researchPortfolioChapterSchema } from '@brandon_m_behring/book-scaffold-astro';
+import {
+  glossarySchema,
+  researchPortfolioChapterSchema,
+} from '@brandon_m_behring/book-scaffold-astro';
 import { frontmatterCollection } from '@brandon_m_behring/book-scaffold-astro/schemas';
 
 const formalChapterExtensions = z.object({
@@ -35,4 +38,12 @@ const frontmatter = frontmatterCollection(
   })
 );
 
-export const collections = { chapters, frontmatter };
+const glossary = defineCollection({
+  loader: glob({
+    pattern: ['**/*.{md,mdx}', '!**/_*'],
+    base: './src/content/glossary',
+  }),
+  schema: glossarySchema,
+});
+
+export const collections = { chapters, frontmatter, glossary };

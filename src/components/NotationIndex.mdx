@@ -1,0 +1,92 @@
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+
+**Standing dimensions.** These symbols keep one meaning unless a chapter displays a notation-override box.
+
+| Symbol | Meaning | Scope / first definition |
+|---|---|---|
+| $d$ | model dimension (embedding width) | guide-wide |
+| $n$ | sequence length (number of sequence elements) | guide-wide |
+| $h$ | number of attention query heads | Multi-Head Attention |
+| $d_k$ | key/query dimension per head (usually $d_k=d/h$) | Attention |
+| $d_v$ | value dimension per head | Attention |
+| $d_{\text{ff}}$ | feed-forward hidden dimension (often near $4d$) | The Transformer Block |
+| $\lvert\mathcal V\rvert$ | vocabulary size | guide-wide |
+| $N$ | number of transformer layers (blocks) | guide-wide; overridden where boxed |
+| $d_s$ | recurrent or state-space state dimension | Recurrent Networks |
+| $p$ | image-patch side length | Input Representations |
+| $c$ | number of image channels | Input Representations; overridden where boxed |
+| $d_{\text{cache}}$ | scalar width persisted per token by one layer; materialized K/V uses $h_kd_k+h_vd_v$, while a latent cache is defined by what it actually persists | <XRef id="prop-kv-cache" /> |
+
+<div className="notation-print-break" aria-hidden="true" />
+
+**Repeated glyphs.** Each row is one symbol–referent pair. A repeated glyph is local to the scope named in the last column; bold and calligraphic forms remain distinct symbols.
+
+| Symbol | Meaning | Scope |
+|---|---|---|
+| $\gamma$ | global derivative bound $\sup_z\lvert\varphi'(z)\rvert$ | RNN gradient bound (<XRef id="thm-gradient-bound" />) |
+| $\boldsymbol\gamma$ | learned featurewise normalization scale | LayerNorm and RMSNorm (<XRef id="def-ln" />, <XRef id="rem-rmsnorm" />) |
+| $\gamma$ | fixed scalar recurrence decay | selective-state / retention derivations (<XRef id="thm-linattn-rnn" />) |
+| $\boldsymbol\gamma$ | learned per-channel WKV decay | Modern Recurrent & Hybrid (<XRef id="def-rwkv" />) |
+| $\gamma$ | learned scalar gate initialized at zero | gated cross-attention (<XRef id="def-gated-xattn" />) |
+| $\alpha_{tj}$ | additive-attention weight on encoder position $j$ at decoder step $t$ | Recurrent Networks (<XRef id="def-additive-attention" />) |
+| $\alpha$ | label-smoothing mass | Training (<XRef id="def-label-smoothing" />) |
+| $\alpha$ | per-draft acceptance probability | speculative-decoding cost model (<XRef id="prop-spec-speedup" />) |
+| $\alpha$ | entmax family parameter ($1$ = softmax, $2$ = sparsemax) | Sparse & Sub-Quadratic Attention |
+| $\boldsymbol\alpha_t$ | cumulative coordinatewise SSM decay | Selective State Spaces |
+| $\alpha_t$ | Gated DeltaNet state-decay gate | Modern Recurrent & Hybrid (<XRef id="cor-gated-deltanet" />) |
+
+<div className="notation-print-break" aria-hidden="true" />
+
+**Repeated glyphs (continued).**
+
+| Symbol | Meaning | Scope |
+|---|---|---|
+| $K$ | number of categories in a generic softmax row | Notation (<XRef id="def-softmax" />) |
+| $K$ | number of codebook entries | Input Representations / Discrete Visual Tokenization (<XRef id="def-codebook" />) |
+| $K$ | number of stored checkpoints | gradient checkpointing (<XRef id="thm-checkpointing" />) |
+| $K$ | number of adapted matrices | LoRA accounting (<XRef id="def-lora" />) |
+| $K$ | number of draft tokens proposed per speculative cycle | Inference Optimizations (<XRef id="def-spec-decode" />) |
+| $K$ | number of key–value pairs in a finite recall problem | Modern Recurrent & Hybrid (<XRef id="prop-state-recall" />) |
+| $N$ | model parameter count | Practical Training Optimizations (<XRef id="def-train-memory" />) |
+| $N$ | retrieval-pool size | Multimodal Evaluation (<XRef id="def-retrieval" />) |
+| $c$ | chunk size | Selective State Spaces (<XRef id="prop-chunked" />) |
+| $c$ | candidate or class index | Multimodal Evaluation |
+| $u$ | scalar input signal | Linear Recurrences and SSMs (<XRef id="def-ssm" />) |
+| $u_t$ | scalar channel of token row $\mathbf x_t$ | Selective State Spaces (<XRef id="def-selective-ssm" />) |
+| $\mathbf e_k$ | $k$-th standard-basis (one-hot) vector | guide-wide default; Notation |
+| $\mathbf e_k$ | learned code vector in $\R^{d_c}$ | Discrete Visual Tokenization (<XRef id="def-codebook" />) |
+
+<div className="notation-print-break" aria-hidden="true" />
+
+**Column-vector switches.** Rows of $\mathbf X\in\R^{n\times d}$ are the default. The following scopes temporarily use columns so left-acting matrices, Jacobians, or outer products have their conventional orientation.
+
+| Scope | Objects treated as columns | Reason |
+|---|---|---|
+| Softmax Jacobian | $\mathbf z,\mathbf p$ | $\mathbf J$ acts by left multiplication and $\mathbf p\mathbf p^\top$ is an outer product |
+| LayerNorm/RMSNorm Jacobians | $\mathbf x,\hat{\mathbf x},\boldsymbol\gamma,\mathbf 1$ | normalization acts on token rows, but Jacobians act on columns and use outer products |
+| Positional-rotation derivations | RoPE queries/keys and 2D rotation pairs | rotations act as $\mathbf R\mathbf x$; transpose returns to row form |
+| Recurrent Networks | inputs, hidden states, and gate states | time Jacobians act by left multiplication |
+| Linear Recurrences and SSMs | state $\statevec$ (with $\inputmat$ a column and $\outputmat$ a row) | standard control-theory orientation |
+| Linear-attention derivation | $\phi(\mathbf k_j),\mathbf v_j$ | $\phi(\mathbf k_j)\mathbf v_j^\top$ is a $D\times d_v$ outer product |
+| MoE gradient calculus | gradient vectors | $\nabla_{\mathbf W_r}\mathcal L=\mathbf x^\top(\nabla_{\mathbf s}\mathcal L)^\top$ |
+| Selective State Spaces | state/write/read vectors; feature/value vectors in the linear-attention subsection | left-acting recurrence and matrix-state outer products |
+| Modern Recurrent & Hybrid | query, key, value, and recurrent-state vectors | outer-product state updates |
+
+<div className="notation-print-break" aria-hidden="true" />
+
+**Standing operators.** Each is defined once, in the chapter named.
+
+| Operator | Meaning | Defined in |
+|---|---|---|
+| $\softmax(\mathbf z)$ | normalized exponential | Notation (<XRef id="def-softmax" />) |
+| $\Emb(u)$ | embedding map $\mathcal U\to\R^{d}$ from a raw unit to a model vector | Notation / Input Representations |
+| $\operatorname{PE}(t)$ | positional encoding at index $t$ (or grid index $(a,b)$) | Input Representations |
+| $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ | scaled dot-product attention | Attention |
+| $\operatorname{MHA}(\mathbf X)$ | multi-head attention after the $\mathbf W^O$ projection | Multi-Head Attention |
+| $\operatorname{FFN}(\mathbf x)$ | position-wise feed-forward network | The Transformer Block |
+| $\operatorname{LN}(\mathbf x)$ | layer normalization | The Transformer Block (<XRef id="def-ln" />) |
+| $\operatorname{RMSNorm}(\mathbf x)$ | root-mean-square normalization without mean subtraction | The Transformer Block (<XRef id="rem-rmsnorm" />) |
+| $\mathbf M$ | additive causal attention mask | Attention (<XRef id="def-causal-mask" />) |
+| $(\statemat,\inputmat,\outputmat,\feedmat),\Delta$ | continuous state-space quadruple and step size | Linear Recurrences and SSMs (<XRef id="def-ssm" />) |
+| $(\discA,\discB)$ | zero-order-hold discretized state matrices | Linear Recurrences and SSMs (<XRef id="thm-zoh" />) |
+| $\bullet$ | associative scan operator on affine pairs | Linear Recurrences and SSMs (<XRef id="def-scan-op" />) |

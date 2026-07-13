@@ -27,7 +27,7 @@ definitions, in `src/content/transformers/*.mdx`.
 > the chapter-prefixed identifiers with semantic IDs; any ID this plan names is post-migration.
 
 > **Further superseded by the dossier-integration + topic-gap expansion (2026-07-10).** This audit now runs AFTER
-> both `dossier-guide-integration_2026-07-10.md` (Track A: 6-part restructure, +MoE & Sparse chapters, MLA→ch05,
+> both `docs/plans/implemented/dossier-guide-integration_2026-07-10.md` (Track A: 6-part restructure, +MoE & Sparse chapters, MLA→ch05,
 > glossaries) and `topic-gap-expansion_2026-07-10.md` (Track B: +RLHF/DPO, Scaling-laws, ICL, BPE). The corpus grows
 > to **~24 chapters / 6 parts** — re-measure at execution. IDs become **semantic / chapter-free** going forward, so
 > the `MAP`-style renumber no longer applies to new content. A 3-voice / 3-round review already ran over the current
@@ -150,23 +150,22 @@ are the citation-grounded evidence base the sweep should draw on when checking p
 
 - **ch01 pos-enc (RoPE/ALiBi/sinusoidal), ch04 attention, ch05 MHA, ch06 LayerNorm/RMSNorm/block** →
   `research_transformer_architecture`.
-- **ch04/07 sparse & efficient attention** → `research_{sparse_attention_patterns,trainable_sparse_attention,kv_cache_sparsity}` (built 2026-07-09).
+- **ch05 MLA + ch15 approximate KV selection/eviction** → `research_kv_cache_sparsity` (built 2026-07-09).
 - **ch03 SSM (S4/HiPPO), ch18 SSD/duality/RetNet, ch19 RWKV/xLSTM/DeltaNet/hybrids** →
   `post_transformers/references/dossier/` + `ssm-foundations` ch09–14 (already anchored — cross-link, do not re-derive).
 - **ch14 PEFT/LoRA** → `research_peft`.
-- **new ch16 MoE chapter, ch22 routing** → `research_mixture_of_experts` (**MERGED** research-dossiers PR #4, 2026-07-10).
+- **new ch16 MoE chapter, ch22 routing** → `research_mixture_of_experts` (**MERGED** research-dossiers PR #4, 2026-07-10); the corrected MoE traffic model is a completed Track-A derivation from the roofline, not a cited empirical fact.
 - **ch07 enc/dec taxonomy + cross-attn, ch09 masks/MLM/prefix-LM/UniLM** → `research_encoder_decoder_seq2seq` (**MERGED** PR #4).
 - **ch02 RNN/LSTM/GRU/BPTT/seq2seq/Bahdanau** → `research_recurrent_seq2seq` (**MERGED** PR #4).
-- **new ch17 Sparse chapter** → `research_{sparse_attention_patterns,trainable_sparse_attention,kv_cache_sparsity}` (**MERGED** PR #4).
+- **new ch17 Sparse chapter** → `research_sparse_attention_patterns` + `research_trainable_sparse_attention` (**MERGED** PR #4).
 
 Track-B evidence owners (see `topic-gap-expansion_2026-07-10.md`):
 - **new ch11 RLHF/DPO chapter** → `research_rlhf` + `research_post_training_preference`.
-- **new ch13 Scaling-laws chapter** → `research_llm_pretraining_scaling` plus its targeted top-up (note the corrected
-  MoE *traffic* model must be DERIVED from the roofline, not cited).
+- **new ch13 Scaling-laws chapter** → `research_llm_pretraining_scaling` plus its targeted top-up.
 - **new ch08 ICL chapter** → `research_incontext_associative_memory` (to build; full constructive trio locked in Track B).
 - **ch01 BPE section** → author from primaries (BPE/SentencePiece), no dossier.
 
 When the sweep reaches a chapter, pull anchored excerpts + evidence IDs from its dossier's `evidence_ledger.yml`
 rather than re-deriving citations. The corrected/frontier claims flagged by the 2026-07-10 dossier-coverage audit
 (MoE traffic = derive; MLA decoupled-RoPE = top-up; MoE aux-loss = positive excerpt) are noted in
-`dossier-guide-integration_2026-07-10.md`.
+`docs/plans/implemented/dossier-guide-integration_2026-07-10.md`.

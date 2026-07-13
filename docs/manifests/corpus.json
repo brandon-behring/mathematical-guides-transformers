@@ -3,10 +3,10 @@
   "generatedBy": "scripts/corpus-manifest.mjs",
   "totals": {
     "chapters": 21,
-    "labels": 271,
-    "learningObjectives": 95,
-    "proofMarkers": 201,
-    "printedNumberHits": 129
+    "labels": 275,
+    "learningObjectives": 96,
+    "proofMarkers": 205,
+    "printedNumberHits": 128
   },
   "chapters": [
     {
@@ -35,13 +35,8 @@
         "lo-softmax-calculus"
       ],
       "xrefs": [
-        "def-causal-mask",
         "def-row-stochastic",
-        "def-scan-op",
-        "def-softmax",
-        "def-ssm",
-        "prop-softmax-translation-inv",
-        "thm-zoh"
+        "prop-softmax-translation-inv"
       ],
       "kindCounts": {
         "definition": 5,
@@ -52,19 +47,19 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 235,
+          "line": 211,
           "text": "Exercise 0.1"
         },
         {
-          "line": 243,
+          "line": 219,
           "text": "Exercise 0.2"
         },
         {
-          "line": 251,
+          "line": 227,
           "text": "Exercise 0.3"
         },
         {
-          "line": 263,
+          "line": 239,
           "text": "Exercise 0.4"
         }
       ]
@@ -130,35 +125,35 @@
       "proofMarkers": 13,
       "printedNumberHits": [
         {
-          "line": 343,
+          "line": 348,
           "text": "Exercise 1.1"
         },
         {
-          "line": 356,
+          "line": 361,
           "text": "Exercise 1.2"
         },
         {
-          "line": 368,
+          "line": 373,
           "text": "Exercise 1.3"
         },
         {
-          "line": 380,
+          "line": 385,
           "text": "Exercise 1.4"
         },
         {
-          "line": 388,
+          "line": 393,
           "text": "Exercise 1.5"
         },
         {
-          "line": 396,
+          "line": 401,
           "text": "Exercise 1.6"
         },
         {
-          "line": 408,
+          "line": 413,
           "text": "Exercise 1.7"
         },
         {
-          "line": 427,
+          "line": 432,
           "text": "Exercise 1.8"
         }
       ]
@@ -220,35 +215,35 @@
       "proofMarkers": 10,
       "printedNumberHits": [
         {
-          "line": 166,
+          "line": 169,
           "text": "Exercise 2.3"
         },
         {
-          "line": 273,
+          "line": 276,
           "text": "Exercise 2.4"
         },
         {
-          "line": 354,
+          "line": 357,
           "text": "Exercise 2.1"
         },
         {
-          "line": 371,
+          "line": 374,
           "text": "Exercise 2.2"
         },
         {
-          "line": 384,
+          "line": 387,
           "text": "Exercise 2.3"
         },
         {
-          "line": 396,
+          "line": 399,
           "text": "Exercise 2.4"
         },
         {
-          "line": 404,
+          "line": 407,
           "text": "Exercise 2.5"
         },
         {
-          "line": 412,
+          "line": 415,
           "text": "Exercise 2.6"
         }
       ]
@@ -287,6 +282,8 @@
         "def-embedding-interface",
         "def-rnn",
         "def-scan-op",
+        "def-selective-ssm",
+        "def-sparse-attention",
         "def-ssm",
         "lem-legendre",
         "prop-cec",
@@ -311,39 +308,35 @@
       "proofMarkers": 14,
       "printedNumberHits": [
         {
-          "line": 176,
+          "line": 179,
           "text": "Chapter 18"
         },
         {
-          "line": 254,
+          "line": 257,
           "text": "Exercise 3.5"
         },
         {
-          "line": 438,
-          "text": "Chapter 18"
-        },
-        {
-          "line": 445,
+          "line": 448,
           "text": "Exercise 3.1"
         },
         {
-          "line": 453,
+          "line": 456,
           "text": "Exercise 3.2"
         },
         {
-          "line": 461,
+          "line": 464,
           "text": "Exercise 3.3"
         },
         {
-          "line": 469,
+          "line": 472,
           "text": "Exercise 3.4"
         },
         {
-          "line": 491,
+          "line": 494,
           "text": "Exercise 3.5"
         },
         {
-          "line": 499,
+          "line": 502,
           "text": "Exercise 3.6"
         }
       ]
@@ -480,6 +473,7 @@
         "prop-ln-jacobian",
         "rem-kv-memory",
         "rem-prenorm-init",
+        "rem-rmsnorm",
         "rem-swiglu",
         "thm-gradient-highway"
       ],
@@ -498,6 +492,7 @@
         "prop-row-stochastic-convex",
         "prop-softmax-jacobian",
         "rem-prenorm-init",
+        "rem-rmsnorm",
         "thm-gradient-bound",
         "thm-gradient-highway"
       ],
@@ -506,30 +501,34 @@
         "example": 1,
         "proof": 2,
         "proposition": 1,
-        "remark": 3,
+        "remark": 4,
         "theorem": 1
       },
-      "proofMarkers": 7,
+      "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 227,
+          "line": 259,
           "text": "Exercise 6.1"
         },
         {
-          "line": 235,
+          "line": 267,
           "text": "Exercise 6.2"
         },
         {
-          "line": 243,
+          "line": 275,
           "text": "Exercise 6.3"
         },
         {
-          "line": 251,
+          "line": 283,
           "text": "Exercise 6.4"
         },
         {
-          "line": 263,
+          "line": 295,
           "text": "Exercise 6.5"
+        },
+        {
+          "line": 303,
+          "text": "Exercise 6.6"
         }
       ]
     },
@@ -606,23 +605,23 @@
       "proofMarkers": 7,
       "printedNumberHits": [
         {
-          "line": 269,
+          "line": 274,
           "text": "Exercise 7.1"
         },
         {
-          "line": 277,
+          "line": 282,
           "text": "Exercise 7.2"
         },
         {
-          "line": 285,
+          "line": 290,
           "text": "Exercise 7.3"
         },
         {
-          "line": 293,
+          "line": 298,
           "text": "Exercise 7.4"
         },
         {
-          "line": 301,
+          "line": 306,
           "text": "Exercise 7.5"
         }
       ]
@@ -762,6 +761,7 @@
         "def-ce-loss",
         "def-seq2seq",
         "def-teacher-forcing",
+        "def-token-decoding",
         "def-xavier-init",
         "prop-ce-kl",
         "prop-ce-kl-training",
@@ -939,23 +939,23 @@
       "proofMarkers": 10,
       "printedNumberHits": [
         {
-          "line": 251,
+          "line": 256,
           "text": "Exercise 14.1"
         },
         {
-          "line": 259,
+          "line": 264,
           "text": "Exercise 14.2"
         },
         {
-          "line": 267,
+          "line": 272,
           "text": "Exercise 14.3"
         },
         {
-          "line": 275,
+          "line": 280,
           "text": "Exercise 14.4"
         },
         {
-          "line": 283,
+          "line": 288,
           "text": "Exercise 14.5"
         }
       ]
@@ -972,11 +972,13 @@
         "def-kv-cache",
         "def-online-softmax",
         "def-spec-decode",
+        "def-token-decoding",
         "prop-decode-cost",
         "prop-kv-memory",
         "prop-memory-bound",
         "prop-quant-error",
         "prop-spec-speedup",
+        "prop-truncated-sampling",
         "rem-activation-quant",
         "rem-flash-versions",
         "rem-kv-bytes",
@@ -987,6 +989,7 @@
       ],
       "objectiveIds": [
         "lo-affine-quantization-error",
+        "lo-decoding-sampling",
         "lo-inference-roofline",
         "lo-kv-cache-memory-and-compute",
         "lo-online-softmax-and-flash-attention",
@@ -1000,6 +1003,7 @@
         "def-moe",
         "def-online-softmax",
         "def-softmax",
+        "def-token-decoding",
         "prop-decode-cost",
         "prop-decode-state",
         "prop-kv-cache",
@@ -1011,36 +1015,42 @@
         "prop-softmax-translation-inv",
         "prop-spec-speedup",
         "prop-state-recall",
+        "prop-truncated-sampling",
+        "rem-softmax-temperature",
         "thm-online-softmax-exact"
       ],
       "kindCounts": {
-        "definition": 5,
-        "proof": 6,
-        "proposition": 5,
+        "definition": 6,
+        "proof": 7,
+        "proposition": 6,
         "remark": 6,
         "theorem": 1
       },
-      "proofMarkers": 11,
+      "proofMarkers": 13,
       "printedNumberHits": [
         {
-          "line": 286,
+          "line": 337,
           "text": "Exercise 15.1"
         },
         {
-          "line": 294,
+          "line": 345,
           "text": "Exercise 15.2"
         },
         {
-          "line": 302,
+          "line": 353,
           "text": "Exercise 15.3"
         },
         {
-          "line": 316,
+          "line": 367,
           "text": "Exercise 15.4"
         },
         {
-          "line": 324,
+          "line": 375,
           "text": "Exercise 15.5"
+        },
+        {
+          "line": 383,
+          "text": "Exercise 15.6"
         }
       ]
     },
@@ -1089,23 +1099,23 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 325,
+          "line": 332,
           "text": "Exercise 16.1"
         },
         {
-          "line": 340,
+          "line": 347,
           "text": "Exercise 16.2"
         },
         {
-          "line": 360,
+          "line": 367,
           "text": "Exercise 16.3"
         },
         {
-          "line": 372,
+          "line": 379,
           "text": "Exercise 16.4"
         },
         {
-          "line": 399,
+          "line": 406,
           "text": "Exercise 16.5"
         }
       ]
@@ -1221,7 +1231,6 @@
         "def-gru",
         "def-scan-op",
         "def-selective-ssm",
-        "def-ssm",
         "prop-cec",
         "prop-chunked",
         "prop-gate-equivalence",
@@ -1251,43 +1260,39 @@
       "proofMarkers": 13,
       "printedNumberHits": [
         {
-          "line": 33,
+          "line": 34,
           "text": "ch. 3"
         },
         {
-          "line": 37,
-          "text": "ch. 3"
-        },
-        {
-          "line": 165,
+          "line": 172,
           "text": "ch. 2"
         },
         {
-          "line": 169,
+          "line": 176,
           "text": "Chapter 3"
         },
         {
-          "line": 399,
+          "line": 406,
           "text": "Exercise 18.1"
         },
         {
-          "line": 407,
+          "line": 414,
           "text": "Exercise 18.2"
         },
         {
-          "line": 415,
+          "line": 422,
           "text": "Exercise 18.3"
         },
         {
-          "line": 429,
+          "line": 436,
           "text": "Exercise 18.4"
         },
         {
-          "line": 443,
+          "line": 450,
           "text": "Exercise 18.5"
         },
         {
-          "line": 467,
+          "line": 474,
           "text": "Exercise 18.6"
         }
       ]
@@ -1319,6 +1324,8 @@
       ],
       "xrefs": [
         "def-bidirectional-scan",
+        "def-codebook",
+        "def-connector",
         "def-delta",
         "def-hybrid-stack",
         "def-mlstm",
@@ -1357,39 +1364,35 @@
       "proofMarkers": 12,
       "printedNumberHits": [
         {
-          "line": 96,
+          "line": 99,
           "text": "ch. 18"
         },
         {
-          "line": 190,
+          "line": 193,
           "text": "Exercise 19.3"
         },
         {
-          "line": 296,
-          "text": "chapter 2"
-        },
-        {
-          "line": 302,
+          "line": 307,
           "text": "Exercise 19.1"
         },
         {
-          "line": 310,
+          "line": 315,
           "text": "Exercise 19.2"
         },
         {
-          "line": 318,
+          "line": 323,
           "text": "Exercise 19.3"
         },
         {
-          "line": 326,
+          "line": 331,
           "text": "Exercise 19.4"
         },
         {
-          "line": 334,
+          "line": 339,
           "text": "Exercise 19.5"
         },
         {
-          "line": 342,
+          "line": 347,
           "text": "Exercise 19.6"
         }
       ]
@@ -1481,6 +1484,7 @@
       "chapter": 21,
       "part": 6,
       "labelIds": [
+        "def-autoencoder",
         "def-codebook",
         "def-ste",
         "def-vq-loss",
@@ -1503,6 +1507,7 @@
         "lo-visual-token-language-modeling"
       ],
       "xrefs": [
+        "def-autoencoder",
         "def-autoregressive-lm",
         "def-ce-loss",
         "def-codebook",
@@ -1510,6 +1515,7 @@
         "def-entropy",
         "def-ste",
         "def-teacher-forcing",
+        "def-token-decoding",
         "def-vq-loss",
         "prop-ce-kl-training",
         "prop-connector-data-processing-bound",
@@ -1522,37 +1528,37 @@
         "thm-ste-identity"
       ],
       "kindCounts": {
-        "definition": 3,
+        "definition": 4,
         "proof": 6,
         "proposition": 3,
         "remark": 1,
         "theorem": 3
       },
-      "proofMarkers": 11,
+      "proofMarkers": 12,
       "printedNumberHits": [
         {
-          "line": 48,
-          "text": "ch. 1"
-        },
-        {
-          "line": 204,
+          "line": 246,
           "text": "Exercise 21.1"
         },
         {
-          "line": 212,
+          "line": 254,
           "text": "Exercise 21.2"
         },
         {
-          "line": 220,
+          "line": 262,
           "text": "Exercise 21.3"
         },
         {
-          "line": 228,
+          "line": 277,
           "text": "Exercise 21.4"
         },
         {
-          "line": 236,
+          "line": 285,
           "text": "Exercise 21.5"
+        },
+        {
+          "line": 293,
+          "text": "Exercise 21.6"
         }
       ]
     },
@@ -1708,19 +1714,19 @@
       "proofMarkers": 7,
       "printedNumberHits": [
         {
-          "line": 129,
+          "line": 134,
           "text": "Exercise 23.1"
         },
         {
-          "line": 137,
+          "line": 142,
           "text": "Exercise 23.2"
         },
         {
-          "line": 145,
+          "line": 150,
           "text": "Exercise 23.3"
         },
         {
-          "line": 153,
+          "line": 158,
           "text": "Exercise 23.4"
         }
       ]

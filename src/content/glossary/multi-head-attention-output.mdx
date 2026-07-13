@@ -1,0 +1,8 @@
+---
+term: "Multi-head attention output (post-projection)"
+aliases: ["post-W^O attention output", "MHA output"]
+see: [attention-head-output]
+tags: [attention, shapes]
+---
+
+The concatenated head contexts after multiplication by the learned output projection $\mathbf W^O\in\R^{hd_v\times d}$. It has shape $n\times d$ and is the object added to the residual stream. It should not be confused with a single $n\times d_v$ head context or the unprojected $n\times hd_v$ concatenation.

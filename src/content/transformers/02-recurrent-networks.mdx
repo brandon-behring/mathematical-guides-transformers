@@ -23,9 +23,10 @@ los:
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
-import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
+import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
 # Recurrent Networks and the Seq2Seq Lineage
@@ -36,7 +37,9 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 A recurrent network processes a sequence the way a reader processes a sentence: one element at a time, carrying a running summary forward. The summary is a single vector, the *state*; each step folds the next input into it by one fixed, learned map. All memory of the past must live in that vector — a design decision whose consequences, good and bad, drive this entire chapter.
 
-Throughout this chapter we treat states and inputs as **column** vectors — a stated departure from the row convention, as in the softmax-Jacobian calculus of the notation chapter — so that Jacobians act by left multiplication. The inputs $\mathbf x_1,\dots,\mathbf x_n\in\R^{d}$ are the rows of an embedded sequence $\mathbf X\in\R^{n\times d}$ (<XRef id="def-embedding-interface" />), written as columns.
+<NotationOverride scope="Recurrent Networks">
+States, inputs, and gate vectors are **columns** throughout this chapter so time Jacobians act by left multiplication. The $\mathbf x_t\in\R^d$ are still the rows of the embedded sequence $\mathbf X\in\R^{n\times d}$ (<XRef id="def-embedding-interface" />), temporarily written as columns inside the recurrence.
+</NotationOverride>
 
 <Theorem kind="definition" name="Recurrent neural network" id="def-rnn">
 Fix a **state dimension** $d_s$, weights $\mathbf W_h\in\R^{d_s\times d_s}$, $\mathbf W_x\in\R^{d_s\times d}$, a bias $\mathbf b\in\R^{d_s}$, and an elementwise nonlinearity $\varphi$ (classically $\tanh$). Given inputs $\mathbf x_1,\dots,\mathbf x_n\in\R^{d}$ and the initial state $\mathbf h_0 = \mathbf 0$, the **recurrent neural network (RNN)** computes, for $t = 1,\dots,n$, the pre-activation and **hidden state**

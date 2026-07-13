@@ -3,11 +3,11 @@ title: "Notation and Prerequisites"
 slug: notation
 chapter: 0
 part: 1
-description: "The single-source notation reference: dimension and operator conventions, the modality-agnostic embedding interface, the softmax (translation invariance and Jacobian), cross-entropy as KL divergence up to a constant, and row-stochastic matrices."
-last_verified: 2026-06-03
+description: "The single-source notation reference: a scoped disambiguation and orientation index, the modality-agnostic embedding interface, softmax calculus, cross-entropy as KL divergence up to a constant, and row-stochastic matrices."
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: []
-notation_introduced: ['\softmax', '\defeq', 'd', 'n', 'd_k', 'row-stochastic', 'H(p,q)', 'D_KL', '\Emb', '\mathcal U', 'u_t', 'p', 'c', 'X^{(s)}']
+notation_introduced: ['\softmax', '\defeq', 'd', 'n', 'd_k', 'd_{\text{cache}}', '\gamma', '\alpha', 'K', 'row-stochastic', 'H(p,q)', 'D_KL', '\Emb', '\mathcal U', 'u_t', 'p', 'c', 'X^{(s)}']
 theorems: ['prop-softmax-translation-inv', 'prop-softmax-jacobian', 'prop-ce-kl', 'prop-row-stochastic-convex']
 los:
   - id: lo-softmax-calculus
@@ -23,49 +23,23 @@ los:
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
-import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
+import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import Term from '@brandon_m_behring/book-scaffold-astro/components/Term.astro';
+import NotationIndex from '../../components/NotationIndex.mdx';
+import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
 # Notation and Prerequisites
 
-**Where we are.** This chapter is the single-source notation reference for the guide: every dimension symbol, operator, and prerequisite result is fixed here once, and later chapters invoke it by name. Read it front to back on a first pass, then return whenever a proof cites a definition from here. We assume linear algebra and elementary probability; everything specific to sequence models is built from the three tools developed below — the softmax, cross-entropy, and row-stochastic matrices.
+**Where we are.** This chapter is the single-source notation reference for the guide: standing symbols and operators are fixed here, repeated glyphs are indexed by scope, and every departure from the row-vector convention is enumerated. Read it front to back on a first pass, then return whenever a proof cites a definition or displays a local override. We assume linear algebra and elementary probability; everything specific to sequence models is built from the three tools developed below — the softmax, cross-entropy, and row-stochastic matrices.
 
 ## Conventions
 
 Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d}$), and matrices are bold uppercase ($\mathbf W$). Vectors are **row** vectors unless stated otherwise, so a sequence of $n$ tokens is a matrix $\mathbf X \in \R^{n\times d}$ whose $i$-th row is the $i$-th token representation. Sets are calligraphic ($\mathcal V$ for the vocabulary). We write $\defeq$ for "is defined as" (marking a definition, not a derived equality), $\odot$ for the Hadamard product, $\mathbf 1$ for the all-ones vector, and $\mathbf e_k$ for the $k$-th standard basis (one-hot) vector. The norm $\norm{\mathbf x}$ is Euclidean and $[\mathbf A]_{ij}$ is the $(i,j)$ entry. Note one glyph pair kept deliberately distinct: bold $\mathbf h_t$ is a recurrent hidden state (a vector), while italic $h$ is the head count (a scalar).
 
-**Standing dimensions.** These symbols keep their meaning throughout the guide.
-
-| Symbol | Meaning |
-|---|---|
-| $d$ | model dimension (embedding width) |
-| $n$ | sequence length (number of tokens) |
-| $h$ | number of attention heads |
-| $d_k$ | key/query dimension per head ($d_k = d/h$) |
-| $d_v$ | value dimension per head |
-| $d_{\text{ff}}$ | feed-forward hidden dimension (typically $4d$) |
-| $\lvert\mathcal V\rvert$ | vocabulary size |
-| $N$ | number of transformer layers (blocks) |
-| $d_s$ | state dimension of a recurrent or state space model |
-| $p,\,c$ | image patch side and channel count; a patch flattens to dimension $p^2 c$ |
-
-**Standing operators.** Each is defined once, in the chapter named; return here for a lookup.
-
-| Operator | Meaning | Defined in |
-|---|---|---|
-| $\softmax(\mathbf z)$ | normalized exponential | this chapter (<XRef id="def-softmax" />) |
-| $\Emb(u)$ | embedding map $\mathcal U\to\R^{d}$ from a raw unit to a model vector | this chapter; Input Representations |
-| $\operatorname{PE}(t)$ | positional encoding at index $t$ (a grid index $(a,b)$ for images) | Input Representations |
-| $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ | scaled dot-product attention | Attention |
-| $\operatorname{MHA}(\mathbf X)$ | multi-head attention | Multi-Head Attention |
-| $\operatorname{FFN}(\mathbf x)$ | position-wise feed-forward network | The Transformer Block |
-| $\operatorname{LN}(\mathbf x)$ | layer normalization | The Transformer Block |
-| $\mathbf M$ | causal mask matrix | Attention (<XRef id="def-causal-mask" />) |
-| $(\statemat,\inputmat,\outputmat,\feedmat),\ \Delta$ | continuous state space quintuple and step size | State Space Models (<XRef id="def-ssm" />) |
-| $(\discA,\discB)$ | zero-order-hold discretized state matrices | State Space Models (<XRef id="thm-zoh" />) |
-| $\bullet$ | associative scan operator on affine pairs | State Space Models (<XRef id="def-scan-op" />) |
+<NotationIndex />
 
 ## Reading the figures
 
@@ -86,7 +60,7 @@ The transformer acts on a sequence $\mathbf X\in\R^{n\times d}$ of $n$ elements.
 
 | Symbol | Meaning |
 |---|---|
-| $u_t$ | a **unit**: the raw element at position $t$ — a token, an image patch, or a discrete code |
+| $u_t$ | a **<Term id="unit">unit</Term>**: the raw element at position $t$ — a token, an image patch, or a discrete code |
 | $\mathcal U$ | the **unit space** of a modality (text: the vocabulary $\mathcal V$; vision: patches $\R^{p\times p\times c}$; discrete visual: a codebook index set) |
 | $\Emb$ | the **embedding map** $\Emb:\mathcal U\to\R^{d}$; the embedded sequence is $\hat{\mathbf X} = (\Emb(u_1);\dots;\Emb(u_n))\in\R^{n\times d}$ |
 | $\mathbf X^{(s)}$ | the $s$-th input **stream** $\in\R^{n_s\times d}$, when several modalities coexist (e.g. a vision stream and a text stream) |
@@ -123,7 +97,9 @@ Subtracting $\max_j z_j$ before exponentiating therefore changes nothing while a
 
 <MarginNote variant="tip" label="Self-explanation">Before reading the next proof: translation invariance says the output is unchanged along the direction $\mathbf 1$. What must the Jacobian do to the vector $\mathbf 1$?</MarginNote>
 
-For the Jacobian calculus below (and in Exercises 0.1–0.2) we treat $\mathbf z$ and $\mathbf p$ as **column** vectors — a stated departure from the row convention — so that $\mathbf p\mathbf p^\top$ is the $K\times K$ outer product and $\mathbf J$ acts by left multiplication.
+<NotationOverride scope="Softmax Jacobian and Exercises 0.1–0.2">
+For the Jacobian calculus below we treat $\mathbf z$ and $\mathbf p$ as **column** vectors, so $\mathbf p\mathbf p^\top$ is the $K\times K$ outer product and $\mathbf J$ acts by left multiplication. Sequence representations remain rows everywhere outside this stated scope.
+</NotationOverride>
 
 <Theorem kind="proposition" name="Softmax Jacobian" id="prop-softmax-jacobian">
 Let $\mathbf p = \softmax(\mathbf z)$. The Jacobian $\mathbf J\in\R^{K\times K}$ with $J_{ij} = \partial p_i/\partial z_j$ is

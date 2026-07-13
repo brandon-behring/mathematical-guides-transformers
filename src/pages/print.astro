@@ -1,0 +1,75 @@
+---
+import Base from '@brandon_m_behring/book-scaffold-astro/layouts/Base.astro';
+import ChapterHeader from '@brandon_m_behring/book-scaffold-astro/components/ChapterHeader.astro';
+import { getCollection, render } from 'astro:content';
+import mdxComponents from 'virtual:book-scaffold/mdx-components';
+import PrintChapter from '../components/PrintChapter.astro';
+import QuickReference from '../components/QuickReference.mdx';
+import '../styles/apparatus.css';
+
+const chapters = await getCollection('chapters', (entry) => !entry.data.draft);
+chapters.sort((a, b) => a.data.part - b.data.part || a.data.chapter - b.data.chapter);
+
+const renderedChapters = await Promise.all(
+  chapters.map(async (entry) => ({ entry, Content: (await render(entry)).Content })),
+);
+
+const glossary = await getCollection('glossary', (entry) => !entry.data.draft);
+glossary.sort((a, b) => a.data.term.localeCompare(b.data.term));
+const renderedGlossary = await Promise.all(
+  glossary.map(async (entry) => ({ id: entry.id, data: entry.data, Content: (await render(entry)).Content })),
+);
+const termById = new Map(renderedGlossary.map((entry) => [entry.id, entry.data.term]));
+---
+
+<Base
+  title="Book (print edition)"
+  description="Full book with glossary and pull-out quick reference, rendered as one paginated document."
+  showSidebar={false}
+>
+  <div class="prose print-edition">
+    {renderedChapters.map(({ entry, Content }) => (
+      <PrintChapter prefix={`chapter-${String(entry.data.chapter).padStart(2, '0')}`}>
+        <ChapterHeader data={entry.data} />
+        <Content components={mdxComponents} />
+      </PrintChapter>
+    ))}
+
+    <section class="print-backmatter print-glossary" aria-labelledby="print-glossary-heading">
+      <h1 id="print-glossary-heading">Glossary</h1>
+      <p>{renderedGlossary.length} terms, listed alphabetically.</p>
+      <dl class="glossary-list">
+        {renderedGlossary.map((entry) => {
+          const Content = entry.Content;
+          return (
+            <div class="glossary-entry" id={`term-${entry.id}`}>
+              <dt class="glossary-term">
+                {entry.data.term}
+                {entry.data.aliases.length > 0 && (
+                  <span class="glossary-aliases"> ({entry.data.aliases.join(', ')})</span>
+                )}
+              </dt>
+              <dd class="glossary-def">
+                <Content />
+                {entry.data.see.length > 0 && (
+                  <p class="glossary-see">
+                    See also: {entry.data.see.map((target, index) => (
+                      <Fragment>
+                        {index > 0 ? ', ' : ''}
+                        <a href={`#term-${target}`}>{termById.get(target) ?? target}</a>
+                      </Fragment>
+                    ))}
+                  </p>
+                )}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </section>
+
+    <section class="print-backmatter quick-reference">
+      <QuickReference />
+    </section>
+  </div>
+</Base>

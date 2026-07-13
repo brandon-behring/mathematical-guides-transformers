@@ -26,6 +26,7 @@ import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.a
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
 # Mixture-of-Experts
@@ -35,6 +36,8 @@ import SolutionBox from '../../components/SolutionBox.astro';
 ## Conditional feed-forward networks
 
 Let $E$ be the number of experts and $k$ the number selected per token. Capacity grows with $E$; expert arithmetic per token grows with $k$. The router is a small linear map followed by softmax and a top-$k$ mask. Keeping those two operations separate matters: softmax supplies an ordinary derivative, while top-$k$ decides the sparse execution pattern.
+
+The routed object is a model row $\mathbf x_t\in\R^d$, not a text-specific token. It may be the embedding of a subword or the embedding of an image patch; in either case the same router scores the row, selects $k$ FFN experts, and returns another $d$-dimensional row. Modality changes how the row entered the model, not the conditional-compute mathematics inside the block.
 
 <Theorem kind="definition" name="Top-k mixture-of-experts layer" id="def-moe">
 A **top-$k$ mixture-of-experts layer** has $E$ parameter-distinct expert networks $\{\operatorname{FFN}_1,\dots,\operatorname{FFN}_E\}$ of identical input and output shape, a router $\mathbf W_r\in\R^{d\times E}$, and $1\le k\le E$. For token row $\mathbf x_t\in\R^d$, define
@@ -93,7 +96,11 @@ $$
 \end{cases}
 \tag{4}
 $$
-For either convention and a scalar loss $\mathcal L$, treat gradient vectors as columns. The row-vector score map $\mathbf s=\mathbf x\mathbf W_r$ then gives
+<NotationOverride scope="MoE router gradient calculus">
+For either routing convention and a scalar loss $\mathcal L$, gradient vectors are **columns** in the next display. The router input and score remain rows in $\mathbf s=\mathbf x\mathbf W_r$.
+</NotationOverride>
+
+The row-vector score map then gives
 $$
 \nabla_{\mathbf W_r}\mathcal L
 =\mathbf x^\top\bigl(\nabla_{\mathbf s}\mathcal L\bigr)^\top.

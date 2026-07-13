@@ -1,8 +1,9 @@
 # Design note — a "Sparse and Sub-Quadratic Attention" chapter
 
 > **Status (updated 2026-07-10): SUPERSEDED — historical design stub.** The executable plan is now
-> `docs/plans/active/dossier-guide-integration_2026-07-10.md` (Track A); the full design record is
-> `~/.claude/plans/how-much-research-is-elegant-popcorn.md`. Read those, not this note, to execute.
+> `docs/plans/implemented/dossier-guide-integration_2026-07-10.md` (Track A), with its tracked readiness audit at
+> `docs/audits/roadmap-readiness_2026-07-11.md`. Read those, not this note, as the execution record; the former
+> home-directory planning draft is stale.
 >
 > What changed since this was written: the three sparse dossiers (+ three arch dossiers) are **MERGED**
 > (research-dossiers PR #4). After a holistic sweep + a 3-voice/3-round review, the book is a **6-part
