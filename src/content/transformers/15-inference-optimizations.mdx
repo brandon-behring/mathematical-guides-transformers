@@ -3,7 +3,7 @@ title: "Inference Optimizations"
 slug: inference-optimizations
 chapter: 15
 part: 4
-description: "The mathematics behind production inference: the roofline cost-per-token equation and its memory-bound regime, generalized KV-cache width and the O(n^2) → O(n) per-step argument, affine quantization with a round-off error bound, FlashAttention's exact online-softmax recurrence, speculative-decoding speedup, and the resident/activated/traffic cost model for top-k mixture-of-experts."
+description: "The mathematics behind production inference: the roofline cost-per-token equation and its memory-bound regime, generalized KV-cache width, exact reuse versus approximate cache selection, the materialized-cache O(n^2) → O(n) per-step argument, affine quantization, FlashAttention, speculative decoding, and top-k mixture-of-experts costs."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention, multi-head-attention]
@@ -13,7 +13,7 @@ los:
   - id: lo-inference-roofline
     statement: "Derive the inference cost-per-token equation T = max(FLOPs/F, bytes/B) and characterize the memory-bound regime via the roofline ridge point."
   - id: lo-kv-cache-memory-and-compute
-    statement: "Derive the heterogeneous-layer KV-cache cost n b sum_l d_cache,l and its equal-width form N n b d_cache, then prove that caching turns per-step attention compute from O(n^2) into O(n)."
+    statement: "Derive heterogeneous KV-cache memory from each layer's actually persisted width, prove that an exact materialized-head cache turns per-step attention compute from O(n^2) into O(n), and distinguish exact prefix reuse from approximate cache selection or eviction."
   - id: lo-affine-quantization-error
     statement: "Define the affine quantize/dequantize maps and bound the per-weight round-off error."
   - id: lo-online-softmax-and-flash-attention
@@ -33,7 +33,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Inference Optimizations
 
-**Where we are.** Training optimized a loss; inference optimizes a different quantity — the time to emit one token on fixed hardware. This chapter extracts the algebraic core common to every production serving technique: each one moves a single term in one cost equation. We fix that equation first (the roofline model and its memory-bound regime), then derive the mathematics behind five techniques in turn — the **KV-cache** (why autoregressive decoding would otherwise recompute, and how caching collapses per-step compute from quadratic to linear), **quantization** (the affine map from floats to integers and its round-off bound), **FlashAttention** (the online-softmax recurrence that computes attention *exactly* without ever materializing the $n\times n$ score matrix), **speculative decoding** (the draft-then-verify acceptance law and its expected speedup), and **mixture-of-experts** (top-$k$ routing and the conditional-compute FLOP argument). Throughout, $\softmax$, scaled dot-product attention, and the standing dimensions $n,d,d_k$ are as fixed in earlier chapters. We give definitions and inline proofs for the quantitative claims and reserve remarks for the qualitative engineering facts.
+**Where we are.** Training optimized a loss; inference optimizes a different quantity — the time to emit one token on fixed hardware. This chapter extracts the algebraic core common to every production serving technique: each one moves a single term in one cost equation. We fix that equation first (the roofline model and its memory-bound regime), then derive the mathematics behind five techniques in turn — the **KV-cache** (why autoregressive decoding would otherwise recompute, how actual persisted width determines memory, and where approximate selection departs from exact prefix reuse), **quantization** (the affine map from floats to integers and its round-off bound), **FlashAttention** (the online-softmax recurrence that computes attention *exactly* without ever materializing the $n\times n$ score matrix), **speculative decoding** (the draft-then-verify acceptance law and its expected speedup), and **mixture-of-experts** (top-$k$ routing and the conditional-compute FLOP argument). Throughout, $\softmax$, scaled dot-product attention, and the standing dimensions $n,d,d_k$ are as fixed in earlier chapters. We give definitions and inline proofs for the quantitative claims and reserve remarks for the qualitative engineering facts.
 
 ## The cost-per-token equation
 
@@ -77,36 +77,36 @@ Prefill processes the whole prompt at once: the dominant products have shape $\R
 
 ## The KV-cache
 
-Autoregressive decoding emits token $t$ from a query at position $t$ attending to the keys and values of all positions $\le t$. Those keys and values are deterministic functions of tokens already fixed, so recomputing them at every step would redo work that cannot change. Caching them is the obvious fix; its payoff is precisely a change of asymptotic order in the per-step compute, which we now prove.
+Autoregressive decoding emits token $t$ from a query at position $t$ attending to the keys and values of all positions $\le t$. Those keys and values are deterministic functions of tokens already fixed, so recomputing them at every step would redo work that cannot change. Caching reusable attention state is the obvious fix. We first count arbitrary persisted representations, then prove the compute payoff for the materialized-head case; compressed-latent architectures have their own reconstruction or projection-absorption arithmetic.
 
 <Theorem kind="definition" name="KV-cache" id="def-kv-cache">
-During decoding, the **KV-cache** stores, for each layer, the key and value vectors of every generated position. With $h_k$ distinct key heads and $h_v$ distinct value heads, after $n$ tokens one layer holds the distinct-head tensors flattened as $\mathbf K_{\text{cache}}\in\R^{n\times h_kd_k}$ and $\mathbf V_{\text{cache}}\in\R^{n\times h_vd_v}$. Their combined row width is $d_{\text{cache}}=h_kd_k+h_vd_v$ from <XRef id="prop-kv-cache" />. Step $n+1$ computes only the new key and value rows, appends them, and reuses all earlier rows unchanged. That the reuse is *exact* — cached and uncached decoding emit identical distributions — is the prefix-reuse proposition <XRef id="prop-prefix-reuse" />, a consequence of causality alone.
+During decoding, the **KV-cache** stores the reusable per-position attention state of each layer. MHA, GQA, and MQA materialize distinct-head tensors $\mathbf K_{\text{cache}}\in\R^{n\times h_kd_k}$ and $\mathbf V_{\text{cache}}\in\R^{n\times h_vd_v}$; a latent architecture may instead persist an upstream vector such as $\mathbf c_t^{KV}$, possibly alongside positional or auxiliary state, and derive its content keys and values when needed (<XRef id="def-mla" />). In every case, $d_{\text{cache}}$ means the sum of widths actually persisted per token, as defined case by case in <XRef id="prop-kv-cache" />. Step $n+1$ computes and appends only the new position's persisted state, then reuses every earlier row unchanged. That full reuse is *exact* — cached and uncached decoding emit identical distributions — by the prefix-reuse proposition <XRef id="prop-prefix-reuse" />, a consequence of causality alone.
 </Theorem>
 
-<MarginNote variant="formula" label="Cache size">Per layer: $n\,d_{\text{cache}}=n(h_kd_k+h_vd_v)$ elements — linear in context length. Standard MHA with $hd_k=hd_v=d$ gives $2nd$.</MarginNote>
+<MarginNote variant="formula" label="Cache size">Per layer: $n\,d_{\text{cache}}$ elements. A materialized-head cache uses $d_{\text{cache}}=h_kd_k+h_vd_v$; an MLA content term contributes $d_c$, plus any other persisted widths. Both remain linear in context length.</MarginNote>
 
 <Theorem kind="proposition" name="KV-cache memory" id="prop-kv-memory">
 For a model with $N$ layers, let layer $\ell$ have cache width $d_{\text{cache},\ell}$ and store each element in $b$ bytes. The KV-cache for one request at context length $n$ occupies
 $$
 M_{\text{KV}}=n b\sum_{\ell=1}^{N}d_{\text{cache},\ell}.
 $$
-If every layer has the same $d_{\text{cache}}=h_kd_k+h_vd_v$, this becomes $Nnbd_{\text{cache}}$. For standard MHA with $h_k=h_v=h$ and $hd_k=hd_v=d$ in every layer, it further specializes to $2Nndb$; heterogeneous GQA and MQA layers use their own smaller widths from <XRef id="prop-kv-cache" /> inside the sum.
+If every layer has the same persisted width $d_{\text{cache}}$, this becomes $Nnbd_{\text{cache}}$. For standard MHA with $h_k=h_v=h$ and $hd_k=hd_v=d$ in every layer, it further specializes to $2Nndb$; heterogeneous materialized-head and joint-latent layers use their own widths from <XRef id="prop-kv-cache" /> inside the sum.
 </Theorem>
 
 <Theorem kind="proof">
-Layer $\ell$ stores $n d_{\text{cache},\ell}$ key/value scalars (<XRef id="def-kv-cache" />), hence $nbd_{\text{cache},\ell}$ bytes. The layers store disjoint caches, so summing gives $nb\sum_\ell d_{\text{cache},\ell}$. Equal widths factor out as $Nnbd_{\text{cache}}$. Under the all-MHA specialization, every $d_{\text{cache},\ell}=hd_k+hd_v=2d$, giving $2Nndb$. $\qquad\blacksquare$
+Layer $\ell$ stores $n d_{\text{cache},\ell}$ persisted attention-state scalars (<XRef id="def-kv-cache" />), hence $nbd_{\text{cache},\ell}$ bytes. The layers store disjoint caches, so summing gives $nb\sum_\ell d_{\text{cache},\ell}$. Equal widths factor out as $Nnbd_{\text{cache}}$. Under the all-MHA specialization, every $d_{\text{cache},\ell}=hd_k+hd_v=2d$, giving $2Nndb$. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="pattern" label="Count the redo">An uncached step $t$ re-forms all $\Theta(t^2)$ prefix scores; a cached step forms only the $\Theta(t)$ scores of the one new query. Summing over the sequence is what turns that per-step gap into a factor of $n$.</MarginNote>
+<MarginNote variant="pattern" label="Count the redo">For materialized K/V, an uncached step $t$ re-forms all $\Theta(t^2)$ prefix scores; a cached step forms only the $\Theta(t)$ scores of the one new query. Summing over the sequence turns that per-step gap into a factor of $n$.</MarginNote>
 
-The cache trades memory for compute. The trade is favorable because it changes the order of the per-step work, not merely its constant — and the cumulative effect over a full generation is one order of $n$.
+The materialized-head cache trades memory for compute. The trade is favorable because it changes the order of the per-step work, not merely its constant — and the cumulative effect over a full generation is one order of $n$.
 
 <Theorem kind="proposition" name="Caching makes per-step attention compute linear" id="prop-decode-cost">
-Fix one attention layer. At decode step $t$, computing the attention output for the new position against all $t$ positions costs $\Theta(t\,d + d^2)$ arithmetic with a KV-cache (the $d^2$ for projecting the new token), versus $\Theta(t\,d^2 + t^2 d)$ without one (recomputing every key and value from scratch; the quadratic term dominates once $t \ge d$). Consequently, generating a sequence of length $n$ costs $\Theta(n^2 d + n\,d^2)$ with the cache and $\Theta(n^2 d^2 + n^3 d)$ without it.
+Fix one standard attention layer whose cache materializes all settled key and value head rows. At decode step $t$, computing the attention output for the new position against all $t$ positions costs $\Theta(t\,d + d^2)$ arithmetic with that cache (the $d^2$ for projecting the new token), versus $\Theta(t\,d^2 + t^2 d)$ without one (recomputing every key and value from scratch; the quadratic term dominates once $t \ge d$). Consequently, generating a sequence of length $n$ costs $\Theta(n^2 d + n\,d^2)$ with the materialized cache and $\Theta(n^2 d^2 + n^3 d)$ without it. The claim does not price reconstruction from a compressed latent.
 </Theorem>
 
 <Theorem kind="proof">
-**Cached step.** The keys and values for positions $1,\dots,t-1$ are already stored. The step computes the new query, keys, values, and output projection ($\Theta(d^2)$, independent of $t$ and absorbed below). Across the $h$ query heads, the new query then forms $t$ key inner products of width $d_k$ and $t$-row value combinations of width $d_v$, for
+**Cached step.** By hypothesis, the materialized keys and values for positions $1,\dots,t-1$ are already stored. The step computes the new query, keys, values, and output projection ($\Theta(d^2)$, independent of $t$ and absorbed below). Across the $h$ query heads, the new query then forms $t$ key inner products of width $d_k$ and $t$-row value combinations of width $d_v$, for
 $$
 \Theta\!\bigl(t\,h(d_k+d_v)\bigr)=\Theta(t\,d)
 $$
@@ -123,10 +123,16 @@ $$
 using $\sum_{t=1}^n t=\Theta(n^2)$ and $\sum_{t=1}^n t^2=\Theta(n^3)$. Comparing matching terms, regeneration $t\,d^2$ replaces the cached step's $d^2$, and the full prefix score matrix $t^2d$ replaces the new-query work $td$: the cache removes a factor $\Theta(t)$ from either source of repeated work at step $t$. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="pattern" label="Why cache">Per step: $O(t\,d^2 + t^2 d)\to O(t\,d + d^2)$. Over a generation: $O(n^2 d^2 + n^3 d)\to O(n^2 d + n\,d^2)$. The cache spends $O(nd)$ memory per layer to buy back one factor of $n$ in time.</MarginNote>
+<MarginNote variant="pattern" label="Why materialize">Per step: $O(t\,d^2 + t^2 d)\to O(t\,d + d^2)$. Over a generation: $O(n^2 d^2 + n^3 d)\to O(n^2 d + n\,d^2)$. A materialized cache spends $O(nd)$ memory per layer to buy back one factor of $n$ in time.</MarginNote>
 
 <Theorem kind="remark" name="The cache is the byte budget, and paging packs it" id="rem-kv-bytes">
 By <XRef id="prop-kv-memory" /> the cache grows linearly in context length and in batch size, so at long context (or large batch) it overtakes the weight stream as the dominant term in $\beta$ of <XRef id="def-cost-eq" />, making it the binding read each decode step. Two qualitative engineering moves follow. *Paged attention* stores the cache in fixed-size blocks with a per-request page table instead of one contiguous reservation per request, so internal fragmentation is bounded by one block rather than by the maximum context length; this raises the number of concurrent requests that fit, which raises batch and thus arithmetic intensity, but it does not change the per-request decode time. *KV quantization* lowers $b$ (e.g. INT8 halves it), shrinking $M_{\text{KV}}$ proportionally at some cost in decode quality. Both are tunings of terms in the same equation. A third response changes the term's *shape* rather than its constants: the $nb\sum_\ell d_{\text{cache},\ell}$ bytes (or $Nnbd_{\text{cache}}$ for equal-width layers) are the price of a **lossless** prefix memory, and the recurrent route replaces them with a fixed $O(d_s d)$ state per layer — constant in $n$ — at the cost quantified by the recall bound <XRef id="prop-state-recall" /> and priced for hybrid stacks by <XRef id="prop-decode-state" />.
+</Theorem>
+
+<Theorem kind="remark" name="KV selection is approximate relative to dense attention" id="rem-kv-selection-exactness">
+<XRef id="prop-prefix-reuse" /> proves that settled prefix state may be reused; it does not say that arbitrary settled entries may be omitted while preserving the full dense-attention output. A two-entry counterexample is enough: with equal logits and scalar values $0$ and $2$, dense attention returns $(0+2)/2=1$, while retaining only the first entry and renormalizing returns $0$. Strict selection can therefore change the result even when every retained row is perfectly cached.
+
+Production methods choose the approximation differently. **StreamingLLM** keeps initial attention-sink tokens plus a rolling window of recent tokens <Cite key="xiao2023streamingllm" />. **H2O** combines recent tokens with historically important heavy hitters <Cite key="zhang2023h2o" />. **SnapKV** selects clustered prompt positions separately for each head before generation <Cite key="li2024snapkv" />. **Quest** keeps the full resident cache but loads query-conditioned top-$k$ pages for the current attention computation <Cite key="tang2024quest" />. All four are approximate relative to reading the full dense prefix: StreamingLLM, H2O, and SnapKV reduce both resident cache and read traffic, whereas Quest primarily reduces read traffic. They do not invalidate causal prefix consistency; they give up its full-dense-output consequence by deleting or skipping rows.
 </Theorem>
 
 ## Quantization
@@ -348,11 +354,11 @@ Standard MHA has $d_{\text{cache}}=hd_k+hd_v=2d=16{,}384$. Thus $M_{\text{KV}}=N
 
 </SolutionBox>
 
-**Exercise 15.3 (Prove).** Using <XRef id="prop-decode-cost" />, derive the full per-layer generation costs $\Theta(n^2d+nd^2)$ with a KV-cache and $\Theta(n^2d^2+n^3d)$ without one, naming the two summation identities. Under what relation between $n$ and $d$ do these simplify to $\Theta(n^2d)$ and $\Theta(n^3d)$?
+**Exercise 15.3 (Prove).** Using <XRef id="prop-decode-cost" />, derive the full per-layer generation costs $\Theta(n^2d+nd^2)$ with a materialized-head KV-cache and $\Theta(n^2d^2+n^3d)$ without one, naming the two summation identities. Under what relation between $n$ and $d$ do these simplify to $\Theta(n^2d)$ and $\Theta(n^3d)$?
 
 <SolutionBox>
 
-A cached step $t$ does $\Theta(td+d^2)$ work: one new query attends to $t$ keys/values and the new token is projected. An uncached step does $\Theta(td^2+t^2d)$: it regenerates all prefix K/V projections and recomputes the prefix score matrix. Using $\sum_{t=1}^nt=\Theta(n^2)$ and $\sum_{t=1}^nt^2=\Theta(n^3)$ gives
+A materialized-cache step $t$ does $\Theta(td+d^2)$ work: one new query attends to $t$ stored keys/values and the new token is projected. An uncached step does $\Theta(td^2+t^2d)$: it regenerates all prefix K/V projections and recomputes the prefix score matrix. Using $\sum_{t=1}^nt=\Theta(n^2)$ and $\sum_{t=1}^nt^2=\Theta(n^3)$ gives
 $$
 \Theta(n^2d+nd^2)
 \quad\text{and}\quad
