@@ -1,6 +1,6 @@
 # Dossier→guide integration (Track A) — 6-part restructure, review-hardened
 
-**Status:** execution in progress; A0–A5 complete, A6 sparse-attention authoring next. Supersedes
+**Status:** execution in progress; A0–A6 complete, A7 apparatus and narrative repairs next. Supersedes
 `docs/notes/sparse-attention-chapter-ideas_2026-07-09.md`. Companion: `topic-gap-expansion_2026-07-10.md` (Track B).
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
@@ -28,8 +28,8 @@ numbers", with the dossier as the verbatim-anchored provenance layer.
 
 Part titles live only as prose in `README.md` (frontmatter carries the numeric `part:`). **IDs are semantic /
 chapter-free** (precedent: ch00 `def-softmax`, all `fig-*` — they pass `validate`), so this and future restructures do
-not renumber IDs. Final display numbers deliberately reserve 08/11/13 for Track B and 17 for Track A; A5 filled 16
-without changing any existing number-free slug.
+not renumber IDs. Final display numbers deliberately reserve 08/11/13 for Track B; A5–A6 filled 16–17 without
+changing any existing number-free slug.
 
 - **P1 Foundations:** 00 Notation, 01 Input Representations (+ BPE section — see Track B)
 - **P2 Recurrence & Linear State:** 02 Recurrent Networks, 03 Linear Recurrences & SSM
@@ -38,7 +38,7 @@ without changing any existing number-free slug.
   **12 Encoder Readouts, Contrastive Alignment, and Detection** (moved from old P4; coda).
 - **P4 Efficient & Conditional Computation:** **13 reserved — Scaling Laws**, 14 Training Optimizations,
   15 Inference Optimizations, **16 Mixture-of-Experts**
-- **P5 Sub-Quadratic & Selective Sequence Models:** **17 reserved — Sparse & Sub-Quadratic Attention**,
+- **P5 Sub-Quadratic & Selective Sequence Models:** **17 Sparse & Sub-Quadratic Attention**,
   18 Selective State Spaces (formerly ch13), 19 Modern Recurrent & Hybrid (formerly ch14)
 - **P6 Multimodal Models:** 20 Connectors, 21 Discrete Visual Tokenization (+ VQ-VAE on-ramp),
   22 Unified Multimodal, 23 Multimodal Evaluation
@@ -66,7 +66,16 @@ enc-dec taxonomy. **Gaps to resolve before/while authoring:**
    linear-assignment balancing to training versus greedy, potentially unbalanced inference. These are tagged `top-up`;
    they are not mislabeled with the dossier's abstract-only evidence IDs.
 4. **[LOW] Synthesis-only** (NSA sliding-window branch + GQA-alignment, entmax "still $O(n^2)$" caveat, $\Theta(Lw)$
-   receptive field): frame as derivations/standard results, not footnoted claims.
+   receptive field): **resolved in A6** by deriving edge counts and the exact capped receptive field. Primary-body
+   top-ups cover NSA §3.2 Equations 5–6 and §3.3 (branch/support definitions); the resulting work proposition is tagged
+   `derive`, and explicitly shows fixed compression stride remains $\Theta(n^2)$ rather than overclaiming a
+   sub-quadratic asymptotic. Sparsemax §2 and the BigBird/Yun theorem bodies supply the other formal top-ups.
+   Additional body `top-up` records cover Child §§4.2–4.3, Longformer §3.1, and BigBird §2 for the classic graph
+   patterns; Reformer §2 and Routing Transformer §4.1 for content routing; Adaptively Sparse Transformers §§2–3,
+   Equations 4–8 for the entmax endpoints; MoBA §2.2, Equations 2–6 for block routing; and DeepSeek-V3.2 §2.1,
+   Equations 1–2 for the lightning indexer, fine-grained top-$k$, and MLA substrate, plus §2.3 for the main-attention
+   and indexer asymptotics. These primary-body facts are tagged `top-up`, not assigned the dossiers' abstract-only
+   evidence IDs.
 
 ## Extend — two new chapters
 
@@ -155,8 +164,9 @@ known correctness, and existing-chapter enrichment:
 5. **A4 existing-chapter enrichment (complete)** — MLA, approximate KV selection/eviction, and ch02/ch09 citations.
 6. **A5 MoE chapter (complete)** — authored and extracted from Inference Optimizations atomically; primary-paper
    top-ups close the capacity/balance/z-loss/all-to-all evidence gate.
-7. **A6 Sparse & Sub-Quadratic Attention chapter (next)** — relocate sliding-window material atomically.
-8. **A7 apparatus + completeness + narrative repairs** — native glossary, local notation overrides, web+print quick
+7. **A6 Sparse & Sub-Quadratic Attention chapter (complete)** — authored with honest edge/support accounting and
+   relocated sliding-window material atomically from the hybrid chapter.
+8. **A7 apparatus + completeness + narrative repairs (next)** — native glossary, local notation overrides, web+print quick
    reference/glossary, decoding, RMSNorm, VQ-VAE onramp, narrative sweep, and plan closeout.
 Each independently reviewable/mergeable. **Per-PR gate:** `npm run validate` + `npm run build` + 0 KaTeX errors + 0
 duplicate labels + (content PRs) the **bibliography gate** — every new `<Cite key>` resolves 1:1 through

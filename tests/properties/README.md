@@ -5,13 +5,14 @@ cost formulas. Each test file re-derives a proposition's arithmetic independentl
 and asserts the closed forms, limiting cases, and cross-chapter consistencies the
 prose claims. A failing test means the prose and the math have drifted apart.
 
-**Current scope:** four quantitative families: the roofline cost-per-token
+**Current scope:** five quantitative families: the roofline cost-per-token
 equation; KV-cache width and memory (including unequal key/value widths, latent
 cached-state accounting, and a dense-exactness counterexample for strict cache
 selection); MoE routing gradients, balancing, per-expert capacity, routing
 direction, and the three-quantity accounting of residency/activated
-compute/ideal traffic; and SSD chunk-cost balance. The proof audit later extends
-this suite; it does not recreate it.
+compute/ideal traffic; sparse-attention edge counts, receptive fields,
+normalization support, and native branch budgets; and SSD chunk-cost balance.
+The proof audit later extends this suite; it does not recreate it.
 
 **Design.** Tests are self-contained executable assurance specifications, not a
 parser for MDX mathematics. `tests/properties/coverage.json` maps each guarded
