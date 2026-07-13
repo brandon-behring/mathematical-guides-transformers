@@ -1,0 +1,426 @@
+---
+/**
+ * Static-first explorer for the classic weighted BPE dictionary.
+ *
+ * Every trace state is rendered in the HTML. A small local enhancement turns
+ * the trace into a Previous/Next view, while no-JS and print keep all states.
+ */
+import {
+  CLASSIC_BPE_DICTIONARY,
+  END_OF_WORD,
+  learnBpe,
+} from '../lib/bpe.mjs';
+
+interface Props {
+  mergeCount?: number;
+}
+
+const { mergeCount = 8 } = Astro.props;
+const { trace } = learnBpe(CLASSIC_BPE_DICTIONARY, mergeCount);
+const finalStep = trace.length - 1;
+
+const spokenToken = (token: string) => (
+  token.replaceAll(END_OF_WORD, ' end-of-word marker').trim()
+);
+
+const steps = trace.map((step) => {
+  const pair = step.pair
+    ? `${step.pair[0]} + ${step.pair[1]} → ${step.pair.join('')}`
+    : 'Initial character segmentation';
+  const liveLabel = step.pair
+    ? `Step ${step.step} of ${finalStep}: merged ${spokenToken(step.pair[0])} plus ${spokenToken(step.pair[1])}. Pair score c ${step.step - 1} is ${step.count}; frequency-weighted replacements r ${step.step - 1} is ${step.appliedCount}. N ${step.step} is ${step.tokenCount}; V ${step.step} is ${step.vocabularySize}; fixed-width budget is ${step.bitBudget} bits.`
+    : `Step 0 of ${finalStep}: initial character segmentation. N 0 is ${step.tokenCount}; V 0 is ${step.vocabularySize}; fixed-width budget is ${step.bitBudget} bits.`;
+  return { ...step, pairLabel: pair, liveLabel };
+});
+---
+
+<section class="bpe-explorer" data-bpe-explorer aria-label="Deterministic BPE merge explorer">
+  <header class="bpe-explorer__header">
+    <p class="bpe-explorer__eyebrow">Deterministic worked trace</p>
+    <h3>Character-pair BPE merges</h3>
+    <p>
+      Pair counts include word frequency. Equal counts use lexicographic order
+      on the pair, and each chosen pair is replaced non-overlappingly from left
+      to right.
+    </p>
+    <p class="bpe-explorer__dictionary" aria-label="Weighted training dictionary">
+      {CLASSIC_BPE_DICTIONARY.map(({ word, count }) => (
+        <span><code>{word}</code> × {count}</span>
+      ))}
+    </p>
+  </header>
+
+  <div class="bpe-explorer__controls" data-bpe-controls hidden>
+    <div class="bpe-explorer__buttons" role="group" aria-label="BPE merge trace navigation">
+      <button type="button" data-bpe-previous>Previous</button>
+      <button type="button" data-bpe-next>Next</button>
+    </div>
+    <p class="bpe-explorer__live" data-bpe-live role="status" aria-live="polite" aria-atomic="true">
+      All {trace.length} trace states are shown below.
+    </p>
+  </div>
+
+  <ol class="bpe-explorer__trace">
+    {steps.map((step) => (
+      <li
+        class="bpe-explorer__step"
+        data-bpe-step
+        data-live-label={step.liveLabel}
+      >
+        <article>
+          <header class="bpe-explorer__step-header">
+            <div>
+              <p class="bpe-explorer__step-number">State <var>t</var> = {step.step}</p>
+              <h4>{step.pair ? `After merge ${step.step}` : 'Before any merge'}</h4>
+            </div>
+            <p class="bpe-explorer__pair">
+              <span>{step.pair ? 'Selected pair' : 'Starting state'}</span>
+              <code>{step.pairLabel}</code>
+              {step.pair && (
+                <small>
+                  score <var>c</var><sub>{step.step - 1}</sub> = {step.count};
+                  weighted replacements <var>r</var><sub>{step.step - 1}</sub> = {step.appliedCount}
+                </small>
+              )}
+            </p>
+          </header>
+
+          <dl class="bpe-explorer__metrics">
+            <div>
+              <dt><var>N</var><sub>{step.step}</sub></dt>
+              <dd>{step.tokenCount} symbol occurrences</dd>
+            </div>
+            <div>
+              <dt><var>V</var><sub>{step.step}</sub></dt>
+              <dd>{step.vocabularySize} symbols</dd>
+            </div>
+            <div>
+              <dt>Fixed width</dt>
+              <dd>⌈log₂ <var>V</var><sub>{step.step}</sub>⌉ = {step.bitsPerToken} bits/symbol</dd>
+            </div>
+            <div>
+              <dt>Bit budget</dt>
+              <dd>{step.tokenCount} × {step.bitsPerToken} = {step.bitBudget} bits</dd>
+            </div>
+          </dl>
+
+          <table class="bpe-explorer__segmentations">
+            <caption>Weighted corpus segmentation at state {step.step}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Word</th>
+                <th scope="col">Frequency</th>
+                <th scope="col">Segmentation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {step.vocabulary.map(({ word, count, tokens }) => (
+                <tr>
+                  <th scope="row"><code>{word}</code></th>
+                  <td>× {count}</td>
+                  <td><code>{tokens.join(' · ')}</code></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </article>
+      </li>
+    ))}
+  </ol>
+
+  <p class="bpe-explorer__note">
+    The budget is an accounting comparison, not an entropy code: every current
+    symbol is charged the same ⌈log₂ <var>V</var><sub>t</sub>⌉-bit width.
+  </p>
+
+  <script is:inline>
+    (() => {
+      const root = document.currentScript?.closest('[data-bpe-explorer]');
+      if (!root) return;
+
+      const steps = [...root.querySelectorAll('[data-bpe-step]')];
+      const controls = root.querySelector('[data-bpe-controls]');
+      const previous = root.querySelector('[data-bpe-previous]');
+      const next = root.querySelector('[data-bpe-next]');
+      const live = root.querySelector('[data-bpe-live]');
+      if (!steps.length || !controls || !previous || !next || !live) return;
+
+      let current = 0;
+      root.dataset.enhanced = 'true';
+      controls.hidden = false;
+
+      const show = (index) => {
+        current = Math.max(0, Math.min(index, steps.length - 1));
+        steps.forEach((step, stepIndex) => {
+          if (stepIndex === current) {
+            step.dataset.active = 'true';
+          } else {
+            delete step.dataset.active;
+          }
+        });
+        previous.disabled = current === 0;
+        next.disabled = current === steps.length - 1;
+        live.textContent = steps[current].dataset.liveLabel || `Showing state ${current}.`;
+      };
+
+      previous.addEventListener('click', () => show(current - 1));
+      next.addEventListener('click', () => show(current + 1));
+      show(0);
+    })();
+  </script>
+</section>
+
+<style>
+  .bpe-explorer {
+    margin-block: 1.5rem;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--color-bg-subtle, #f7f7fb);
+    overflow: hidden;
+  }
+
+  .bpe-explorer__header,
+  .bpe-explorer__controls,
+  .bpe-explorer__note {
+    padding-inline: clamp(1rem, 3vw, 1.5rem);
+  }
+
+  .bpe-explorer__header {
+    padding-block: 1.25rem 1rem;
+    border-bottom: 1px solid var(--color-border, #d1d5db);
+  }
+
+  .bpe-explorer__header h3,
+  .bpe-explorer__header p,
+  .bpe-explorer__step h4,
+  .bpe-explorer__step p,
+  .bpe-explorer__note {
+    margin-block-start: 0;
+  }
+
+  .bpe-explorer__eyebrow,
+  .bpe-explorer__step-number,
+  .bpe-explorer__pair span {
+    color: var(--color-text-muted, #5f6570);
+    font-family: var(--font-sans, sans-serif);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .bpe-explorer__dictionary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.9rem;
+    margin-block-end: 0;
+    font-family: var(--font-sans, sans-serif);
+    font-size: 0.9rem;
+  }
+
+  .bpe-explorer__dictionary span {
+    white-space: nowrap;
+  }
+
+  .bpe-explorer__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    padding-block: 0.75rem;
+    border-bottom: 1px solid var(--color-border, #d1d5db);
+    background: var(--color-bg, #fff);
+  }
+
+  .bpe-explorer__controls[hidden] {
+    display: none;
+  }
+
+  .bpe-explorer__buttons {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .bpe-explorer__buttons button {
+    min-width: 6.5rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--color-border-strong, #737983);
+    border-radius: var(--radius-sm, 0.25rem);
+    color: var(--color-text, #16181d);
+    background: var(--color-bg, #fff);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .bpe-explorer__buttons button:focus-visible {
+    outline: 0.2rem solid var(--color-accent, #5b4cc4);
+    outline-offset: 0.15rem;
+  }
+
+  .bpe-explorer__buttons button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .bpe-explorer__live {
+    margin: 0;
+    max-width: 42rem;
+    color: var(--color-text-muted, #5f6570);
+    font-family: var(--font-sans, sans-serif);
+    font-size: 0.85rem;
+  }
+
+  .bpe-explorer__trace {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .bpe-explorer[data-enhanced='true'] .bpe-explorer__step:not([data-active='true']) {
+    display: none;
+  }
+
+  .bpe-explorer__step {
+    padding: clamp(1rem, 3vw, 1.5rem);
+    border-bottom: 1px solid var(--color-border, #d1d5db);
+    background: var(--color-bg, #fff);
+    break-inside: avoid;
+  }
+
+  .bpe-explorer__step-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+  }
+
+  .bpe-explorer__step-number {
+    margin-block-end: 0.15rem;
+  }
+
+  .bpe-explorer__step h4 {
+    margin-block-end: 0.9rem;
+  }
+
+  .bpe-explorer__pair {
+    display: grid;
+    justify-items: end;
+    gap: 0.1rem;
+    margin-block-end: 0.8rem;
+    text-align: end;
+  }
+
+  .bpe-explorer__pair code {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .bpe-explorer__pair small {
+    color: var(--color-text-muted, #5f6570);
+  }
+
+  .bpe-explorer__metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.6rem;
+    margin: 0 0 1rem;
+  }
+
+  .bpe-explorer__metrics div {
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--radius-sm, 0.25rem);
+    background: var(--color-bg-subtle, #f7f7fb);
+  }
+
+  .bpe-explorer__metrics dt {
+    font-family: var(--font-sans, sans-serif);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .bpe-explorer__metrics dd {
+    margin: 0.15rem 0 0;
+    font-family: var(--font-sans, sans-serif);
+    font-size: 0.85rem;
+  }
+
+  .bpe-explorer__segmentations {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-sans, sans-serif);
+    font-size: 0.86rem;
+  }
+
+  .bpe-explorer__segmentations caption {
+    padding-block-end: 0.4rem;
+    text-align: start;
+    font-weight: 700;
+  }
+
+  .bpe-explorer__segmentations th,
+  .bpe-explorer__segmentations td {
+    padding: 0.4rem 0.5rem;
+    border-block-end: 1px solid var(--color-border, #d1d5db);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  .bpe-explorer__segmentations td:nth-child(2) {
+    white-space: nowrap;
+  }
+
+  .bpe-explorer__segmentations th[scope='row'] code {
+    white-space: nowrap;
+  }
+
+  .bpe-explorer__segmentations td:last-child code {
+    overflow-wrap: anywhere;
+  }
+
+  .bpe-explorer__note {
+    margin-block-end: 0;
+    padding-block: 0.8rem 1rem;
+    color: var(--color-text-muted, #5f6570);
+    font-size: 0.86rem;
+  }
+
+  @media (max-width: 36rem) {
+    .bpe-explorer__pair {
+      justify-items: start;
+      text-align: start;
+    }
+
+    .bpe-explorer__segmentations th,
+    .bpe-explorer__segmentations td {
+      padding-inline: 0.3rem;
+    }
+  }
+
+  @media print {
+    .bpe-explorer {
+      border-color: #777;
+      background: transparent;
+      overflow: visible;
+    }
+
+    .bpe-explorer__controls {
+      display: none !important;
+    }
+
+    .bpe-explorer[data-enhanced='true'] .bpe-explorer__step,
+    .bpe-explorer__step {
+      display: list-item !important;
+      border-color: #999;
+      background: transparent;
+    }
+
+    .bpe-explorer__metrics div,
+    .bpe-explorer__header {
+      background: transparent;
+      border-color: #999;
+    }
+  }
+</style>

@@ -3,15 +3,17 @@ title: "Input Representations"
 slug: input-representations
 chapter: 1
 part: 1
-description: "How any modality becomes a sequence of continuous vectors carrying semantic identity and position: the modality-agnostic embedding interface (token, image-patch, and codebook embeddings), sinusoidal and factorized 2D positional encodings, and rotary embeddings (RoPE) with their exact relative-position property."
-last_verified: 2026-06-28
+description: "How normalized text becomes a boundary-preserving sequence of subword indices through a reversible base representation and BPE merge learning, then how any modality becomes continuous vectors carrying semantic identity and position: the embedding interface, sinusoidal and factorized 2D positional encodings, and RoPE with its exact relative-position property."
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation]
-notation_introduced: ['\mathbf E', '\Emb', '\mathcal U', '\mathbf W_{\text{patch}}', '\mathbf C', '\operatorname{PE}', '\operatorname{PE}_{\text{2D}}', '(a,b)', '\omega_i', '\mathbf R(\theta)', '\mathbf\Theta(t)', '\theta_i']
-theorems: ['def-token-embedding', 'def-embedding-interface', 'def-patch-embedding', 'def-codebook-embedding', 'thm-patch-conv', 'def-sinusoidal-pe', 'thm-pe-rotation', 'thm-pe-collision', 'def-pe-2d', 'thm-pe-2d-shift', 'def-rotation-2d', 'def-rope', 'thm-rope-relative', 'rem-rope-2d', 'rem-modality-blind']
+notation_introduced: ['\mathbf E', '\tau', '\operatorname{detok}', '\mathcal A', '\mathcal S', '\mathcal D', '\mathcal P_t', 'c_t(a,b)', 'M', 'V_t', 'N_t', 'q_t(w)', 'r_t', 'B_t', '\Emb', '\mathcal U', '\mathbf W_{\text{patch}}', '\mathbf C', '\operatorname{PE}', '\operatorname{PE}_{\text{2D}}', '(a,b)', '\omega_i', '\mathbf R(\theta)', '\mathbf\Theta(t)', '\theta_i']
+theorems: ['def-token-embedding', 'def-text-tokenizer', 'def-bpe', 'prop-bpe-merge-accounting', 'rem-subword-granularity', 'def-embedding-interface', 'def-patch-embedding', 'def-codebook-embedding', 'thm-patch-conv', 'def-sinusoidal-pe', 'thm-pe-rotation', 'thm-pe-collision', 'def-pe-2d', 'thm-pe-2d-shift', 'def-rotation-2d', 'def-rope', 'thm-rope-relative', 'rem-rope-2d', 'rem-modality-blind']
 los:
   - id: lo-token-and-positional-embeddings
     statement: "Define the token embedding map and the positional encoding functions, sinusoidal and rotary."
+  - id: lo-bpe-tokenization
+    statement: "Specify a reversible normalized-text tokenizer, construct its byte-pair merge stage, trace the frequency-weighted merge rule, and derive its exact vocabulary-size, sequence-length, and fixed-width ID accounting."
   - id: lo-sinusoidal-position-properties
     statement: "Derive a guaranteed collision-free window for sinusoidal positional encodings and prove that a positional shift is a fixed linear transformation."
   - id: lo-rope-relative-position
@@ -32,10 +34,11 @@ import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
+import BpeMergeExplorer from '../../components/BpeMergeExplorer.astro';
 
 # Input Representations
 
-**Where we are.** The notation chapter fixed our toolkit — softmax, cross-entropy, and the convex-combination property of row-stochastic matrices. Here we build the *inputs* the transformer consumes. A sequence of discrete tokens must become continuous vectors carrying two things at once: *semantic identity* (which token) and *positional information* (where in the sequence). The second is not optional. Attention, defined in the Attention chapter, is permutation-equivariant — permute the input rows and the output rows permute identically — so without injected position the model cannot tell "dog bites man" from "man bites dog." This chapter constructs identity first as a token lookup, then generalizes it to a single **embedding interface** that carries any modality — text tokens, image patches, discrete codes — into the same space $\R^{n\times d}$. It then builds position by two routes, the *additive* sinusoidal encoding and the *multiplicative* rotary encoding (RoPE), and extends each to the two-dimensional grids that images need, proving the relative-position property throughout.
+**Where we are.** The notation chapter fixed our toolkit — softmax, cross-entropy, and the convex-combination property of row-stochastic matrices. Here we build the *inputs* the transformer consumes. Normalized text first has to become a finite sequence of indices; we separate the reversible base representation that preserves its boundaries from BPE's learned merge stage. Those discrete indices must then become continuous vectors carrying two things at once: *semantic identity* (which token) and *positional information* (where in the sequence). The second is not optional. Attention, defined in the Attention chapter, is permutation-equivariant — permute the input rows and the output rows permute identically — so without injected position the model cannot tell "dog bites man" from "man bites dog." We construct identity as a token lookup, generalize it to a single **embedding interface** that carries any modality — text tokens, image patches, discrete codes — into the same space $\R^{n\times d}$, then build position by the *additive* sinusoidal and *multiplicative* rotary (RoPE) routes. Each position construction extends to image grids, and we prove its relative-position property.
 
 ## Token embeddings
 
@@ -55,9 +58,113 @@ the $x_t$-th row of $\mathbf E$. Equivalently, $\mathbf e_t = \mathbf e_{x_t}^\t
 
 <MarginNote variant="pattern" label="Lookup = matrix product">A one-hot row times $\mathbf E$ selects a row of $\mathbf E$. The embedding is a linear lookup — no nonlinearity is involved.</MarginNote>
 
-The embedding carries identity but no order: a permutation of the tokens permutes the rows of $\hat{\mathbf X}$ and nothing else. Position must be supplied separately, which is the subject of the later sections. First we generalize the lookup itself.
+The embedding carries identity but no order: a permutation of the tokens permutes the rows of $\hat{\mathbf X}$ and nothing else. Position must be supplied separately, which is the subject of the later sections. The definition also begins *after* the raw text has somehow become indices. Before generalizing the lookup, we construct that upstream map.
 
 <MarginNote variant="cross-ref" label="Who needs position">Injected position is attention's need, not every model's: a recurrence carries order in the *arrival sequence* of its state updates (<XRef id="def-rnn" />), while attention processes a set (<XRef id="def-attention" />) — which is exactly why positional encodings exist.</MarginNote>
+
+## From raw text to token indices: BPE
+
+A word-level vocabulary makes common text short, but any finite word list eventually meets a word it does not contain. A character vocabulary avoids that failure for every covered character, at the price of much longer sequences. **Subword tokenization** places a learned, finite vocabulary between those endpoints. The model still sees only the indices of <XRef id="def-vocabulary" />; the tokenizer determines which substrings receive those indices and how many positions a string occupies.
+
+<Theorem kind="definition" name="Reversible text tokenizer" id="def-text-tokenizer">
+Let $\mathcal A$ be a finite **base alphabet**, including whatever boundary symbols are needed to preserve spacing, and let $\mathcal S$ be the set of normalized text strings expressible over $\mathcal A$. A **reversible text tokenizer** consists of a finite piece vocabulary $\mathcal P$, an encoder
+$$
+\tau:\mathcal S\to\mathcal P^{*},
+$$
+and a detokenizer $\operatorname{detok}:\mathcal P^{*}\to\mathcal S$ such that
+$$
+\operatorname{detok}(\tau(s))=s \qquad\text{for every }s\in\mathcal S.
+$$
+Each piece receives one token index in $\mathcal V$; identifying a piece with its assigned index turns $\tau(s)$ into the token sequence consumed by <XRef id="def-token-embedding" />. The equality is a design contract on the **normalized** string $s$, and it requires a reversible base representation that retains every boundary or whitespace distinction in $s$. A lossy normalizer or pretokenizer sits outside the inverse: later BPE merges cannot restore information that the base representation discarded.
+</Theorem>
+
+<MarginNote variant="pattern" label="Two maps, two jobs">$\tau$ decides the discrete sequence; $\Emb$ maps each resulting index into $\R^d$. Tokenization changes $n$ and $|\mathcal V|$ before the transformer sees either.</MarginNote>
+
+The original byte-pair encoding compression algorithm merges bytes. Its text adaptation instead begins from characters (or already-formed character sequences) and repeatedly promotes a frequent adjacent pair to one new symbol. We state the word-boundary construction of Sennrich, Haddow, and Birch; byte-based tokenizers are a later choice of base alphabet, not what the name alone guarantees.
+
+<Theorem kind="definition" name="Frequency-weighted byte-pair encoding" id="def-bpe">
+Let $\mathcal D=\{(w,f_w)\}$ be the word types in a canonically pretokenized, normalized training corpus with positive integer frequencies $f_w$. Append a distinguished end-of-word symbol to each word, and let
+$$
+s_0(w)=(a_1,\dots,a_{|w|},\mathtt{EOW})
+$$
+be its initial character segmentation. At merge round $t$, with current segmentation $s_t(w)=(s_{t,1},\dots,s_{t,|s_t(w)|})$, give an adjacent symbol pair $(a,b)$ the frequency-weighted score
+$$
+c_t(a,b)\defeq
+\sum_{(w,f_w)\in\mathcal D} f_w
+\sum_{j=1}^{|s_t(w)|-1}
+\mathbf 1\!\left\{(s_{t,j},s_{t,j+1})=(a,b)\right\}.
+$$
+Choose a maximizing pair under a fixed deterministic tie rule, introduce a **fresh atomic piece** whose displayed surface form is the concatenation $ab$ and whose ordered children are $(a,b)$, and replace every **non-overlapping** occurrence of $(a,b)$ in every $s_t(w)$ by that new piece, scanning left to right. A pair may include $\mathtt{EOW}$, but counts and replacements remain inside each word sequence and never connect distinct words. Repeating for $M$ rounds produces an ordered merge list and the final piece vocabulary $\mathcal P_M$. To tokenize a new word, start from its characters plus $\mathtt{EOW}$ and apply those learned merges in order; the surviving pieces are mapped to token indices. This stage preserves the canonically pretokenized word-and-boundary stream; it does not by itself remember arbitrary raw whitespace that pretokenization removed. This character-pair adaptation, frequency-weighted word dictionary, end-of-word marker, and ordered test-time merge procedure follow <Cite key="sennrich2016subword" />.
+</Theorem>
+
+<MarginNote variant="warning" label="Score is not always decrement">$c_t(a,b)$ counts adjacent positions, which may overlap. In $a,a,a$, the pair $(a,a)$ scores $2$ but only one non-overlapping replacement is possible. The accounting below therefore uses the number actually replaced.</MarginNote>
+
+<Figure
+  src="/figures/bpe-merge.svg"
+  caption="One BPE merge spends one new vocabulary entry to buy fewer sequence positions. If the chosen pair is actually replaced r_t times in the frequency-weighted corpus, the token count falls from N_t to N_t-r_t while the piece vocabulary grows from V_t to V_t+1. Rendered from TikZ via the figures pipeline."
+  id="fig-bpe-merge"
+  width="100%"
+  alt="A BPE pair merge trading one additional vocabulary entry for fewer sequence positions."
+  desc="A weighted symbol sequence enters a merge stage that combines one selected adjacent pair. The output equations show vocabulary size increasing by one and token count decreasing by the number of non-overlapping replacements."
+/>
+
+<Theorem kind="proposition" name="BPE merge accounting and base-stream invariance" id="prop-bpe-merge-accounting">
+Let $\mathcal P_t$ be the piece vocabulary after $t$ merges, $V_t\defeq|\mathcal P_t|\ge2$, and
+$$
+N_t\defeq\sum_{(w,f_w)\in\mathcal D} f_w|s_t(w)|
+$$
+the number of symbol positions in the frequency-weighted training corpus. Let $q_t(w)$ be the number of non-overlapping replacements made in one copy of $s_t(w)$, and define the **frequency-weighted replacement count**
+$$
+r_t\defeq\sum_{(w,f_w)\in\mathcal D}f_wq_t(w).
+$$
+Then
+$$
+N_{t+1}=N_t-r_t,
+\qquad
+V_{t+1}=V_t+1.
+$$
+Consequently $V_M=V_0+M$ and $N_M=N_0-\sum_{t=0}^{M-1}r_t$. After relabeling the pieces by $0,\dots,V_t-1$, the minimum packed fixed-width binary representation of the corpus's token IDs uses exactly
+$$
+B_t\defeq N_t\left\lceil\log_2 V_t\right\rceil \quad\text{bits}.
+$$
+The merge reduces this ID budget exactly when
+$$
+(N_t-r_t)\left\lceil\log_2(V_t+1)\right\rceil
+<N_t\left\lceil\log_2V_t\right\rceil;
+$$
+shortening the sequence alone does not guarantee that inequality when the vocabulary crosses a power-of-two width boundary. Finally, expanding every composite piece into its two children leaves the initial base-symbol stream unchanged. BPE therefore preserves any round-trip guarantee already supplied by a reversible base representation (<XRef id="def-text-tokenizer" />); it does not make a lossy normalization or pretokenization reversible.
+</Theorem>
+
+<Theorem kind="proof">
+For each word type, every one of its $q_t(w)$ non-overlapping replacements consumes two adjacent positions and emits one. Weighting that decrement by $f_w$ and summing gives $N_{t+1}=N_t-r_t$. The round adds one fresh atomic piece and removes no existing piece, so $V_{t+1}=V_t+1$. Iterating both recurrences gives the formulas at $M$. The minimum uniform width capable of distinguishing $V_t$ binary IDs is $\lceil\log_2V_t\rceil$ bits; packing $N_t$ such IDs at that width proves the formula for $B_t$ and the displayed comparison. For the final clause, the new piece stores the ordered children it replaced. Expanding it restores $a,b$ at every replacement; induction over the merge rounds restores the initial base-symbol stream exactly. If that stream losslessly represented normalized text, $\operatorname{detok}$ still recovers it; if an upstream step had already erased distinctions, the merge invariant cannot recover them. $\qquad\blacksquare$
+</Theorem>
+
+The next explorer runs those equations on the frequency-weighted toy dictionary from the original BPE presentation. Its lexicographic tie rule makes the demonstration reproducible; the particular way an implementation resolves equal scores is not a mathematical advantage of one tied pair over another.
+
+<BpeMergeExplorer />
+
+<Theorem kind="remark" name="Subwords are a tunable granularity, not a universal winner" id="rem-subword-granularity">
+The three common granularities exchange vocabulary width for sequence length; none dominates on every corpus, language, architecture, and compute budget.
+
+| Unit | Vocabulary and coverage | Sequence consequence |
+|---|---|---|
+| Whole word | A finite shortlist gives one index to each listed word but needs an unknown-token policy for words outside it. | Usually the fewest text positions; the embedding and output tables scale with the large shortlist. |
+| Character or byte | The small base alphabet represents every string it covers; a byte alphabet covers arbitrary encoded bytes. | Usually the most positions, increasing the distances and sequence work the model must handle. |
+| BPE subword | The base alphabet remains available while $M$ learned merges raise the vocabulary to $V_0+M$. | Frequent substrings collapse to fewer positions; rare strings fall back to smaller pieces rather than a whole-word unknown. |
+
+Thus $M$ is a rate knob: more merges can reduce $n$ while widening the embedding table $\mathbf E\in\R^{|\mathcal V|\times d}$ and output softmax. The resulting system must choose a point on that tradeoff; BPE's greedy pair score is not a proof of globally optimal compression, model likelihood, or downstream quality. Sennrich et al. report empirical gains for their specific translation systems <Cite key="sennrich2016subword" />, not a universal ordering over tokenizers.
+
+SentencePiece changes the boundary machinery, not this caution. It can train directly from raw sentences after normalization, treats whitespace as the ordinary escaped symbol `▁` (U+2581), maps pieces directly to IDs, and supports both BPE and a unigram tokenizer. Its exact round-trip statement is
+$$
+\operatorname{Decode}(\operatorname{Encode}(\operatorname{Normalize}(s)))
+=\operatorname{Normalize}(s),
+$$
+not recovery of information discarded by normalization. These design and reversibility claims follow <Cite key="kudo2018sentencepiece" />.
+
+This makes the text/vision symmetry precise. BPE over a reversible base stream remains a reversible code for normalized text, whereas the visual quantizer is generally lossy and has the information-rate ceiling of <XRef id="prop-rate" />. Both end at a finite index sequence, however, so both enter the same lookup of <XRef id="def-embedding-interface" /> and the same transformer core.
+</Theorem>
+
+With the text indices now constructed rather than assumed, we generalize their lookup to every kind of input unit.
 
 ## From tokens to units: the embedding interface
 
@@ -322,7 +429,7 @@ RoPE extends to a grid the same way the sinusoidal scheme did in <XRef id="thm-p
 </Theorem>
 
 <Theorem kind="remark" name="The core cannot tell which modality produced X" id="rem-modality-blind">
-Once $\mathbf X = \hat{\mathbf X} + \mathbf P$ is formed, it is a point in $\R^{n\times d}$ carrying no record of whether it came from token lookup (<XRef id="def-token-embedding" />), patch projection (<XRef id="def-patch-embedding" />), or codebook lookup (<XRef id="def-codebook-embedding" />), nor whether position was injected over a 1D index or a 2D grid. Every result in the chapters that follow — attention and its variance scaling, multi-head factorization, the feed-forward and layer-norm sublayers, residual stacking, the training loss, and the inference optimizations — is stated over $\R^{n\times d}$ and never references a vocabulary, so each transfers verbatim. Modality is **fully discharged at this boundary**; the transformer core is modality-blind. We number the three interfaces where modality may enter, for later chapters to cite: **Interface (1)** the embedding boundary $\Emb$; **Interface (2)** the positional structure $\operatorname{PE}$; **Interface (3)** the read-out and cross-modal coupling (output heads and cross-attention). Everything between them is the shared core. A learned modality-type vector or a $\texttt{[CLS]}$ slot, added to $\hat{\mathbf X}$ exactly as position is, is the only further interface-level marking a multimodal model needs.
+Once $\mathbf X = \hat{\mathbf X} + \mathbf P$ is formed, it is a point in $\R^{n\times d}$ carrying no record of whether it came from a text index constructed by $\tau$ (<XRef id="def-text-tokenizer" />) and embedded by token lookup (<XRef id="def-token-embedding" />), from patch projection (<XRef id="def-patch-embedding" />), or from codebook lookup (<XRef id="def-codebook-embedding" />), nor whether position was injected over a 1D index or a 2D grid. Every result in the chapters that follow — attention and its variance scaling, multi-head factorization, the feed-forward and layer-norm sublayers, residual stacking, the training loss, and the inference optimizations — is stated over $\R^{n\times d}$ and never references a vocabulary, so each transfers verbatim. Upstream parsing or tokenization determines the units; modality is then **fully discharged at the embedding boundary**, and the transformer core is modality-blind. We number the three interfaces where modality may enter, for later chapters to cite: **Interface (1)** the embedding boundary $\Emb$ (including the upstream construction of its units); **Interface (2)** the positional structure $\operatorname{PE}$; **Interface (3)** the read-out and cross-modal coupling (output heads and cross-attention). Everything between them is the shared core. A learned modality-type vector or a $\texttt{[CLS]}$ slot, added to $\hat{\mathbf X}$ exactly as position is, is the only further interface-level marking a multimodal model needs.
 </Theorem>
 
 ## Other positional schemes
@@ -441,5 +548,29 @@ $$
 $$
 \operatorname{PE}_{\text{2D}}(a,b)\cdot\operatorname{PE}_{\text{2D}}(a+k,b+l) = \sum_{i=0}^{d/4-1}\cos(\omega_i k) + \sum_{i=0}^{d/4-1}\cos(\omega_i l). \qquad\blacksquare
 $$
+
+</SolutionBox>
+
+**Exercise 1.9 (Compute).** Use the frequency-weighted dictionary $\{\mathtt{low}:5,\ \mathtt{lower}:2,\ \mathtt{newest}:6,\ \mathtt{widest}:3\}$, with one $\mathtt{EOW}$ symbol appended per word. (a) Verify that the initial character segmentation has $V_0=11$ symbol types and $N_0=95$ weighted positions. (b) The pairs $(\mathtt e,\mathtt s)$, $(\mathtt s,\mathtt t)$, and $(\mathtt t,\mathtt{EOW})$ each score $9$; suppose the tie rule selects $(\mathtt e,\mathtt s)$. Compute $r_0,V_1,N_1,B_0$, and $B_1$. (c) Expand the merged symbol in `newest` and `widest` to verify preservation of the pretokenized word stream.
+
+<SolutionBox>
+
+(a) The initial types are the ten characters $\{\mathtt l,\mathtt o,\mathtt w,\mathtt e,\mathtt r,\mathtt n,\mathtt s,\mathtt t,\mathtt i,\mathtt d\}$ plus $\mathtt{EOW}$, so $V_0=11$. Including the boundary marker, the weighted position count is
+$$
+N_0=5(4)+2(6)+6(7)+3(7)=20+12+42+21=95.
+$$
+(b) `newest` contains $(\mathtt e,\mathtt s)$ once at frequency $6$, and `widest` contains it once at frequency $3$, so the selected occurrences do not overlap and $r_0=6+3=9$. By <XRef id="prop-bpe-merge-accounting" />,
+$$
+V_1=11+1=12,
+\qquad
+N_1=95-9=86.
+$$
+Both vocabularies need four-bit fixed-width IDs, hence
+$$
+B_0=95\lceil\log_2 11\rceil=95\cdot4=380\text{ bits},
+\qquad
+B_1=86\lceil\log_2 12\rceil=86\cdot4=344\text{ bits}.
+$$
+(c) After the merge the relevant segmentations contain the composite $\mathtt{es}$: $\mathtt{n\ e\ w\ es\ t\ EOW}$ and $\mathtt{w\ i\ d\ es\ t\ EOW}$. Expanding $\mathtt{es}\mapsto\mathtt e\,\mathtt s$ restores both original character-and-boundary streams exactly. Thus BPE preserves the pretokenized words. Preserving normalized spacing additionally requires a whitespace-aware base representation such as SentencePiece's; distinctions erased by normalization remain unrecoverable. $\qquad\blacksquare$
 
 </SolutionBox>

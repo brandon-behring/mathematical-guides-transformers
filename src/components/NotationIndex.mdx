@@ -34,6 +34,10 @@ import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 | $\alpha$ | entmax family parameter ($1$ = softmax, $2$ = sparsemax) | Sparse & Sub-Quadratic Attention |
 | $\boldsymbol\alpha_t$ | cumulative coordinatewise SSM decay | Selective State Spaces |
 | $\alpha_t$ | Gated DeltaNet state-decay gate | Modern Recurrent & Hybrid (<XRef id="cor-gated-deltanet" />) |
+| $\tau(s)$ | reversible tokenizer map from normalized text to token IDs | Input Representations (<XRef id="def-text-tokenizer" />) |
+| $\tau>0$ | temperature that rescales logits or similarities | softmax, contrastive learning, sampling, and zero-shot evaluation (<XRef id="rem-softmax-temperature" />, <XRef id="def-contrastive" />, <XRef id="def-token-decoding" />, <XRef id="def-zeroshot" />) |
+| $\tau_i$ | continuous forgetting timescale of SSM mode $i$ | Linear Recurrences and SSMs (<XRef id="prop-gradient-timescale" />) |
+| $\tau$ | sparsemax simplex threshold | Sparse & Sub-Quadratic Attention (<XRef id="prop-sparsemax-support" />) |
 
 <div className="notation-print-break" aria-hidden="true" />
 

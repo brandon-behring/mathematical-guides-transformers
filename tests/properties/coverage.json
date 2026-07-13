@@ -2,6 +2,11 @@
   "schemaVersion": 1,
   "claims": [
     {
+      "id": "prop-bpe-merge-accounting",
+      "test": "tests/properties/test_bpe.py",
+      "statementSha256": "40df3624d945eb0e86d66f620fd6db71f8d92a54d80865b1e0b63c04a4edba5a"
+    },
+    {
       "id": "def-cost-eq",
       "test": "tests/properties/test_roofline.py",
       "statementSha256": "8c3b545ad276d1af947632491ed0a5672c0938000a00af4e4f8fb6129a6eb1c1"
