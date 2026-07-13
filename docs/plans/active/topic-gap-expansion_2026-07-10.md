@@ -51,8 +51,9 @@ from primaries.** Any genuinely new dossier or top-up uses the same strict-live 
   ch19:206 (attention "solves associative recall") gesture without formalizing.
 - **Scope (the Codex/Gemini-vs-Claude split):** the **theorem-shaped version** only — a constructive associative-lookup
   theorem with a softmax retrieval-error bound; copying/induction as a two-layer construction; one controlled ICL result
-  (e.g. a transformer implementing linear-regression gradient descent). **Keep empirical "induction heads" and
-  ICL-as-implicit-GD framing OUT** (unsettled/learning-theoretic) — cite them as a remark, don't formalize.
+  (e.g. a transformer implementing linear-regression gradient descent). **Keep empirical "induction heads" and broad
+  ICL-as-implicit-GD framing out of the formal theorem spine** (unsettled/learning-theoretic); allow them only as
+  explicitly labeled remarks.
 - **Placement:** chapter in **P3, after attention/composition**. Accepted dossier
   `research_incontext_associative_memory` covers associative memory / Hopfield-attention, induction-head constructions,
   and ICL-as-algorithm results while separating the empirical from the constructive.
@@ -84,7 +85,7 @@ cleared before Track B authoring with these exit criteria:
 - the **ICL theorem scope is frozen to the full constructive trio**: associative lookup + retrieval-error bound,
   explicit copying/induction construction, and one controlled transformer-as-gradient-descent result; empirical
   induction-head and implicit-GD interpretations remain remarks;
-- the **DPO and scaling claims are pinned** to specific `evidence_ledger` ids in their dossiers.
+- the **RLHF, DPO, scaling, and constructive-ICL claims are pinned** to specific `evidence_ledger` ids in their dossiers.
 Authoring B1–B4 begins only from the accepted state recorded below.
 
 ### B0 acceptance record — cleared 2026-07-13
@@ -119,8 +120,9 @@ earlier accepted owner. Per-owner evidence provenance is frozen as follows:
 - **Constructive ICL — `research_incontext_associative_memory`, content commit
   `2edc981fec5322eae4e2370776c3f2201118b995` (merged via `303524b2bc30ae8869b25a10ff88d82cbb9d9cc6`):**
   `ev_incontext_associative_memory_0001` (attention formula grounding the dossier-derived margin/error bound);
-  `ev_incontext_associative_memory_0006` and `ev_incontext_associative_memory_0007` (explicit two-layer induction/copy
-  construction); and `ev_incontext_associative_memory_0010`, `ev_incontext_associative_memory_0011`, and
+  `ev_incontext_associative_memory_0006` (two-layer, single-head, no-FFN approximation of vanilla induction) and
+  `ev_incontext_associative_memory_0007` (sequence-length-independent approximation efficiency); and
+  `ev_incontext_associative_memory_0010`, `ev_incontext_associative_memory_0011`, and
   `ev_incontext_associative_memory_0012` (controlled no-update linear-regression/GD constructions).
   `ev_incontext_associative_memory_0013` and `ev_incontext_associative_memory_0014` are accepted only for the dated
   empirical-induction remark; no broad implicit-GD interpretation enters the theorem spine.
