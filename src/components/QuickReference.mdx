@@ -21,6 +21,8 @@ This pull-out card is a compact lookup, not a second source of truth. The Notati
 |---|---|
 | BPE merge accounting | $N_{t+1}=N_t-r_t$, $V_{t+1}=V_t+1$; minimum packed fixed-width ID budget $B_t=N_t\lceil\log_2 V_t\rceil$ |
 | attention | $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)=\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k}+\mathbf M)\mathbf V$ |
+| associative lookup | if target $t$ leads $m-1$ distractors by $\delta_{\mathrm{ret}}>0$ and $\norm{\mathbf v_i}\le M$, then $\alpha_t\ge[1+(m-1)e^{-\delta_{\mathrm{ret}}}]^{-1}$ and $\norm{\mathbf y-\mathbf v_t}\le 2M(m-1)e^{-\delta_{\mathrm{ret}}}/[1+(m-1)e^{-\delta_{\mathrm{ret}}}]$ |
+| controlled one-step regression (unnormalized linear attention) | $\mathbf x_\star^\top\mathbf w_1=\mathbf x_\star^\top\mathbf w_0-\frac{\eta}{n}\sum_i(\mathbf x_\star^\top\mathbf x_i)(\mathbf x_i^\top\mathbf w_0-y_i)$ |
 | pre-norm residual | $\mathbf y=\mathbf x+f(\operatorname{LN}(\mathbf x))$ |
 | autoregressive factorization | $p_\theta(\mathbf x)=\prod_t p_\theta(x_t\mid x_{<t})$ |
 | roofline lower bound | $T_{\text{token}}\ge\max(\Phi/F,\,\beta/\mathcal B)$ |

@@ -73,6 +73,18 @@
     page-break-inside: avoid;
   }
 
+  /* Collapsed exercise answers are navigation rows, not full callouts. Their
+   * tighter print rhythm keeps the prompt and disclosure row from separating
+   * merely because several exercises share a page. */
+  .print-edition .solution-box {
+    padding-block: 0.25em;
+    margin-block: 0.3em;
+  }
+
+  .print-edition .solution-box .callout-title {
+    margin-block: 0;
+  }
+
   .print-backmatter {
     break-before: page;
   }

@@ -2,13 +2,13 @@
 
 **Status:** B0 evidence reconciliation and the atomic structure-design exit gate cleared on 2026-07-13. The accepted
 `research-dossiers` snapshot, per-owner provenance commits, and exact evidence IDs are frozen in the B0 record below;
-no Track B guide prose was authored before clearance. **B1 (BPE in ch01) completed on 2026-07-13; B2 ICL is next**,
-followed serially by B3 RLHF/DPO → B4 Scaling, with each PR based on its merged predecessor.
+no Track B guide prose was authored before clearance. **B1 (BPE in ch01) and B2 (ICL in ch08) completed on
+2026-07-13; B3 RLHF/DPO is next**, followed serially by B4 Scaling, with each PR based on its merged predecessor.
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
 (`docs/audits/roadmap-readiness_2026-07-11.md`) flagged two fixes, folded in below: the structure-design
 pass becomes a hard **B0 exit gate** (not an at-execution afterthought). Track A's A3/A7 prerequisites and the B0
-evidence/structure gate and B1 are complete; the critical path is now the locked B2→B4 merge sequence.
+evidence/structure gate and B1–B2 are complete; the critical path is now the locked B3→B4 merge sequence.
 
 ## Context
 
@@ -145,6 +145,28 @@ primary papers rather than dossier slugs.
   the full production build, and `git diff --check`. Three independent adversarial reviews cleared the final source;
   the 282-page print render contains all nine trace states without controls, clipped citations, or an orphaned caption.
 
+### B2 acceptance record — complete 2026-07-13
+
+- Chapter 08 now defines in-context learning operationally as fixed-parameter, prompt-dependent forward computation;
+  proves a sharp softmax associative-retrieval mass/error bound; defines the partial vanilla-induction map and proves
+  its two-stage finite-softmax construction; and proves the exact one-step squared-loss regression update implemented
+  by controlled unnormalized linear attention. No-match behavior, repeated-match mixing, finite-logit leakage, and the
+  distinction between representability and learned mechanism are explicit boundaries.
+- Provenance is frozen to accepted snapshot `ffd4e3a184ea364b95764a541830a0bba9489c4b`, owner
+  `research_incontext_associative_memory` at content commit `2edc981fec5322eae4e2370776c3f2201118b995`, and evidence
+  pins `_0001`, `_0006`–`_0007`, `_0010`–`_0012`, plus `_0013`–`_0014` only for the dated empirical remark. The chapter
+  cites the primary Wang et al., Akyürek et al., von Oswald et al., and Olsson et al. papers.
+- The induction-copy TikZ/PDF/SVG figure, two glossary entries, notation and quick-reference entries, neighboring
+  cross-links, and six solved exercises are wired. The corpus now contains 22 chapters, 289 semantic labels, 101
+  learning objectives, 34 guarded property claims, and 29 figures; slot 08 is occupied and only slots 11 and 13 remain
+  reserved.
+- Acceptance checks passed: 12 chapter-specific numerical/property tests within the 72-test Python suite, randomized
+  guards for every theorem clause and boundary case, corpus/property/semantic-ID checks, SVG isolation, a
+  zero-collision figure audit, scaffold validation, the full production build, `git diff --check`, and independent
+  mathematics, pedagogy, and repository-QA reviews. The 375 px render has no page-level overflow and correct figure
+  accessibility text. In the 292-page print render, Chapter 08 is legible and atomic on pages 108–118, all six exercise
+  prompts remain with their collapsed solution rows, and Chapter 09 begins cleanly on page 119.
+
 ## Delivery — phased
 This order—not the topic-heading order above—is authoritative:
 
@@ -153,8 +175,8 @@ This order—not the topic-heading order above—is authoritative:
 2. **B0-gate (complete 2026-07-13):** record the accepted dossier commits and ledger IDs, then clear the
    structure-design exit gate above.
 3. **B1 (complete 2026-07-13):** add the BPE section to ch01 (no dossier); the corpus remains 21 chapters.
-4. **B2 (next):** add ICL as ch08; the corpus becomes 22 chapters and 08 is no longer reserved.
-5. **B3:** add RLHF/DPO as ch11; the corpus becomes 23 chapters and 11 is no longer reserved.
+4. **B2 (complete 2026-07-13):** add ICL as ch08; the corpus becomes 22 chapters and 08 is no longer reserved.
+5. **B3 (next):** add RLHF/DPO as ch11; the corpus becomes 23 chapters and 11 is no longer reserved.
 6. **B4:** add Scaling Laws as ch13; the corpus becomes 24 chapters and 13 is no longer reserved, then run the final
    whole-corpus sweep.
 7. Run the pre-seeded terminal proof audit over the frozen 24-chapter corpus.

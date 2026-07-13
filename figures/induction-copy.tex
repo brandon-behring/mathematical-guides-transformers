@@ -1,0 +1,70 @@
+%! no-theme
+% induction-copy (ch08, thm-induction-construction) — a unique-match trace of
+% the two-stage predecessor/successor construction.  The bottom qualification
+% is load-bearing: the vanilla induction map weights every matching predecessor
+% and is not a latest-match rule.
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+  \tikzset{
+    token/.style={tfunit, minimum width=8mm, minimum height=8mm},
+    pair/.style={tfpanel, inner sep=2.2mm},
+  }
+
+  % Row 1: form predecessor/successor memory records from the prompt.
+  \node[tfinput, token] (xone) {$A$};
+  \node[tfinput, token, right=\tfheadgap of xone] (xtwo) {$B$};
+  \node[tfinput, token, right=\tfheadgap of xtwo] (xthree) {$C$};
+  \node[tfQ, token, right=\tfheadgap of xthree] (querytok) {$A$};
+  \node[fit=(xone)(querytok), inner sep=0pt] (prompt) {};
+  \coordinate (promptmid) at ($(xone)!0.5!(querytok)$);
+  \node[tfrole, above=\tflabelgap of promptmid] {prompt $[A][B][C][A]$};
+  \node[tfcap, below=\tflabelgap of querytok] {current token};
+
+  \node[tfK, token, right={\dimexpr\tfstagegap+11mm\relax} of prompt] (keyone) {$A$};
+  \node[tfV, token, right=\tfheadgap of keyone] (valone) {$B$};
+  \node[pair, fit=(keyone)(valone)] (pairone) {};
+  \node[tfcap, below=\tflabelgap of pairone] {$j=2$};
+
+  \node[tfK, token, right={\dimexpr\tfheadgap+4mm\relax} of pairone] (keytwo) {$B$};
+  \node[tfV, token, right=\tfheadgap of keytwo] (valtwo) {$C$};
+  \node[pair, fit=(keytwo)(valtwo)] (pairtwo) {};
+  \node[tfcap, below=\tflabelgap of pairtwo] {$j=3$};
+  \node[fit=(pairone)(pairtwo), inner sep=0pt] (memory) {};
+  \coordinate (memorymid) at ($(pairone)!0.5!(pairtwo)$);
+  \node[tfrole, above={\dimexpr\tfheadgap+\tflabelgap\relax} of memorymid]
+       {layer 1: predecessor $\mid$ successor};
+
+  \draw[tfflow] (prompt.east) -- node[midway, tfoplabel]
+       {previous-token shift} (memory.west);
+
+  % Row 2: query the derived memory and read the selected successor.
+  \node[tfstruct, minimum width=35mm, minimum height=17mm,
+        below=\tfmapdrop of memory] (match)
+       {match $q=A$\\[2pt]to predecessor keys};
+  \node[tfQ, token, left=\tfstagegap of match] (query) {$A$};
+  \node[tfrole, above=\tflabelgap of query] {layer 2 query};
+  \node[tfoutput, minimum width=24mm, minimum height=8mm,
+        right=\tfstagegap of match] (out) {$0.9B+0.1C$};
+  \node[tfrole, above=\tflabelgap of out] {finite softmax, $\lambda=\log 9$};
+
+  \draw[tfflow] (query.east) -- node[midway, tfoplabel]
+       {content score} (match.west);
+  \draw[tfflow] (memory.south) -- node[midway, tfoplabel]
+       {keys + values} (match.north);
+  \draw[tfflow] (match.east) -- node[midway, tfoplabel]
+       {softmax read} (out.west);
+
+  % Redundant key/value legend and the essential scope boundary.
+  \coordinate (bottommid) at ($(query.west)!0.5!(out.east)$);
+  \node[tfcap, text width=106mm, align=center,
+        below={\dimexpr\tfbranchgap+\tflabelgap\relax} of bottommid] (legend)
+       {dashed blue = predecessor key \qquad dotted orange = successor value};
+  \node[tfrole, text width=106mm, align=center, below=\tflabelgap of legend] (scope)
+       {unique-match trace: if several predecessors match, the vanilla map weights all of their successors};
+  \node[tfcap, text width=106mm, align=center, below=\tflabelgap of scope]
+       {finite logits are neither an exact hard copier nor an intrinsic latest-match rule};
+
+\end{tikzpicture}
+\end{document}

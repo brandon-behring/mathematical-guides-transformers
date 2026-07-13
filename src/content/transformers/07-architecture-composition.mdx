@@ -124,7 +124,7 @@ When the task does not have a separate input to condition on — language modeli
 A **decoder-only transformer** is a single stack of $N$ blocks with causal self-attention and **no** cross-attention. Input and output share one sequence: given tokens $x_1,\dots,x_{t-1}$, the model predicts the next token $x_t$. This is the architecture of GPT <Cite key="radford2018improving" /> and LLaMA <Cite key="touvron2023llama" />, and of most modern large language models.
 </Theorem>
 
-<MarginNote variant="tip" label="Conditioning">A decoder-only model has no encoder to inject context, so conditioning happens inside the sequence itself — the prompt. In-context learning replaces explicit cross-attention.</MarginNote>
+<MarginNote variant="tip" label="Conditioning">A decoder-only model has no separate encoder stream, so demonstrations and queries can condition one another inside the causal prompt. The next chapter constructs what attention can compute from that shared context (<XRef id="def-in-context-learning" />).</MarginNote>
 
 <Theorem kind="remark" name="The three architectures as design choices" id="rem-three-archs">
 The three standard encoder/generator architectures are three settings of two binary switches — is the output stack's self-attention bidirectional or causal, and does it have cross-attention to a separate source?
@@ -283,7 +283,7 @@ Cross-attention is $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ with $\m
 
 <SolutionBox>
 
-The switches are (a) output-stack self-attention causal vs bidirectional and (b) cross-attention present vs absent. **Encoder-only:** bidirectional, no cross-attention (BERT). **Encoder-decoder:** bidirectional source encoder + causal decoder with cross-attention pulling $\mathbf K,\mathbf V$ from $\mathbf H_{\text{enc}}$ (original transformer, T5). **Decoder-only:** causal, no cross-attention; conditioning is in-context via the prompt (GPT, LLaMA). The fourth setting, bidirectional + cross-attention, is valid for fusion or reranking but is not a fourth autoregressive architecture: bidirectional output self-attention can read future output positions, so the stack is not prefix-consistent. $\qquad\blacksquare$
+The switches are (a) output-stack self-attention causal vs bidirectional and (b) cross-attention present vs absent. **Encoder-only:** bidirectional, no cross-attention (BERT). **Encoder-decoder:** bidirectional source encoder + causal decoder with cross-attention pulling $\mathbf K,\mathbf V$ from $\mathbf H_{\text{enc}}$ (original transformer, T5). **Decoder-only:** causal, no cross-attention; prompt tokens occupy the same stream and can supply demonstrations before the query, the setting formalized by <XRef id="def-in-context-learning" /> (GPT, LLaMA). The fourth setting, bidirectional + cross-attention, is valid for fusion or reranking but is not a fourth autoregressive architecture: bidirectional output self-attention can read future output positions, so the stack is not prefix-consistent. $\qquad\blacksquare$
 
 </SolutionBox>
 

@@ -34,6 +34,8 @@ import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 | $\alpha$ | entmax family parameter ($1$ = softmax, $2$ = sparsemax) | Sparse & Sub-Quadratic Attention |
 | $\boldsymbol\alpha_t$ | cumulative coordinatewise SSM decay | Selective State Spaces |
 | $\alpha_t$ | Gated DeltaNet state-decay gate | Modern Recurrent & Hybrid (<XRef id="cor-gated-deltanet" />) |
+| $\delta_{\mathrm{ret}}$ | positive target-score margin in a finite associative lookup | In-Context Learning (<XRef id="thm-associative-lookup" />) |
+| $\eta$ | step size in the controlled one-step linear-regression construction | In-Context Learning (<XRef id="prop-linear-attention-gd" />) |
 | $\tau(s)$ | reversible tokenizer map from normalized text to token IDs | Input Representations (<XRef id="def-text-tokenizer" />) |
 | $\tau>0$ | temperature that rescales logits or similarities | softmax, contrastive learning, sampling, and zero-shot evaluation (<XRef id="rem-softmax-temperature" />, <XRef id="def-contrastive" />, <XRef id="def-token-decoding" />, <XRef id="def-zeroshot" />) |
 | $\tau_i$ | continuous forgetting timescale of SSM mode $i$ | Linear Recurrences and SSMs (<XRef id="prop-gradient-timescale" />) |
@@ -72,6 +74,7 @@ import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 | Recurrent Networks | inputs, hidden states, and gate states | time Jacobians act by left multiplication |
 | Linear Recurrences and SSMs | state $\statevec$ (with $\inputmat$ a column and $\outputmat$ a row) | standard control-theory orientation |
 | Linear-attention derivation | $\phi(\mathbf k_j),\mathbf v_j$ | $\phi(\mathbf k_j)\mathbf v_j^\top$ is a $D\times d_v$ outer product |
+| In-Context Learning regression construction | $\mathbf x_i,\mathbf x_\star,\mathbf w$ | gradients and dot-product kernel reads use the conventional column-vector orientation |
 | MoE gradient calculus | gradient vectors | $\nabla_{\mathbf W_r}\mathcal L=\mathbf x^\top(\nabla_{\mathbf s}\mathcal L)^\top$ |
 | Selective State Spaces | state/write/read vectors; feature/value vectors in the linear-attention subsection | left-acting recurrence and matrix-state outer products |
 | Modern Recurrent & Hybrid | query, key, value, and recurrent-state vectors | outer-product state updates |

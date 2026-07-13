@@ -1,0 +1,8 @@
+---
+term: "In-context learning"
+aliases: ["ICL", "in-prompt learning"]
+see: [associative-retrieval, token]
+tags: [attention, inference, terminology]
+---
+
+Prompt-dependent adaptation performed during a forward pass while the model's trained parameters remain fixed. Demonstrations encoded in the prompt change later activations and can change the query prediction; unlike ordinary training, no optimizer step updates the parameter vector. This operational definition does not imply that every instance uses one particular internal algorithm.
