@@ -30,6 +30,7 @@ jobs:
       - run: npm run check:properties
       - run: npm run test:figure-svg
       - run: npm run test:print-html
+      - run: npm run test:bpe
 
   properties:
     runs-on: ubuntu-latest

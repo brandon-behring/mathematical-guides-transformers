@@ -20,8 +20,8 @@ and **13** (scaling laws). The current 21-chapter corpus therefore occupies
 those final display numbers, while frontmatter `slug` values are number-free, so filling a reserved
 slot does not change an existing chapter URL.
 
-- **Part 1 — Foundations.** Notation and prerequisites; input representations (the modality-agnostic
-  embedding interface, positional encodings, RoPE).
+- **Part 1 — Foundations.** Notation and prerequisites; input representations (reversible text tokenization
+  with BPE, the modality-agnostic embedding interface, positional encodings, RoPE).
 - **Part 2 — Recurrence & Linear State.** Recurrent networks and the seq2seq lineage
   (BPTT, the vanishing-gradient bound, LSTM/GRU, the fixed-vector bottleneck, additive attention);
   linear recurrences and state space models (ZOH discretization, the recurrence/convolution/scan
@@ -73,6 +73,7 @@ npm run build:figures
 npm install && npm run build     # runs build:bib, build:labels, build:figures, validate, then astro build + pagefind
 npm run validate                 # XRef / Cite / Figure checks without a full build
 npm run test:properties          # numeric guards for quantitative claims
+npm run test:bpe                 # deterministic BPE merge and accounting tests
 npm run test:figure-svg          # inline-SVG ID/reference isolation
 npm run test:print-html          # chapter-scoped heading IDs in the combined print route
 npm run check:corpus             # verify tracked corpus structure, labels, and printed-number inventory

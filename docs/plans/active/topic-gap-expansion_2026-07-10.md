@@ -2,13 +2,13 @@
 
 **Status:** B0 evidence reconciliation and the atomic structure-design exit gate cleared on 2026-07-13. The accepted
 `research-dossiers` snapshot, per-owner provenance commits, and exact evidence IDs are frozen in the B0 record below;
-no Track B guide prose was authored before clearance. **B1 (BPE in ch01) is next**, followed serially by B2 ICL → B3
-RLHF/DPO → B4 Scaling, with each PR based on its merged predecessor.
+no Track B guide prose was authored before clearance. **B1 (BPE in ch01) completed on 2026-07-13; B2 ICL is next**,
+followed serially by B3 RLHF/DPO → B4 Scaling, with each PR based on its merged predecessor.
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
 (`docs/audits/roadmap-readiness_2026-07-11.md`) flagged two fixes, folded in below: the structure-design
 pass becomes a hard **B0 exit gate** (not an at-execution afterthought). Track A's A3/A7 prerequisites and the B0
-evidence/structure gate are complete; the critical path is now the locked B1→B4 merge sequence.
+evidence/structure gate and B1 are complete; the critical path is now the locked B2→B4 merge sequence.
 
 ## Context
 
@@ -126,12 +126,24 @@ earlier accepted owner. Per-owner evidence provenance is frozen as follows:
   `ev_incontext_associative_memory_0012` (controlled no-update linear-regression/GD constructions).
   `ev_incontext_associative_memory_0013` and `ev_incontext_associative_memory_0014` are accepted only for the dated
   empirical-induction remark; no broad implicit-GD interpretation enters the theorem spine.
-- **BPE exception:** dossier-free by design. B1 remains author-from-primary work using Sennrich et al.
-  (`arXiv:1508.07909`) and SentencePiece (`arXiv:1808.06226`); clearing B0 accepts that source boundary, not any
-  unwritten guide claim.
+- **BPE exception:** dossier-free by design. B1 was authored from the primary Sennrich et al.
+  (`arXiv:1508.07909`) and SentencePiece (`arXiv:1808.06226`); clearing B0 accepted that source boundary but did not
+  pre-approve any then-unwritten guide claim.
 
 This record clears the atomic authoring gate. Evidence pins freeze provenance, while the guide continues to cite the
 primary papers rather than dossier slugs.
+
+### B1 acceptance record — complete 2026-07-13
+
+- Chapter 01 now separates reversible normalized-text boundary representation from BPE merge learning, states the
+  frequency-weighted merge rule, proves exact sequence/vocabulary/fixed-width-ID accounting and base-stream
+  invariance, and cites the primary Sennrich et al. and SentencePiece publications.
+- The deterministic explorer, TikZ/SVG merge diagram, worked exercise, glossary entry, notation index, and quick
+  reference are wired without adding a chapter; the corpus remains at 21 chapters.
+- Acceptance checks passed: seven deterministic JavaScript BPE tests, five Python property tests with three parameter
+  subtests, 30 guarded property claims, SVG isolation, a zero-collision figure audit, scaffold content validation,
+  the full production build, and `git diff --check`. Three independent adversarial reviews cleared the final source;
+  the 282-page print render contains all nine trace states without controls, clipped citations, or an orphaned caption.
 
 ## Delivery — phased
 This order—not the topic-heading order above—is authoritative:
@@ -140,8 +152,8 @@ This order—not the topic-heading order above—is authoritative:
    and build/validate the ICL evidence base without duplicating another dossier's ownership.
 2. **B0-gate (complete 2026-07-13):** record the accepted dossier commits and ledger IDs, then clear the
    structure-design exit gate above.
-3. **B1 (next):** add the BPE section to ch01 (no dossier); the corpus remains 21 chapters.
-4. **B2:** add ICL as ch08; the corpus becomes 22 chapters and 08 is no longer reserved.
+3. **B1 (complete 2026-07-13):** add the BPE section to ch01 (no dossier); the corpus remains 21 chapters.
+4. **B2 (next):** add ICL as ch08; the corpus becomes 22 chapters and 08 is no longer reserved.
 5. **B3:** add RLHF/DPO as ch11; the corpus becomes 23 chapters and 11 is no longer reserved.
 6. **B4:** add Scaling Laws as ch13; the corpus becomes 24 chapters and 13 is no longer reserved, then run the final
    whole-corpus sweep.

@@ -19,6 +19,7 @@
     "update:property-coverage": "node scripts/check-property-coverage.mjs --write",
     "test:figure-svg": "node --test tests/figure_svg_ids.test.mjs",
     "test:print-html": "node --test tests/print_html_ids.test.mjs",
+    "test:bpe": "node --test tests/bpe.test.mjs",
     "test:properties": "python3 -m unittest discover -s tests/properties -p 'test_*.py' -v",
     "prevalidate": "npm run build:bib --if-present && npm run build:labels --if-present",
     "validate": "book-scaffold validate",

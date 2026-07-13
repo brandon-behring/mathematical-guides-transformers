@@ -41,6 +41,23 @@
 }
 
 @media print {
+  /* The scaffold emits inline citations with class="cite"; suppressing their
+   * redundant route URLs keeps the reference text readable in the PDF. */
+  .print-edition .cite::after {
+    content: none !important;
+  }
+
+  /* The BPE figure is full-width on screens but compact and atomic in print,
+   * so its caption cannot be orphaned onto the following page. */
+  .print-edition #fig-bpe-merge {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-edition #fig-bpe-merge > svg {
+    width: 78% !important;
+  }
+
   /* Paged.js clones boxes while fragmenting a document. Chromium's implicit
    * closed-<details> layout state is not preserved on every clone, which can
    * expose an empty fallback summary ("Details") on its own page. Make the

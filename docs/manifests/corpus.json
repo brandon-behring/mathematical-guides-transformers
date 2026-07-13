@@ -3,10 +3,10 @@
   "generatedBy": "scripts/corpus-manifest.mjs",
   "totals": {
     "chapters": 21,
-    "labels": 275,
-    "learningObjectives": 96,
-    "proofMarkers": 205,
-    "printedNumberHits": 128
+    "labels": 280,
+    "learningObjectives": 97,
+    "proofMarkers": 207,
+    "printedNumberHits": 129
   },
   "chapters": [
     {
@@ -71,6 +71,7 @@
       "chapter": 1,
       "part": 1,
       "labelIds": [
+        "def-bpe",
         "def-codebook-embedding",
         "def-embedding-interface",
         "def-input",
@@ -79,13 +80,17 @@
         "def-rope",
         "def-rotation-2d",
         "def-sinusoidal-pe",
+        "def-text-tokenizer",
         "def-token-embedding",
         "def-vocabulary",
+        "fig-bpe-merge",
         "fig-dual-embedding",
+        "prop-bpe-merge-accounting",
         "rem-modality-blind",
         "rem-pe-vs-rope",
         "rem-rope-2d",
         "rem-rope-complex",
+        "rem-subword-granularity",
         "thm-patch-conv",
         "thm-pe-2d-shift",
         "thm-pe-collision",
@@ -93,6 +98,7 @@
         "thm-rope-relative"
       ],
       "objectiveIds": [
+        "lo-bpe-tokenization",
         "lo-factorized-2d-position",
         "lo-patch-and-codebook-embeddings",
         "lo-positional-encoding-computation",
@@ -103,6 +109,7 @@
       "xrefs": [
         "def-attention",
         "def-codebook-embedding",
+        "def-embedding-interface",
         "def-input",
         "def-patch-embedding",
         "def-pe-2d",
@@ -110,51 +117,60 @@
         "def-rope",
         "def-rotation-2d",
         "def-sinusoidal-pe",
+        "def-text-tokenizer",
         "def-token-embedding",
+        "def-vocabulary",
+        "prop-bpe-merge-accounting",
+        "prop-rate",
         "thm-patch-conv",
         "thm-pe-2d-shift",
         "thm-pe-rotation",
         "thm-rope-relative"
       ],
       "kindCounts": {
-        "definition": 10,
-        "proof": 5,
-        "remark": 4,
+        "definition": 12,
+        "proof": 6,
+        "proposition": 1,
+        "remark": 5,
         "theorem": 5
       },
-      "proofMarkers": 13,
+      "proofMarkers": 15,
       "printedNumberHits": [
         {
-          "line": 348,
+          "line": 455,
           "text": "Exercise 1.1"
         },
         {
-          "line": 361,
+          "line": 468,
           "text": "Exercise 1.2"
         },
         {
-          "line": 373,
+          "line": 480,
           "text": "Exercise 1.3"
         },
         {
-          "line": 385,
+          "line": 492,
           "text": "Exercise 1.4"
         },
         {
-          "line": 393,
+          "line": 500,
           "text": "Exercise 1.5"
         },
         {
-          "line": 401,
+          "line": 508,
           "text": "Exercise 1.6"
         },
         {
-          "line": 413,
+          "line": 520,
           "text": "Exercise 1.7"
         },
         {
-          "line": 432,
+          "line": 539,
           "text": "Exercise 1.8"
+        },
+        {
+          "line": 554,
+          "text": "Exercise 1.9"
         }
       ]
     },

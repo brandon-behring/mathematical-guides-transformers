@@ -1,0 +1,74 @@
+%! no-theme
+% bpe-merge (ch01, prop-bpe-merge-accounting) — one BPE merge rule as an
+% explicit trade: one fresh vocabulary entry buys one fewer weighted position
+% for each of r_t non-overlapping replacements.  The concrete row uses r_t=2;
+% dashed pair frames make non-overlap visible without relying on colour.
+% /authoring-figures standard: relative positioning, role-labelled before/after
+% tiles, a single left-to-right flow, and a line-free accounting lane.
+\documentclass[tikz,border=8pt]{standalone}
+\usepackage{transformer-figures}
+\begin{document}
+\begin{tikzpicture}
+  \tikzset{
+    token/.style={tfunit, minimum width=8mm, minimum height=8mm},
+    mergedtoken/.style={tfunit, minimum width=13mm, minimum height=8mm},
+    pairframe/.style={tfpanel, dashed, draw=gray!70, line width=0.55pt},
+  }
+
+  % ══ Before: five token positions; the two dashed frames are disjoint matches. ══
+  \node[tfinput, token] (a1) {$a$};
+  \node[tfinput, token, right=\tfheadgap of a1] (b1) {$b$};
+  \node[tfinput, token, right=\tfheadgap of b1] (a2) {$a$};
+  \node[tfinput, token, right=\tfheadgap of a2] (b2) {$b$};
+  \node[tfinput, token, right=\tfheadgap of b2] (x) {$x$};
+  \node[pairframe, fit=(a1)(b1), inner sep=1.5mm] (match1) {};
+  \node[pairframe, fit=(a2)(b2), inner sep=1.5mm] (match2) {};
+  \node[fit=(match1)(match2)(x), inner sep=0pt] (before) {};
+
+  \coordinate (beforemid) at ($(a1)!0.5!(x)$);
+  \node[tfrole, above={\dimexpr\tfheadgap+\tflabelgap\relax} of beforemid]
+       {example before: $N_t=5$ positions};
+  \node[tfcap, below={\dimexpr\tfheadgap+\tflabelgap\relax} of beforemid]
+       {two non-overlapping $(a,b)$ matches: $r_t=2$};
+
+  % ══ Apply one vocabulary rule, then show the shorter sequence. ══
+  \node[tfstruct, minimum width=23mm, minimum height=16mm,
+        right=\tfstagegap of before] (merge)
+       {BPE merge\\[2pt]$(a,b)\mapsto\langle ab\rangle$};
+
+  \node[tfoutput, mergedtoken, right=\tfstagegap of merge] (ab1)
+       {$\langle ab\rangle$};
+  \node[tfoutput, mergedtoken, right=\tfheadgap of ab1] (ab2)
+       {$\langle ab\rangle$};
+  \node[tfoutput, token, right=\tfheadgap of ab2] (xo) {$x$};
+  \node[fit=(ab1)(ab2)(xo), inner sep=0pt] (after) {};
+
+  \coordinate (aftermid) at ($(ab1)!0.5!(xo)$);
+  \node[tfrole, above={\dimexpr\tfheadgap+\tflabelgap\relax} of aftermid]
+       {example after: $N_{t+1}=3$ positions};
+  \node[tfcap, below={\dimexpr\tfheadgap+\tflabelgap\relax} of aftermid]
+       {each framed pair becomes one $\langle ab\rangle$ token};
+
+  \draw[tfflow] (before.east) -- (merge.west);
+  \draw[tfflow] (merge.east) -- (after.west);
+
+  % ══ The sole takeaway: the two exact accounting identities. ══
+  \coordinate (rowmid) at ($(before.west)!0.5!(after.east)$);
+  \node[tfrole, below=\tfmapdrop of rowmid] (trade)
+       {one merge rule spends one vocabulary entry to buy $r_t$ fewer weighted positions};
+  \matrix (accounting) [below=\tflabelgap of trade, matrix of nodes,
+      ampersand replacement=\&, column sep=\tfheadgap,
+      nodes={tfstruct, minimum height=16mm, align=center}] {
+    |[minimum width=48mm]|
+      {\shortstack{spend: one fresh vocabulary entry\\[3pt]
+       $\displaystyle V_{t+1}=V_t+1$}}
+    \&
+    |[minimum width=54mm]|
+      {\shortstack{buy: $r_t$ fewer weighted positions\\[3pt]
+       $\displaystyle N_{t+1}=N_t-r_t$}}
+    \\
+  };
+  \draw[tfflow] (accounting-1-1.east) -- (accounting-1-2.west);
+
+\end{tikzpicture}
+\end{document}
