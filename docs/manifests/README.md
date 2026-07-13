@@ -5,7 +5,9 @@
   `npm run update:corpus`; CI verifies it with `npm run check:corpus`.
 - `semantic-id-migration.json` is created by Track A's one-time ID migration
   and records every mapped or deliberately retired anchor, learning objective,
-  exercise number, chapter path, and reserved chapter slot. Verify it with
+  exercise number, chapter path, and chapter slot reserved by that historical
+  migration. A later chapter may occupy one of those slots; occupancy does not
+  rewrite the one-time migration record. Verify it with
   `npm run check:id-migration`; the checker also rejects duplicate/dangling or
   legacy live IDs. It recognizes the frozen A3 target by the tracked
   `corpus.json` hash and exact A3 cardinalities. After later planned work changes

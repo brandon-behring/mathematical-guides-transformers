@@ -7,6 +7,26 @@
       "statementSha256": "40df3624d945eb0e86d66f620fd6db71f8d92a54d80865b1e0b63c04a4edba5a"
     },
     {
+      "id": "thm-associative-lookup",
+      "test": "tests/properties/test_in_context_learning.py",
+      "statementSha256": "60a43cd3bf739cda5b2df5e7b64aa0df5a208181209bc231118411562a6aebab"
+    },
+    {
+      "id": "def-vanilla-induction-map",
+      "test": "tests/properties/test_in_context_learning.py",
+      "statementSha256": "07f67b798cc13b516f7a0ef094f953cc7879ac0b37cb57b99fc9234a057aea5d"
+    },
+    {
+      "id": "thm-induction-construction",
+      "test": "tests/properties/test_in_context_learning.py",
+      "statementSha256": "9eb1804cbb8d96040515c855849f14e3b47078980e449ad30379e7944089d35b"
+    },
+    {
+      "id": "prop-linear-attention-gd",
+      "test": "tests/properties/test_in_context_learning.py",
+      "statementSha256": "167b7759533e6ef4fe5455eb93efe127c0b96f39ae76217444dfda2db6ec8c91"
+    },
+    {
       "id": "def-cost-eq",
       "test": "tests/properties/test_roofline.py",
       "statementSha256": "8c3b545ad276d1af947632491ed0a5672c0938000a00af4e4f8fb6129a6eb1c1"

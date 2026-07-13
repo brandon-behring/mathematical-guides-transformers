@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "generatedBy": "scripts/corpus-manifest.mjs",
   "totals": {
-    "chapters": 21,
-    "labels": 280,
-    "learningObjectives": 97,
-    "proofMarkers": 207,
-    "printedNumberHits": 129
+    "chapters": 22,
+    "labels": 289,
+    "learningObjectives": 101,
+    "proofMarkers": 210,
+    "printedNumberHits": 135
   },
   "chapters": [
     {
@@ -307,6 +307,7 @@
         "prop-legs-nplr",
         "prop-lti-obstruction",
         "prop-scan",
+        "thm-associative-lookup",
         "thm-conv-recurrence",
         "thm-gradient-bound",
         "thm-hippo-legs",
@@ -592,6 +593,7 @@
         "def-encoder",
         "def-encoder-classifier",
         "def-gated-xattn",
+        "def-in-context-learning",
         "def-interleaved",
         "def-patch-embedding",
         "def-patterns",
@@ -643,6 +645,75 @@
       ]
     },
     {
+      "path": "src/content/transformers/08-in-context-learning.mdx",
+      "slug": "in-context-learning",
+      "title": "In-Context Learning",
+      "chapter": 8,
+      "part": 3,
+      "labelIds": [
+        "def-in-context-learning",
+        "def-unnormalized-linear-attention",
+        "def-vanilla-induction-map",
+        "fig-induction-copy",
+        "prop-linear-attention-gd",
+        "rem-construction-not-mechanism",
+        "rem-empirical-induction",
+        "thm-associative-lookup",
+        "thm-induction-construction"
+      ],
+      "objectiveIds": [
+        "lo-associative-retrieval",
+        "lo-in-context-learning",
+        "lo-induction-construction",
+        "lo-linear-icl"
+      ],
+      "xrefs": [
+        "def-attention",
+        "def-decoder-only",
+        "def-in-context-learning",
+        "def-unnormalized-linear-attention",
+        "prop-linear-attention-gd",
+        "prop-row-stochastic-convex",
+        "rem-linear-attention",
+        "thm-associative-lookup",
+        "thm-induction-construction"
+      ],
+      "kindCounts": {
+        "definition": 3,
+        "proof": 3,
+        "proposition": 1,
+        "remark": 2,
+        "theorem": 2
+      },
+      "proofMarkers": 3,
+      "printedNumberHits": [
+        {
+          "line": 350,
+          "text": "Exercise 8.1"
+        },
+        {
+          "line": 358,
+          "text": "Exercise 8.2"
+        },
+        {
+          "line": 372,
+          "text": "Exercise 8.3"
+        },
+        {
+          "line": 390,
+          "text": "Exercise 8.4"
+        },
+        {
+          "line": 406,
+          "text": "Exercise 8.5"
+        },
+        {
+          "line": 435,
+          "text": "Exercise 8.6"
+        }
+      ]
+    },
+    {
       "path": "src/content/transformers/09-encoder-decoder-families.mdx",
       "slug": "encoder-decoder-families",
       "title": "Encoders and Decoders Across Architecture Families",
@@ -683,6 +754,7 @@
         "def-decoder-only",
         "def-enc-dec",
         "def-encoder",
+        "def-in-context-learning",
         "def-kv-cache",
         "def-patterns",
         "def-prefix-lm",
@@ -1364,6 +1436,7 @@
         "prop-swa-edge-cache",
         "prop-swa-receptive-field",
         "rem-design-space",
+        "thm-associative-lookup",
         "thm-delta-descent",
         "thm-linattn-rnn",
         "thm-one-pass",

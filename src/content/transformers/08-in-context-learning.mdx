@@ -1,0 +1,443 @@
+---
+title: "In-Context Learning"
+slug: in-context-learning
+chapter: 8
+part: 3
+description: "In-context learning as fixed-parameter forward-pass computation: a sharp softmax associative-retrieval bound, a two-stage induction construction, an exact one-step linear-regression gradient-descent construction, and the boundary between representability and learned mechanism."
+last_verified: 2026-07-13
+rigor_level: rigorous
+prerequisites: [notation, attention, transformer-block, architecture-composition]
+notation_introduced: ['\mathcal J_t', '\delta_{\mathrm{ret}}', '\operatorname{Ind}_t', '\operatorname{LA}', '\eta']
+theorems: ['def-in-context-learning', 'thm-associative-lookup', 'def-vanilla-induction-map', 'thm-induction-construction', 'def-unnormalized-linear-attention', 'prop-linear-attention-gd', 'rem-construction-not-mechanism', 'rem-empirical-induction']
+los:
+  - id: lo-in-context-learning
+    statement: "Define in-context learning operationally and compare forward-pass adaptation with parameter updating."
+  - id: lo-associative-retrieval
+    statement: "Prove a quantitative softmax associative-retrieval error bound from a target-score margin."
+  - id: lo-induction-construction
+    statement: "Define the vanilla induction map and trace its ideal two-stage previous-token-and-copy construction."
+  - id: lo-linear-icl
+    statement: "Derive one linear-regression gradient step as an exact unnormalized linear-attention computation and state the construction's evidential limits."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Figure from '../../components/Figure.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import SolutionBox from '../../components/SolutionBox.astro';
+import NotationOverride from '../../components/NotationOverride.astro';
+
+# In-Context Learning
+
+**Where we are.** A decoder-only transformer has no separate encoder from which to draw task information: the prompt itself is its conditioning channel (<XRef id="def-decoder-only" />). That observation raises a sharper question. How can a network whose trained parameters remain fixed use examples in the prompt to change what it predicts at a later query? We answer constructively at three scales. First, one softmax row retrieves a value from a key–value memory, with error exponentially small in a score margin. Second, two stages compose previous-token addressing with that retrieval to implement the vanilla induction pattern $[A][B]\ldots[A]\mapsto[B]$. Third, an unnormalized linear-attention layer computes exactly the prediction made by one gradient step on a controlled linear-regression prompt. The constructions prove **what the architecture can represent**; the final remarks keep that separate from **what a trained model actually learned**.
+
+<Figure
+  src="/figures/induction-copy.svg"
+  alt="A two-stage induction circuit on A, B, C, A: the first stage exposes each token's predecessor, and the second stage matches the final A to the earlier A and approximately reads a B-dominated mixture."
+  desc="A unique-match trace for the sequence A, B, C, A. Stage 1 shifts predecessor identity into an auxiliary slot: the candidate carrying successor B is keyed by predecessor A, while the candidate carrying successor C is keyed by predecessor B. Stage 2 queries with the final A, assigns the A-keyed candidate the larger finite-margin softmax weight, and approximately copies B. A qualification below the circuit states that equal repeated matches mix their successor values and that finite logits do not produce an exact hard or latest-match copier."
+  caption="The induction copy construction. In the unique-match trace [A][B][C][A], a previous-token stage exposes predecessor–successor pairs and, at λ = log 9, a finite-margin softmax stage returns 0.9B + 0.1C. When several earlier occurrences match equally, vanilla induction mixes their successor values rather than selecting one. This is a representability construction, not a claim that a trained model learned this mechanism."
+  id="fig-induction-copy"
+  width="92%"
+/>
+
+## What changes in-context
+
+The term *learning* is potentially misleading here. During ordinary training, an optimizer changes the parameter vector $\theta$. During an in-context forward pass, $\theta$ is frozen; only the prompt and the resulting activations change. This operational distinction is the invariant shared by the lookup, induction, and regression constructions below.
+
+<Theorem kind="definition" name="In-context learning" id="def-in-context-learning">
+Fix a model $F_\theta$ with parameter vector $\theta$. Let $\mathcal D=((x_1,y_1),\dots,(x_n,y_n))$ be demonstrations encoded in a prompt and let $x_\star$ be a query. The model performs **in-context learning** on this prompt when its forward-pass prediction
+$$
+\widehat y_\star = F_\theta(\mathcal D,x_\star)
+$$
+uses the demonstrations so that changing $\mathcal D$ can change $\widehat y_\star$, while $\theta$ remains fixed throughout the computation. The adaptation is carried by prompt-dependent activations, not by an optimizer update to $\theta$.
+This operational definition asserts context dependence only: it neither requires improvement over a no-demonstration baseline nor claims that the model inferred a latent task.
+</Theorem>
+
+<MarginNote variant="warning" label="Two time scales">Training changes $\theta$ across optimizer steps. In-context learning changes activations within one forward pass. Calling both "learning" does not make their state variables the same.</MarginNote>
+
+This definition does not prescribe an internal algorithm. The demonstrations might be used as an associative memory, as input to an implicit estimator, or by some other circuit. It says only what is held fixed and what may vary, matching the controlled setting in which transformers construct predictors from labeled examples without further parameter updates <Cite key="akyurek2022algorithm" />.
+
+## Associative lookup from one softmax row
+
+Attention already has the shape of a memory read: keys name locations, a query scores them, and values carry the returned contents. The missing quantitative statement is how a score advantage turns into retrieval accuracy. We prove it directly from the softmax formula of <XRef id="def-attention" />.
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: divide every softmax numerator and denominator by $e^{s_t}$. What upper bound does a margin $s_t-s_i\ge\delta_{\mathrm{ret}}$ place on each remaining exponential?</MarginNote>
+
+<Theorem kind="theorem" name="Softmax associative-lookup bound" id="thm-associative-lookup">
+Let $m\ge2$ key–value memories produce scores $s_1,\dots,s_m$ for one query, softmax weights
+$$
+\alpha_i \defeq \frac{e^{s_i}}{\sum_{j=1}^{m}e^{s_j}},
+$$
+and readout $\mathbf y=\sum_i\alpha_i\mathbf v_i$. Suppose target index $t$ has retrieval margin
+$$
+\delta_{\mathrm{ret}} \defeq s_t-\max_{i\ne t}s_i>0,
+$$
+and $\norm{\mathbf v_i}\le M$ for every $i$. Then
+$$
+\alpha_t
+\ge \frac{1}{1+(m-1)e^{-\delta_{\mathrm{ret}}}},
+\qquad
+1-\alpha_t
+\le \frac{(m-1)e^{-\delta_{\mathrm{ret}}}}{1+(m-1)e^{-\delta_{\mathrm{ret}}}},
+$$
+and the value-retrieval error obeys
+$$
+\norm{\mathbf y-\mathbf v_t}
+\le 2M(1-\alpha_t)
+\le
+\frac{2M(m-1)e^{-\delta_{\mathrm{ret}}}}
+     {1+(m-1)e^{-\delta_{\mathrm{ret}}}}.
+$$
+</Theorem>
+
+<Theorem kind="proof">
+**Target mass.**
+Divide the softmax denominator by $e^{s_t}$:
+$$
+\alpha_t
+=\frac{1}{1+\sum_{i\ne t}e^{s_i-s_t}}.
+$$
+The margin gives $s_i-s_t\le-\delta_{\mathrm{ret}}$ for every $i\ne t$, hence
+$$
+\sum_{i\ne t}e^{s_i-s_t}\le(m-1)e^{-\delta_{\mathrm{ret}}}.
+$$
+Substitution proves the lower bound on $\alpha_t$.
+
+**Missing mass.**
+Since $u\mapsto u/(1+u)$ is increasing on $u\ge0$ and
+$$
+1-\alpha_t
+=\frac{\sum_{i\ne t}e^{s_i-s_t}}
+       {1+\sum_{i\ne t}e^{s_i-s_t}},
+$$
+the same estimate proves the second bound.
+
+**Value error.**
+Use $\sum_i\alpha_i=1$ to subtract the target value:
+$$
+\mathbf y-\mathbf v_t
+=\sum_{i\ne t}\alpha_i(\mathbf v_i-\mathbf v_t).
+$$
+The triangle inequality and $\norm{\mathbf v_i-\mathbf v_t}\le2M$ give
+$$
+\norm{\mathbf y-\mathbf v_t}
+\le\sum_{i\ne t}\alpha_i\,2M
+=2M(1-\alpha_t),
+$$
+and substituting the second bound completes the proof. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="formula" label="Margin budget">For $0<\varepsilon<1$, the sufficient condition $1-\alpha_t\le\varepsilon$ is $\delta_{\mathrm{ret}}\ge\log((m-1)(1-\varepsilon)/\varepsilon)$. More distractors require only a logarithmically larger margin.</MarginNote>
+
+The theorem is an attention consequence, not a theorem attributed to the original transformer paper: scaled dot-product attention supplies the softmax scores <Cite key="vaswani2017attention" />, while the inequality above is our direct derivation. It is also finite-margin rather than asymptotic. The target need not receive weight $1$ for its returned value to be close, and the bound states exactly how the number of distractors competes with the margin.
+
+## From lookup to induction
+
+Associative lookup returns a value attached to a matching key. Vanilla induction manufactures the right key–value pairs from the sequence itself: an earlier token becomes the key and its immediate successor becomes the value. Repeating the earlier token later then queries that memory.
+
+<Theorem kind="definition" name="Vanilla induction map" id="def-vanilla-induction-map">
+Let $x_{1:t}=(x_1,\dots,x_t)$ be a token prefix, let $e(x)\in\R^d$ be the value representation of token $x$, and define the set of earlier successor positions whose predecessors match the current token,
+$$
+\mathcal J_t
+\defeq
+\bigl\{j\in\{2,\dots,t-1\}:x_{j-1}=x_t\bigr\}.
+$$
+The **vanilla induction map** at position $t$ is
+$$
+\operatorname{Ind}_t(x_{1:t})
+\defeq \frac{1}{\lvert\mathcal J_t\rvert}
+\sum_{j\in\mathcal J_t}e(x_j),
+$$
+defined on prefixes for which $\mathcal J_t\ne\varnothing$.
+Thus a unique earlier match $[A][B]\ldots[A]$ returns $e(B)$. Equal repeated matches are all retained: if earlier $A$ tokens are followed by $B$ and $C$, the map returns $(e(B)+e(C))/2$ rather than choosing one arbitrarily.
+When $\mathcal J_t=\varnothing$, vanilla induction has no retrieved successor; a complete model needs a separate fallback or null-key gate. Assigning such a fallback is outside this map and outside the construction below.
+</Theorem>
+
+The index $j$ names the **successor** position. That choice prevents an off-by-one ambiguity: its key will be $e(x_{j-1})$, while its value is $e(x_j)$. The range stops at $t-1$, so the query cannot use itself as an alleged earlier successor.
+
+<MarginNote variant="tip" label="Self-explanation">For $[A][B][C][A]$, write the two eligible pairs as $(\text{predecessor},\text{successor})$. Which pair's predecessor matches the final query?</MarginNote>
+
+<Theorem kind="theorem" name="Ideal two-stage induction construction" id="thm-induction-construction">
+Let token representations $e(a)$ be orthonormal, and fix $t\ge4$ with $r\defeq\lvert\mathcal J_t\rvert\ge1$. Consider the following idealized causal two-stage circuit:
+
+1. A **previous-token stage** exposes at each candidate position $j\in\{2,\dots,t-1\}$ the pair
+   $(\mathbf k_j,\mathbf v_j)=(e(x_{j-1}),e(x_j))$.
+2. A **copy stage** uses query $\mathbf q_t=e(x_t)$ and logits
+   $s_j=\lambda\inner{\mathbf q_t}{\mathbf k_j}$ with $\lambda>0$, then returns the softmax-weighted value $\mathbf y_t$.
+
+Writing $c=t-2$ for the number of candidates and $\mathbf u_t=\operatorname{Ind}_t(x_{1:t})$, the total softmax mass on matching candidates is exactly
+$$
+A_t=\frac{r}{r+(c-r)e^{-\lambda}},
+$$
+and
+$$
+\norm{\mathbf y_t-\mathbf u_t}
+\le2(1-A_t)
+=\frac{2(c-r)e^{-\lambda}}{r+(c-r)e^{-\lambda}}.
+$$
+Consequently $\mathbf y_t\to\operatorname{Ind}_t(x_{1:t})$ as $\lambda\to\infty$; when the match is unique, the circuit approximately copies its unique successor, and when there are several equal matches, it approaches their uniform average.
+</Theorem>
+
+<Theorem kind="proof">
+**Scores.**
+Orthonormality makes each logit binary:
+$$
+s_j=\lambda\inner{e(x_t)}{e(x_{j-1})}
+=\begin{cases}\lambda,&j\in\mathcal J_t,\\0,&j\notin\mathcal J_t.\end{cases}
+$$
+**Matching mass.**
+The $r$ matches contribute total unnormalized mass $re^\lambda$ and the $c-r$ nonmatches contribute $c-r$. Dividing by their sum and then by $e^\lambda$ gives
+$$
+A_t=\frac{re^\lambda}{re^\lambda+c-r}
+=\frac{r}{r+(c-r)e^{-\lambda}}.
+$$
+**Error.**
+Every match has the same weight, so its conditional average is exactly
+$\mathbf u_t=r^{-1}\sum_{j\in\mathcal J_t}e(x_j)$. If $c=r$, all candidates match and $\mathbf y_t=\mathbf u_t$. Otherwise the nonmatching values have a softmax-conditional average $\mathbf z_t$, and
+$$
+\mathbf y_t=A_t\mathbf u_t+(1-A_t)\mathbf z_t.
+$$
+Both $\mathbf u_t$ and $\mathbf z_t$ are convex combinations of unit vectors, so each has norm at most $1$ (<XRef id="prop-row-stochastic-convex" />). Hence
+$$
+\norm{\mathbf y_t-\mathbf u_t}
+=(1-A_t)\norm{\mathbf z_t-\mathbf u_t}
+\le2(1-A_t),
+$$
+which is the stated bound. Since $e^{-\lambda}\to0$, $A_t\to1$ and the error tends to zero. $\qquad\blacksquare$
+</Theorem>
+
+The theorem deliberately idealizes the first stage as an exact one-position shift, then makes the second stage's finite-softmax approximation explicit. A source-level result closes that architectural gap for the finite-softmax target: Wang et al. construct a width-$2d$, two-layer, single-head transformer **without feed-forward sublayers** whose first layer uses relative positional bias to approximate the previous-token shift and whose second layer uses dot-product similarity to read the successor <Cite key="wang2024rich" />. In their error metric the approximation is bounded by $Ce^{-p}$ for positional-bias scale $p$, uniformly over sequence length. “Sequence-length-independent” describes this approximation efficiency—not constant runtime or memory, arbitrary length generalization learned from data, or robustness. The result is an existence construction, not a claim that training discovers those weights.
+
+### A complete trace
+
+Take $x_{1:4}=[A,B,C,A]$ with orthonormal one-hot representations. At query position $t=4$, the candidates are
+$$
+j=2:(\mathbf k_2,\mathbf v_2)=(e(A),e(B)),
+\qquad
+j=3:(\mathbf k_3,\mathbf v_3)=(e(B),e(C)).
+$$
+Thus $\mathcal J_4=\{2\}$ and $\operatorname{Ind}_4=e(B)$. Choose $\lambda=\log9$. The query $e(A)$ gives logits $(\log9,0)$, weights $(9/10,1/10)$, and output
+$$
+\mathbf y_4=0.9e(B)+0.1e(C).
+$$
+Here $c=2$, $r=1$, so <XRef id="thm-induction-construction" /> gives
+$\norm{\mathbf y_4-e(B)}\le2(1-0.9)=0.2$; the actual Euclidean error is $\sqrt2/10$. Increasing $\lambda$ suppresses the $C$ distractor exponentially.
+
+Now change the prefix to $[A,B,A,C,A]$. At $t=5$ the matching successor positions are $\mathcal J_5=\{2,4\}$, so the map's target is $(e(B)+e(C))/2$. At the finite scale $\lambda=\log9$, the three candidate values receive weights $9/19$, $1/19$, and $9/19$, giving
+$$
+\mathbf y_5=\frac9{19}e(B)+\frac1{19}e(A)+\frac9{19}e(C).
+$$
+The two matching successors have equal weight, but the nonmatch still leaks mass; only as $\lambda\to\infty$ does the readout converge to $(e(B)+e(C))/2$. Thus equal matches create a mixture rather than an intrinsic latest-match choice.
+
+## One gradient step as linear attention
+
+Induction reuses a discrete predecessor–successor association. A different controlled construction treats demonstrations as a regression dataset. Its algebra reveals the same query–key–value shape, but with one crucial change: the weights are signed inner products, **not softmax probabilities**.
+
+<Theorem kind="definition" name="Unnormalized identity-feature linear attention" id="def-unnormalized-linear-attention">
+For query $\mathbf q$, keys $\mathbf k_i$, and scalar values $v_i$, **unnormalized identity-feature linear attention** is
+$$
+\operatorname{LA}\bigl(\mathbf q;\{(\mathbf k_i,v_i)\}_{i=1}^{n}\bigr)
+\defeq
+\sum_{i=1}^{n}\inner{\mathbf q}{\mathbf k_i}v_i.
+$$
+</Theorem>
+
+Because there is no softmax or normalization, the coefficients may be negative and the output is not a convex combination. This is the bilinear core of linear self-attention, not the exponential-kernel operator of <XRef id="def-attention" />.
+It is also not the positive, normalized feature-map variant of <XRef id="rem-linear-attention" />: here the denominator is deliberately absent.
+
+<NotationOverride scope="Controlled linear-regression construction">
+The demonstration vectors $\mathbf x_i$, query $\mathbf x_\star$, and predictor $\mathbf w$ are columns in this section, so gradients act by left multiplication and $\mathbf x_\star^\top\mathbf x_i$ is the query–key score.
+</NotationOverride>
+
+<MarginNote variant="tip" label="Self-explanation">Differentiate the squared loss first. After left-multiplying the update by $x_\star^\top$, which factor becomes the query–key score, and which factor can be stored as the value?</MarginNote>
+
+<Theorem kind="proposition" name="One regression gradient step is unnormalized linear attention" id="prop-linear-attention-gd">
+Given demonstrations $(\mathbf x_i,y_i)\in\R^d\times\R$, define
+$$
+L(\mathbf w)=\frac{1}{2n}\sum_{i=1}^{n}
+\bigl(\mathbf w^\top\mathbf x_i-y_i\bigr)^2.
+$$
+From an initial predictor $\mathbf w_0$, one gradient-descent step of size $\eta>0$ is
+$$
+\mathbf w_1
+=\mathbf w_0-\frac{\eta}{n}\sum_{i=1}^{n}
+\mathbf x_i\bigl(\mathbf x_i^\top\mathbf w_0-y_i\bigr).
+$$
+For any query $\mathbf x_\star$, its updated prediction is exactly
+$$
+\mathbf x_\star^\top\mathbf w_1
+=\mathbf x_\star^\top\mathbf w_0
++\operatorname{LA}\!\left(
+\mathbf x_\star;
+\left\{\left(\mathbf x_i,
+-\frac{\eta}{n}(\mathbf x_i^\top\mathbf w_0-y_i)\right)\right\}_{i=1}^{n}
+\right).
+$$
+For fixed $(n,\eta,\mathbf w_0)$, construct a block-coded unnormalized linear-attention layer in which the demonstrations supply keys and residual-derived values, the query supplies only the query vector, and an output residual channel is initialized to $\mathbf x_\star^\top\mathbf w_0$. That layer computes the prediction after one exact gradient step while its own parameters remain fixed. Here $\mathbf w_0$ enters the constructed value projection and $\eta/n$ enters its scale; the statement does not assert that one unchanged layer handles arbitrary initial predictors or context lengths.
+</Theorem>
+
+<Theorem kind="proof">
+**Gradient.**
+For residual $r_i(\mathbf w)\defeq\mathbf w^\top\mathbf x_i-y_i$, the chain rule gives
+$$
+\nabla L(\mathbf w_0)
+=\frac1n\sum_{i=1}^{n}r_i(\mathbf w_0)\mathbf x_i.
+$$
+Substituting this into $\mathbf w_1=\mathbf w_0-\eta\nabla L(\mathbf w_0)$ yields the stated parameter-space update.
+
+**Prediction.**
+Left-multiply by $\mathbf x_\star^\top$ and distribute over the sum:
+$$
+\mathbf x_\star^\top\mathbf w_1
+=\mathbf x_\star^\top\mathbf w_0
+-\frac{\eta}{n}\sum_{i=1}^{n}
+(\mathbf x_\star^\top\mathbf x_i)
+(\mathbf x_i^\top\mathbf w_0-y_i).
+$$
+
+**Attention identification.**
+In <XRef id="prop-linear-attention-gd" />'s linear-attention expression, set query $\mathbf q=\mathbf x_\star$, key $\mathbf k_i=\mathbf x_i$, and value $v_i=-(\eta/n)(\mathbf x_i^\top\mathbf w_0-y_i)$. The defining sum of <XRef id="def-unnormalized-linear-attention" /> is exactly the correction term above. The residual channel supplies the base prediction, so the two computations agree identically. $\qquad\blacksquare$
+</Theorem>
+
+### A complete regression trace
+
+Take $n=2$, $\eta=1$, $\mathbf w_0=\mathbf 0$, and
+$$
+(\mathbf x_1,y_1)=((1,0)^\top,2),\qquad
+(\mathbf x_2,y_2)=((1,1)^\top,3),\qquad
+\mathbf x_\star=(0,1)^\top.
+$$
+The residuals are $-2$ and $-3$, so the parameter-space route gives
+$$
+\nabla L(\mathbf 0)
+=\frac12\bigl[-2(1,0)^\top-3(1,1)^\top\bigr]
+=(-5/2,-3/2)^\top,
+\quad
+\mathbf w_1=(5/2,3/2)^\top,
+$$
+and therefore $\mathbf x_\star^\top\mathbf w_1=3/2$.
+
+The attention route stores keys $\mathbf k_i=\mathbf x_i$ and scalar values
+$v_i=-(1/2)(-y_i)$, hence $(v_1,v_2)=(1,3/2)$. The query scores are
+$(\mathbf x_\star^\top\mathbf x_1,\mathbf x_\star^\top\mathbf x_2)=(0,1)$, so
+$$
+\operatorname{LA}\bigl(\mathbf x_\star;\{(\mathbf x_1,1),(\mathbf x_2,3/2)\}\bigr)
+=0\cdot1+1\cdot\frac32=\frac32.
+$$
+The residual base prediction is $\mathbf x_\star^\top\mathbf w_0=0$, and the two routes agree exactly. Unlike the induction trace, the coefficient $0$ is an unnormalized dot product—not a softmax probability.
+
+This algebra is the one-step core of the explicit linear-self-attention construction of von Oswald et al. <Cite key="vonoswald2022gradient" />. Their exact construction is a one-head **linear** attention data transformation with block-coded $(\mathbf x,y)$ tokens and context-only key/value memory; including the query in full self-attention requires an additional zero-initialization qualification. Akyürek et al. give broader standard-transformer constructions for gradient-based and closed-form ridge-regression predictors <Cite key="akyurek2022algorithm" />. Both sources study controlled linear-model prompts; neither licenses replacing “can implement” by “every pretrained language model implements.”
+
+<Theorem kind="remark" name="Construction is not learned mechanism" id="rem-construction-not-mechanism">
+The three results in this chapter answer **representability** questions:
+
+- <XRef id="thm-associative-lookup" /> says a score margin is sufficient for accurate retrieval;
+- <XRef id="thm-induction-construction" /> says a particular two-stage circuit approximates the vanilla induction map;
+- <XRef id="prop-linear-attention-gd" /> says one controlled regression update has an exact linear-attention realization.
+
+None proves that gradient-based training will discover the exhibited weights, that a specific trained model uses the exhibited circuit, that its behavior is robust off the construction's domain, or that all in-context learning reduces to lookup, induction, or gradient descent. Moving from an existence construction to a claim about a trained model requires additional optimization or mechanistic evidence.
+</Theorem>
+
+<Theorem kind="remark" name="Empirical induction-head boundary (evidence checked 2026-07-13)" id="rem-empirical-induction">
+Olsson et al. observed that induction heads emerge at the same training point as a sharp increase in an in-context-learning measure, visible as a bump in training loss <Cite key="olsson2022induction" />. The study reports strong causal evidence for **small attention-only models**, but only correlational evidence for **larger models with MLPs**. The timing observation motivates the induction construction; it does not elevate induction heads to a proved universal mechanism for large language models.
+</Theorem>
+
+## Exercises
+
+Attempt each before expanding its solution.
+
+**Exercise 8.1 (Compare).** A model receives four labeled examples, makes a prediction, and then an optimizer applies backpropagation to change $\theta$. Which portion is in-context learning under <XRef id="def-in-context-learning" />, and which is ordinary training?
+
+<SolutionBox>
+
+The forward pass that reads the four demonstrations and forms a prediction with $\theta$ fixed is in-context learning, provided changing the demonstrations can change that prediction. The subsequent backpropagation and optimizer step is ordinary training because it changes $\theta$. The same episode can contain both processes, but they occupy different time intervals and update different state: activations first, parameters second.
+
+</SolutionBox>
+
+**Exercise 8.2 (Compute).** One target competes with four distractors, so $m=5$. Let $\delta_{\mathrm{ret}}=\log36$ and $\norm{\mathbf v_i}\le1$. Use <XRef id="thm-associative-lookup" /> to bound the target weight and retrieval error.
+
+<SolutionBox>
+
+Here $(m-1)e^{-\delta_{\mathrm{ret}}}=4/36=1/9$. Therefore
+$$
+\alpha_t\ge\frac{1}{1+1/9}=\frac9{10},
+\qquad
+\norm{\mathbf y-\mathbf v_t}\le2(1-\alpha_t)\le\frac{2}{10}=0.2.
+$$
+The guarantee is worst-case: aligned distractor values may give a smaller actual error.
+
+</SolutionBox>
+
+**Exercise 8.3 (Derive).** Suppose $r\ge1$ of $c$ candidates tie at top score $s_\star$, every nonmatch scores at most $s_\star-\delta_{\mathrm{ret}}$, and the desired output is the uniform average of the $r$ matching values. Assuming all value norms are at most $M$, derive a retrieval-error bound.
+
+<SolutionBox>
+
+If $r=c$, every candidate matches, so $A=1$, $\mathbf y=\mathbf u$, and the error is zero. Suppose now that $r<c$. The matching candidates have total unnormalized mass $re^{s_\star}$; the nonmatches have mass at most $(c-r)e^{s_\star-\delta_{\mathrm{ret}}}$. Thus the matching mass $A$ satisfies
+$$
+A\ge\frac{r}{r+(c-r)e^{-\delta_{\mathrm{ret}}}}.
+$$
+Because the top scores tie, their normalized conditional average is the desired uniform average $\mathbf u$. Write the output as $A\mathbf u+(1-A)\mathbf z$, where $\mathbf z$ is a convex combination of nonmatching values. Both norms are at most $M$, so
+$$
+\norm{\mathbf y-\mathbf u}
+\le2M(1-A)
+\le\frac{2M(c-r)e^{-\delta_{\mathrm{ret}}}}{r+(c-r)e^{-\delta_{\mathrm{ret}}}}.
+$$
+This is <XRef id="thm-induction-construction" />'s estimate with $M=1$ and exact binary logits.
+
+</SolutionBox>
+
+**Exercise 8.4 (Trace).** Compute $\mathcal J_7$ and $\operatorname{Ind}_7$ for $[A,B,A,C,D,A,A]$. Explain why the final $A$ is not used as its own candidate successor.
+
+<SolutionBox>
+
+At $t=7$, the current token is $A$. Eligible successor positions are $j\in\{2,3,4,5,6\}$. Their predecessor–successor pairs are
+$$
+(A,B),\ (B,A),\ (A,C),\ (C,D),\ (D,A).
+$$
+The matching predecessor $A$ occurs at $j=2$ and $j=4$, so $\mathcal J_7=\{2,4\}$ and
+$$
+\operatorname{Ind}_7=\frac{e(B)+e(C)}{2}.
+$$
+The range ends at $t-1=6$: position $7$ is the query, not an earlier successor with an already available predecessor–successor relation.
+
+</SolutionBox>
+
+**Exercise 8.5 (Derive).** First specialize <XRef id="prop-linear-attention-gd" /> to one dimension with $w_0=0$. Then take demonstrations $(x_1,y_1)=(1,2)$ and $(x_2,y_2)=(2,1)$, $\eta=1/2$, and query $x_\star=3$, and compute the one-step prediction by both routes.
+
+<SolutionBox>
+
+In one dimension with $w_0=0$, the proposition reduces to
+$$
+w_1=\frac{\eta}{n}\sum_i x_i y_i,
+\qquad
+x_\star w_1=\frac{\eta}{n}\sum_i(x_\star x_i)y_i,
+$$
+which already displays the equality of the parameter update and the unnormalized linear-attention read. For the supplied data, $n=2$ and the residuals are $r_1=-2$ and $r_2=-1$. Gradient descent gives
+$$
+w_1=0-\frac{1/2}{2}\bigl(1(-2)+2(-1)\bigr)=1,
+$$
+so the query prediction is $x_\star w_1=3$. For linear attention, the values are
+$$
+v_1=-\frac{1/2}{2}(-2)=\frac12,
+\qquad
+v_2=-\frac{1/2}{2}(-1)=\frac14.
+$$
+The base prediction is zero and
+$$
+\operatorname{LA}(3;\{(1,1/2),(2,1/4)\})
+=(3\cdot1)\frac12+(3\cdot2)\frac14=3.
+$$
+The two routes agree exactly.
+
+</SolutionBox>
+
+**Exercise 8.6 (Analyze).** A report states: "Because a two-layer transformer can approximate induction and a linear-attention layer can realize one regression gradient step, large pretrained transformers perform all in-context learning by gradient descent through induction heads." Identify three unsupported jumps and rewrite the conclusion at the evidence level established here.
+
+<SolutionBox>
+
+First, **representability is not acquisition**: existence of suitable weights does not show training finds them. Second, the exact gradient-step identity is for a controlled squared-loss regression problem and unnormalized linear attention, not arbitrary softmax language modeling. Third, induction-head evidence is strong and causal only in small attention-only models in the cited study; evidence for larger MLP models is correlational, and neither source proves universality over all in-context behavior.
+
+A supported conclusion is: "Transformers admit explicit constructions for vanilla induction, and controlled linear-attention computations can realize a regression gradient step. These constructions are candidate mechanisms; identifying them in a trained large model requires separate causal or mechanistic evidence."
+
+</SolutionBox>
