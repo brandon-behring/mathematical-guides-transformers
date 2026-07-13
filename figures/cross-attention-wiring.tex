@@ -1,5 +1,5 @@
 %! no-theme
-% cross-attention-wiring (ch07, def-tf7-cross-attention) — the ONE asymmetry that distinguishes cross- from
+% cross-attention-wiring (ch07, def-cross-attention) — the ONE asymmetry that distinguishes cross- from
 % self-attention: queries come from the DECODER stream, keys and values from the ENCODER stream. Two source
 % streams (X_dec ∈ R^{m×d} top, H_enc ∈ R^{n×d} bottom) feed one attention op; the scores QKᵀ are m×n (not
 % n×n) and the output is m×d_v (decoder length). Instance m=3 decoder positions, n=4 encoder positions.

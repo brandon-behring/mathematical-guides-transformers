@@ -2,44 +2,44 @@
   "schemaVersion": 1,
   "claims": [
     {
-      "id": "def-tf12-cost-eq",
+      "id": "def-cost-eq",
       "test": "tests/properties/test_roofline.py",
-      "statementSha256": "f07275ac57ba0c7e401a1630c2f797b8eb17259f7641282ecd01916ebba4133e"
+      "statementSha256": "8c3b545ad276d1af947632491ed0a5672c0938000a00af4e4f8fb6129a6eb1c1"
     },
     {
-      "id": "prop-tf12-memory-bound",
+      "id": "prop-memory-bound",
       "test": "tests/properties/test_roofline.py",
-      "statementSha256": "e2c637bcdedfcf9091b7ef2e2ec72c3274186cca6ec3262381d27e34681dd0b9"
+      "statementSha256": "4e782c18f7c494821deb363cd3611ad1770aaf95bab994c28b3cba1d3c974797"
     },
     {
-      "id": "rem-tf12-prefill-decode",
+      "id": "rem-prefill-decode",
       "test": "tests/properties/test_roofline.py",
-      "statementSha256": "5f81bb795a41b20415c429eed2774ed129a373aa73075b06438cbcd0e8170f3f"
+      "statementSha256": "9fa934b8e970938ccb78c868b61a496d760485602e21834678fdae7287e7f478"
     },
     {
-      "id": "prop-tf5-kv-cache",
+      "id": "prop-kv-cache",
       "test": "tests/properties/test_kv_cache.py",
-      "statementSha256": "9f5a4be14a25408b43d43abcd22b0700bfe960a3c4b8949f0be46cf2c868c2f1"
+      "statementSha256": "ed7897acaf42bbca9159255340f6085ae49a5ae7a1faf671b4362fb3d40507a6"
     },
     {
-      "id": "prop-tf12-kv-memory",
+      "id": "prop-kv-memory",
       "test": "tests/properties/test_kv_cache.py",
-      "statementSha256": "aed4da9a071ea261e106c8c77157761c8e156d8deec9000d288871ee79c7ed5f"
+      "statementSha256": "368605d1be4b08f8e130d24f1ef44bde1425600e3771b4762ab846edfc79a58a"
     },
     {
-      "id": "def-tf12-moe",
+      "id": "def-moe",
       "test": "tests/properties/test_moe_cost.py",
-      "statementSha256": "92620b1606938fa45011382fc562456c7f55b3d7a13f364307cf0bca39fa9954"
+      "statementSha256": "6a8e59f6f706906ac8eea3ea2d63615c718dd3886476a6d818dcaf6d48ff5eab"
     },
     {
-      "id": "prop-tf12-moe-flops",
+      "id": "prop-moe-flops",
       "test": "tests/properties/test_moe_cost.py",
-      "statementSha256": "487a6a7c19043e476254b21b5af133ee931a6e6a3a7e97de8f3f5a087417c364"
+      "statementSha256": "8983ce4e5e03fc24928a20ba3f9ed6715c4cb9b9894b142c140975874c888861"
     },
     {
-      "id": "prop-tf13-chunked",
+      "id": "prop-chunked",
       "test": "tests/properties/test_ssd_chunking.py",
-      "statementSha256": "d914c594088498f9559cd26a92498d6b85582c8e71a0b3e0efba2af4a512cc34"
+      "statementSha256": "738adfb305e7228c18fed2f8a97950084a1e7ee2d5a5b90a68e7e35e571980cf"
     }
   ]
 }

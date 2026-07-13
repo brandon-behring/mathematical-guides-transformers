@@ -14,6 +14,12 @@ Authoring follows the family's dossier-grounded
 
 ## Structure: 19 chapters, 6 parts
 
+Published chapter numbers deliberately reserve **08** (in-context learning), **11** (RLHF/DPO),
+**13** (scaling laws), **16** (mixture of experts), and **17** (sparse attention). The current
+19-chapter corpus therefore occupies **00–07, 09–10, 12, 14–15, and 18–23**. Source filenames carry
+those final display numbers, while frontmatter `slug` values are number-free, so filling a reserved
+slot does not change an existing chapter URL.
+
 - **Part 1 — Foundations.** Notation and prerequisites; input representations (the modality-agnostic
   embedding interface, positional encodings, RoPE).
 - **Part 2 — Recurrence & Linear State.** Recurrent networks and the seq2seq lineage
@@ -32,8 +38,8 @@ Authoring follows the family's dossier-grounded
 - **Part 6 — Multimodal Models.** Connectors and resamplers; discrete visual tokenization; unified
   multimodal models; multimodal evaluation.
 
-Chapter files live in `src/content/transformers/` (number-free slugs → stable URLs). Minimum
-frontmatter is `title` + `last_verified`; the schema is
+Chapter files live in `src/content/transformers/`. Minimum frontmatter is `title` + `last_verified`;
+the schema is
 `researchPortfolioChapterSchema.merge(formalChapterExtensions)` (`src/content.config.ts`).
 
 ## Figures

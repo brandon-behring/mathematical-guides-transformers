@@ -6,7 +6,7 @@
     "labels": 252,
     "learningObjectives": 86,
     "proofMarkers": 183,
-    "printedNumberHits": 199
+    "printedNumberHits": 119
   },
   "chapters": [
     {
@@ -29,19 +29,19 @@
         "rem-softmax-temperature"
       ],
       "objectiveIds": [
-        "TF-0.1",
-        "TF-0.2",
-        "TF-0.3",
-        "TF-0.4"
+        "lo-cross-entropy-kl-equivalence",
+        "lo-modality-agnostic-embedding-interface",
+        "lo-row-stochastic-convex-combinations",
+        "lo-softmax-calculus"
       ],
       "xrefs": [
+        "def-causal-mask",
         "def-row-stochastic",
+        "def-scan-op",
         "def-softmax",
-        "def-tf3-scan-op",
-        "def-tf3-ssm",
-        "def-tf4-causal-mask",
+        "def-ssm",
         "prop-softmax-translation-inv",
-        "thm-tf3-zoh"
+        "thm-zoh"
       ],
       "kindCounts": {
         "definition": 5,
@@ -51,22 +51,6 @@
       },
       "proofMarkers": 8,
       "printedNumberHits": [
-        {
-          "line": 13,
-          "text": "TF-0.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-0.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-0.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-0.4"
-        },
         {
           "line": 235,
           "text": "Exercise 0.1"
@@ -92,50 +76,50 @@
       "chapter": 1,
       "part": 1,
       "labelIds": [
-        "def-tf1-codebook-embedding",
-        "def-tf1-embedding-interface",
-        "def-tf1-input",
-        "def-tf1-patch-embedding",
-        "def-tf1-pe-2d",
-        "def-tf1-rope",
-        "def-tf1-rotation-2d",
-        "def-tf1-sinusoidal-pe",
-        "def-tf1-token-embedding",
-        "def-tf1-vocabulary",
+        "def-codebook-embedding",
+        "def-embedding-interface",
+        "def-input",
+        "def-patch-embedding",
+        "def-pe-2d",
+        "def-rope",
+        "def-rotation-2d",
+        "def-sinusoidal-pe",
+        "def-token-embedding",
+        "def-vocabulary",
         "fig-dual-embedding",
-        "rem-tf1-modality-blind",
-        "rem-tf1-pe-vs-rope",
-        "rem-tf1-rope-2d",
-        "rem-tf1-rope-complex",
-        "thm-tf1-patch-conv",
-        "thm-tf1-pe-2d-shift",
-        "thm-tf1-pe-collision",
-        "thm-tf1-pe-rotation",
-        "thm-tf1-rope-relative"
+        "rem-modality-blind",
+        "rem-pe-vs-rope",
+        "rem-rope-2d",
+        "rem-rope-complex",
+        "thm-patch-conv",
+        "thm-pe-2d-shift",
+        "thm-pe-collision",
+        "thm-pe-rotation",
+        "thm-rope-relative"
       ],
       "objectiveIds": [
-        "TF-1.1",
-        "TF-1.2",
-        "TF-1.3",
-        "TF-1.4",
-        "TF-1.5",
-        "TF-1.6"
+        "lo-factorized-2d-position",
+        "lo-patch-and-codebook-embeddings",
+        "lo-positional-encoding-computation",
+        "lo-rope-relative-position",
+        "lo-sinusoidal-position-properties",
+        "lo-token-and-positional-embeddings"
       ],
       "xrefs": [
-        "def-tf1-codebook-embedding",
-        "def-tf1-input",
-        "def-tf1-patch-embedding",
-        "def-tf1-pe-2d",
-        "def-tf1-rope",
-        "def-tf1-rotation-2d",
-        "def-tf1-sinusoidal-pe",
-        "def-tf1-token-embedding",
-        "def-tf2-rnn",
-        "def-tf4-attention",
-        "thm-tf1-patch-conv",
-        "thm-tf1-pe-2d-shift",
-        "thm-tf1-pe-rotation",
-        "thm-tf1-rope-relative"
+        "def-attention",
+        "def-codebook-embedding",
+        "def-input",
+        "def-patch-embedding",
+        "def-pe-2d",
+        "def-rnn",
+        "def-rope",
+        "def-rotation-2d",
+        "def-sinusoidal-pe",
+        "def-token-embedding",
+        "thm-patch-conv",
+        "thm-pe-2d-shift",
+        "thm-pe-rotation",
+        "thm-rope-relative"
       ],
       "kindCounts": {
         "definition": 10,
@@ -145,30 +129,6 @@
       },
       "proofMarkers": 13,
       "printedNumberHits": [
-        {
-          "line": 13,
-          "text": "TF-1.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-1.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-1.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-1.4"
-        },
-        {
-          "line": 21,
-          "text": "TF-1.5"
-        },
-        {
-          "line": 23,
-          "text": "TF-1.6"
-        },
         {
           "line": 343,
           "text": "Exercise 1.1"
@@ -210,44 +170,44 @@
       "chapter": 2,
       "part": 2,
       "labelIds": [
-        "def-tf2-additive-attention",
-        "def-tf2-gru",
-        "def-tf2-lstm",
-        "def-tf2-rnn",
-        "def-tf2-seq2seq",
-        "ex-tf2-scalar-trace",
+        "def-additive-attention",
+        "def-gru",
+        "def-lstm",
+        "def-rnn",
+        "def-seq2seq",
+        "ex-scalar-trace",
         "fig-seq2seq-bottleneck",
         "fig-unrolled-rnn",
-        "prop-tf2-bottleneck",
-        "prop-tf2-cec",
-        "rem-tf2-toward-attention",
-        "thm-tf2-bptt",
-        "thm-tf2-gradient-bound"
+        "prop-cec",
+        "prop-seq2seq-fixed-vector-bottleneck",
+        "rem-toward-attention",
+        "thm-bptt",
+        "thm-gradient-bound"
       ],
       "objectiveIds": [
-        "TF-2.1",
-        "TF-2.2",
-        "TF-2.3",
-        "TF-2.4"
+        "lo-backpropagation-through-time",
+        "lo-recurrent-gradient-regimes",
+        "lo-recurrent-unrolling",
+        "lo-seq2seq-bottleneck-and-attention"
       ],
       "xrefs": [
+        "def-additive-attention",
+        "def-attention",
         "def-cross-entropy",
+        "def-embedding-interface",
+        "def-gru",
+        "def-lstm",
+        "def-rnn",
+        "def-seq2seq",
         "def-softmax",
-        "def-tf1-embedding-interface",
-        "def-tf2-additive-attention",
-        "def-tf2-gru",
-        "def-tf2-lstm",
-        "def-tf2-rnn",
-        "def-tf2-seq2seq",
-        "def-tf4-attention",
-        "ex-tf2-scalar-trace",
+        "ex-scalar-trace",
+        "prop-cec",
         "prop-row-stochastic-convex",
+        "prop-seq2seq-fixed-vector-bottleneck",
         "prop-softmax-translation-inv",
-        "prop-tf2-bottleneck",
-        "prop-tf2-cec",
-        "rem-tf1-modality-blind",
-        "thm-tf2-bptt",
-        "thm-tf2-gradient-bound"
+        "rem-modality-blind",
+        "thm-bptt",
+        "thm-gradient-bound"
       ],
       "kindCounts": {
         "definition": 5,
@@ -259,22 +219,6 @@
       },
       "proofMarkers": 10,
       "printedNumberHits": [
-        {
-          "line": 13,
-          "text": "TF-2.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-2.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-2.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-2.4"
-        },
         {
           "line": 164,
           "text": "Exercise 2.3"
@@ -316,44 +260,44 @@
       "chapter": 3,
       "part": 2,
       "labelIds": [
-        "def-tf3-scan-op",
-        "def-tf3-ssm",
-        "ex-tf3-impulse-trace",
+        "def-scan-op",
+        "def-ssm",
+        "ex-impulse-trace",
         "fig-hippo-projection",
         "fig-ssm-three-faces",
-        "lem-tf3-legendre",
-        "prop-tf3-gradient-timescale",
-        "prop-tf3-legs-nplr",
-        "prop-tf3-lti-obstruction",
-        "prop-tf3-scan",
-        "rem-tf3-toward-selectivity",
-        "thm-tf3-conv-recurrence",
-        "thm-tf3-hippo-legs",
-        "thm-tf3-zoh"
+        "lem-legendre",
+        "prop-gradient-timescale",
+        "prop-legs-nplr",
+        "prop-lti-obstruction",
+        "prop-scan",
+        "rem-toward-selectivity",
+        "thm-conv-recurrence",
+        "thm-hippo-legs",
+        "thm-zoh"
       ],
       "objectiveIds": [
-        "TF-3.1",
-        "TF-3.2",
-        "TF-3.3",
-        "TF-3.4",
-        "TF-3.5"
+        "lo-hippo-legs-dynamics",
+        "lo-lti-selective-copy-obstruction",
+        "lo-ssm-gradient-timescales",
+        "lo-ssm-three-evaluation-forms",
+        "lo-ssm-zoh-discretization"
       ],
       "xrefs": [
-        "def-tf1-embedding-interface",
-        "def-tf2-rnn",
-        "def-tf3-scan-op",
-        "def-tf3-ssm",
-        "def-tf4-attention",
-        "lem-tf3-legendre",
-        "prop-tf2-cec",
-        "prop-tf3-gradient-timescale",
-        "prop-tf3-legs-nplr",
-        "prop-tf3-lti-obstruction",
-        "prop-tf3-scan",
-        "thm-tf2-gradient-bound",
-        "thm-tf3-conv-recurrence",
-        "thm-tf3-hippo-legs",
-        "thm-tf3-zoh"
+        "def-attention",
+        "def-embedding-interface",
+        "def-rnn",
+        "def-scan-op",
+        "def-ssm",
+        "lem-legendre",
+        "prop-cec",
+        "prop-gradient-timescale",
+        "prop-legs-nplr",
+        "prop-lti-obstruction",
+        "prop-scan",
+        "thm-conv-recurrence",
+        "thm-gradient-bound",
+        "thm-hippo-legs",
+        "thm-zoh"
       ],
       "kindCounts": {
         "definition": 2,
@@ -367,28 +311,8 @@
       "proofMarkers": 14,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-3.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-3.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-3.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-3.4"
-        },
-        {
-          "line": 21,
-          "text": "TF-3.5"
-        },
-        {
           "line": 176,
-          "text": "Chapter 13"
+          "text": "Chapter 18"
         },
         {
           "line": 254,
@@ -396,7 +320,7 @@
         },
         {
           "line": 438,
-          "text": "Chapter 13"
+          "text": "Chapter 18"
         },
         {
           "line": 445,
@@ -431,21 +355,21 @@
       "chapter": 4,
       "part": 3,
       "labelIds": [
-        "def-tf4-attention",
-        "def-tf4-causal-mask",
+        "def-attention",
+        "def-causal-mask",
         "fig-attention-shapes",
         "fig-causal-mask",
-        "rem-tf4-addressing-lineage",
+        "rem-addressing-lineage",
         "thm-variance-preservation"
       ],
       "objectiveIds": [
-        "TF-4.1",
-        "TF-4.3"
+        "lo-attention-logit-variance",
+        "lo-scaled-dot-product-attention"
       ],
       "xrefs": [
+        "def-additive-attention",
         "def-row-stochastic",
         "def-softmax",
-        "def-tf2-additive-attention",
         "prop-row-stochastic-convex",
         "prop-softmax-jacobian",
         "prop-softmax-translation-inv"
@@ -458,14 +382,6 @@
       },
       "proofMarkers": 4,
       "printedNumberHits": [
-        {
-          "line": 13,
-          "text": "TF-4.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-4.3"
-        },
         {
           "line": 128,
           "text": "Exercise 4.1"
@@ -487,30 +403,30 @@
       "chapter": 5,
       "part": 3,
       "labelIds": [
-        "def-tf5-attention-head",
-        "def-tf5-gqa",
-        "def-tf5-mha",
-        "def-tf5-mqa",
+        "def-attention-head",
+        "def-gqa",
+        "def-mha",
+        "def-mqa",
         "fig-kv-sharing",
         "fig-mha-split-concat",
-        "prop-tf5-kv-cache",
-        "prop-tf5-mha-params",
-        "rem-tf5-low-rank",
-        "thm-tf5-low-rank"
+        "prop-kv-cache",
+        "prop-mha-params",
+        "rem-low-rank",
+        "thm-low-rank"
       ],
       "objectiveIds": [
-        "TF-5.1",
-        "TF-5.2",
-        "TF-5.3",
-        "TF-5.4"
+        "lo-attention-head-rank",
+        "lo-kv-sharing-cache-width",
+        "lo-multi-head-construction",
+        "lo-multi-head-shapes-and-parameters"
       ],
       "xrefs": [
-        "def-tf4-attention",
-        "prop-tf14-decode-state",
-        "prop-tf5-kv-cache",
-        "prop-tf5-mha-params",
-        "thm-tf13-linattn-rnn",
-        "thm-tf5-low-rank"
+        "def-attention",
+        "prop-decode-state",
+        "prop-kv-cache",
+        "prop-mha-params",
+        "thm-linattn-rnn",
+        "thm-low-rank"
       ],
       "kindCounts": {
         "definition": 4,
@@ -521,22 +437,6 @@
       },
       "proofMarkers": 8,
       "printedNumberHits": [
-        {
-          "line": 13,
-          "text": "TF-5.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-5.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-5.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-5.4"
-        },
         {
           "line": 203,
           "text": "Exercise 5.1"
@@ -566,37 +466,37 @@
       "chapter": 6,
       "part": 3,
       "labelIds": [
-        "def-tf6-ffn",
-        "def-tf6-ln",
-        "def-tf6-postnorm",
-        "def-tf6-prenorm",
-        "def-tf6-residual",
-        "ex-tf6-trace",
+        "def-ffn",
+        "def-ln",
+        "def-postnorm",
+        "def-prenorm",
+        "def-residual",
+        "ex-trace",
         "fig-block-anatomy",
         "fig-ffn-expansion",
-        "prop-tf6-ln-jacobian",
-        "rem-tf6-kv-memory",
-        "rem-tf6-prenorm-init",
-        "rem-tf6-swiglu",
-        "thm-tf6-gradient-highway"
+        "prop-ln-jacobian",
+        "rem-kv-memory",
+        "rem-prenorm-init",
+        "rem-swiglu",
+        "thm-gradient-highway"
       ],
       "objectiveIds": [
-        "TF-6.1",
-        "TF-6.2",
-        "TF-6.3",
-        "TF-6.4"
+        "lo-prenorm-postnorm-comparison",
+        "lo-residual-gradient-highway",
+        "lo-transformer-block-components",
+        "lo-transformer-block-shapes"
       ],
       "xrefs": [
-        "def-tf6-ffn",
-        "def-tf6-ln",
-        "def-tf6-prenorm",
+        "def-ffn",
+        "def-ln",
+        "def-prenorm",
+        "prop-cec",
+        "prop-ln-jacobian",
         "prop-row-stochastic-convex",
         "prop-softmax-jacobian",
-        "prop-tf2-cec",
-        "prop-tf6-ln-jacobian",
-        "rem-tf6-prenorm-init",
-        "thm-tf2-gradient-bound",
-        "thm-tf6-gradient-highway"
+        "rem-prenorm-init",
+        "thm-gradient-bound",
+        "thm-gradient-highway"
       ],
       "kindCounts": {
         "definition": 5,
@@ -608,22 +508,6 @@
       },
       "proofMarkers": 7,
       "printedNumberHits": [
-        {
-          "line": 13,
-          "text": "TF-6.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-6.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-6.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-6.4"
-        },
         {
           "line": 227,
           "text": "Exercise 6.1"
@@ -653,60 +537,60 @@
       "chapter": 7,
       "part": 3,
       "labelIds": [
-        "def-tf7-cross-attention",
-        "def-tf7-decoder-block",
-        "def-tf7-decoder-only",
-        "def-tf7-enc-dec",
-        "def-tf7-encoder",
-        "ex-tf7-param-count",
+        "def-cross-attention",
+        "def-decoder-block",
+        "def-decoder-only",
+        "def-enc-dec",
+        "def-encoder",
+        "ex-param-count",
         "fig-cross-attention",
         "fig-three-architectures",
-        "prop-tf7-complexity",
-        "prop-tf7-params",
-        "rem-tf7-depth",
-        "rem-tf7-existence",
-        "rem-tf7-flash-attention",
-        "rem-tf7-linear-attention",
-        "rem-tf7-multimodal-crossattn",
-        "rem-tf7-three-archs",
-        "rem-tf7-unified-sequence",
-        "rem-tf7-vit",
-        "thm-tf7-universal-approx"
+        "prop-complexity",
+        "prop-params",
+        "rem-depth",
+        "rem-existence",
+        "rem-flash-attention",
+        "rem-linear-attention",
+        "rem-multimodal-crossattn",
+        "rem-three-archs",
+        "rem-unified-sequence",
+        "rem-vit",
+        "thm-universal-approx"
       ],
       "objectiveIds": [
-        "TF-7.1",
-        "TF-7.2",
-        "TF-7.3",
-        "TF-7.4",
-        "TF-7.5"
+        "lo-multimodal-transformer-composition",
+        "lo-transformer-architecture-families",
+        "lo-transformer-layer-complexity",
+        "lo-transformer-parameter-scaling",
+        "lo-transformer-universal-approximation"
       ],
       "xrefs": [
-        "def-tf1-embedding-interface",
-        "def-tf1-patch-embedding",
-        "def-tf1-pe-2d",
-        "def-tf10-encoder-classifier",
-        "def-tf10-pooled-rep",
-        "def-tf15-connector",
-        "def-tf15-gated-xattn",
-        "def-tf15-resampler",
-        "def-tf17-interleaved",
-        "def-tf4-causal-mask",
-        "def-tf7-cross-attention",
-        "def-tf7-decoder-block",
-        "def-tf7-decoder-only",
-        "def-tf7-encoder",
-        "def-tf8-patterns",
+        "def-causal-mask",
+        "def-connector",
+        "def-cross-attention",
+        "def-decoder-block",
+        "def-decoder-only",
+        "def-embedding-interface",
+        "def-encoder",
+        "def-encoder-classifier",
+        "def-gated-xattn",
+        "def-interleaved",
+        "def-patch-embedding",
+        "def-patterns",
+        "def-pe-2d",
+        "def-pooled-rep",
+        "def-resampler",
+        "prop-complexity",
+        "prop-params",
         "prop-row-stochastic-convex",
-        "prop-tf7-complexity",
-        "prop-tf7-params",
-        "rem-tf7-flash-attention",
-        "rem-tf7-linear-attention",
-        "rem-tf7-multimodal-crossattn",
-        "rem-tf7-three-archs",
-        "rem-tf7-vit",
-        "thm-tf13-linattn-rnn",
-        "thm-tf13-ssd",
-        "thm-tf7-universal-approx"
+        "rem-flash-attention",
+        "rem-linear-attention",
+        "rem-multimodal-crossattn",
+        "rem-three-archs",
+        "rem-vit",
+        "thm-linattn-rnn",
+        "thm-ssd",
+        "thm-universal-approx"
       ],
       "kindCounts": {
         "definition": 5,
@@ -718,26 +602,6 @@
       },
       "proofMarkers": 7,
       "printedNumberHits": [
-        {
-          "line": 13,
-          "text": "TF-7.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-7.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-7.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-7.4"
-        },
-        {
-          "line": 21,
-          "text": "TF-7.5"
-        },
         {
           "line": 269,
           "text": "Exercise 7.1"
@@ -761,68 +625,68 @@
       ]
     },
     {
-      "path": "src/content/transformers/08-encoder-decoder-families.mdx",
+      "path": "src/content/transformers/09-encoder-decoder-families.mdx",
       "slug": "encoder-decoder-families",
       "title": "Encoders and Decoders Across Architecture Families",
-      "chapter": 8,
+      "chapter": 9,
       "part": 3,
       "labelIds": [
-        "def-tf8-bidirectional-scan",
-        "def-tf8-causal",
-        "def-tf8-mixer",
-        "def-tf8-mlm",
-        "def-tf8-patterns",
-        "def-tf8-prefix-lm",
-        "ex-tf8-incompatible-conditionals",
+        "def-bidirectional-scan",
+        "def-causal",
+        "def-mixer",
+        "def-mlm",
+        "def-patterns",
+        "def-prefix-lm",
+        "ex-incompatible-conditionals",
         "fig-architecture-lattice",
-        "prop-tf8-causal-closure",
-        "prop-tf8-causal-instances",
-        "prop-tf8-instantiations",
-        "prop-tf8-prefix-reuse",
-        "prop-tf8-sequential-depth",
-        "rem-tf8-conditioning-routes",
-        "rem-tf8-decoder-only",
-        "rem-tf8-pseudolikelihood",
-        "thm-tf8-one-pass"
+        "prop-causal-closure",
+        "prop-causal-instances",
+        "prop-instantiations",
+        "prop-prefix-reuse",
+        "prop-sequential-depth",
+        "rem-conditioning-routes",
+        "rem-decoder-only",
+        "rem-pseudolikelihood",
+        "thm-one-pass"
       ],
       "objectiveIds": [
-        "TF-8.1",
-        "TF-8.2",
-        "TF-8.3",
-        "TF-8.4"
+        "lo-architecture-pattern-instantiations",
+        "lo-bidirectional-and-prefix-objectives",
+        "lo-causal-one-pass-depth",
+        "lo-mixer-causality"
       ],
       "xrefs": [
-        "def-tf12-kv-cache",
-        "def-tf2-additive-attention",
-        "def-tf2-rnn",
-        "def-tf2-seq2seq",
-        "def-tf3-scan-op",
-        "def-tf3-ssm",
-        "def-tf4-attention",
-        "def-tf4-causal-mask",
-        "def-tf7-cross-attention",
-        "def-tf7-decoder-block",
-        "def-tf7-decoder-only",
-        "def-tf7-enc-dec",
-        "def-tf7-encoder",
-        "def-tf8-bidirectional-scan",
-        "def-tf8-patterns",
-        "def-tf8-prefix-lm",
-        "def-tf9-teacher-forcing",
-        "ex-tf8-incompatible-conditionals",
-        "prop-tf12-decode-cost",
-        "prop-tf12-kv-memory",
-        "prop-tf2-bottleneck",
-        "prop-tf3-scan",
-        "prop-tf7-complexity",
-        "prop-tf8-causal-closure",
-        "prop-tf8-causal-instances",
-        "prop-tf8-instantiations",
-        "prop-tf8-prefix-reuse",
-        "prop-tf8-sequential-depth",
-        "rem-tf7-three-archs",
-        "thm-tf3-zoh",
-        "thm-tf8-one-pass"
+        "def-additive-attention",
+        "def-attention",
+        "def-bidirectional-scan",
+        "def-causal-mask",
+        "def-cross-attention",
+        "def-decoder-block",
+        "def-decoder-only",
+        "def-enc-dec",
+        "def-encoder",
+        "def-kv-cache",
+        "def-patterns",
+        "def-prefix-lm",
+        "def-rnn",
+        "def-scan-op",
+        "def-seq2seq",
+        "def-ssm",
+        "def-teacher-forcing",
+        "ex-incompatible-conditionals",
+        "prop-causal-closure",
+        "prop-causal-instances",
+        "prop-complexity",
+        "prop-decode-cost",
+        "prop-instantiations",
+        "prop-kv-memory",
+        "prop-prefix-reuse",
+        "prop-scan",
+        "prop-seq2seq-fixed-vector-bottleneck",
+        "prop-sequential-depth",
+        "rem-three-archs",
+        "thm-one-pass",
+        "thm-zoh"
       ],
       "kindCounts": {
         "definition": 6,
@@ -835,93 +699,77 @@
       "proofMarkers": 13,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-8.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-8.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-8.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-8.4"
-        },
-        {
           "line": 324,
-          "text": "Exercise 8.1"
+          "text": "Exercise 9.1"
         },
         {
           "line": 332,
-          "text": "Exercise 8.2"
+          "text": "Exercise 9.2"
         },
         {
           "line": 340,
-          "text": "Exercise 8.3"
+          "text": "Exercise 9.3"
         },
         {
           "line": 348,
-          "text": "Exercise 8.4"
+          "text": "Exercise 9.4"
         },
         {
           "line": 360,
-          "text": "Exercise 8.5"
+          "text": "Exercise 9.5"
         },
         {
           "line": 368,
-          "text": "Exercise 8.6"
+          "text": "Exercise 9.6"
         },
         {
           "line": 376,
-          "text": "Exercise 8.7"
+          "text": "Exercise 9.7"
         }
       ]
     },
     {
-      "path": "src/content/transformers/09-training.mdx",
+      "path": "src/content/transformers/10-training.mdx",
       "slug": "training",
       "title": "Training a Transformer",
-      "chapter": 9,
+      "chapter": 10,
       "part": 3,
       "labelIds": [
-        "def-tf9-autoregressive-lm",
-        "def-tf9-ce-loss",
-        "def-tf9-label-smoothing",
-        "def-tf9-lr-schedule",
-        "def-tf9-teacher-forcing",
-        "def-tf9-xavier-init",
-        "ex-tf9-captioning",
-        "prop-tf9-ce-kl-training",
-        "prop-tf9-ce-logit-gradient",
-        "prop-tf9-label-smoothing-decomposition",
-        "prop-tf9-warmup-rationale"
+        "def-autoregressive-lm",
+        "def-ce-loss",
+        "def-label-smoothing",
+        "def-lr-schedule",
+        "def-teacher-forcing",
+        "def-xavier-init",
+        "ex-captioning",
+        "prop-ce-kl-training",
+        "prop-ce-logit-gradient",
+        "prop-label-smoothing-decomposition",
+        "prop-warmup-rationale"
       ],
       "objectiveIds": [
-        "TF-9.1",
-        "TF-9.2",
-        "TF-9.3",
-        "TF-9.4",
-        "TF-9.5"
+        "lo-captioning-as-conditional-language-modeling",
+        "lo-label-smoothing-decomposition",
+        "lo-language-model-cross-entropy-kl",
+        "lo-language-model-loss-computation",
+        "lo-warmup-rationale"
       ],
       "xrefs": [
-        "def-tf2-seq2seq",
-        "def-tf9-ce-loss",
-        "def-tf9-teacher-forcing",
-        "def-tf9-xavier-init",
+        "def-ce-loss",
+        "def-seq2seq",
+        "def-teacher-forcing",
+        "def-xavier-init",
         "prop-ce-kl",
+        "prop-ce-kl-training",
+        "prop-ce-logit-gradient",
+        "prop-label-smoothing-decomposition",
+        "prop-sequential-depth",
         "prop-softmax-jacobian",
-        "prop-tf8-sequential-depth",
-        "prop-tf9-ce-kl-training",
-        "prop-tf9-ce-logit-gradient",
-        "prop-tf9-label-smoothing-decomposition",
-        "prop-tf9-warmup-rationale",
-        "rem-tf7-multimodal-crossattn",
-        "rem-tf7-unified-sequence",
-        "thm-tf17-any-to-any",
-        "thm-tf8-one-pass"
+        "prop-warmup-rationale",
+        "rem-multimodal-crossattn",
+        "rem-unified-sequence",
+        "thm-any-to-any",
+        "thm-one-pass"
       ],
       "kindCounts": {
         "definition": 6,
@@ -933,99 +781,79 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-9.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-9.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-9.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-9.4"
-        },
-        {
-          "line": 21,
-          "text": "TF-9.5"
-        },
-        {
           "line": 256,
-          "text": "Exercise 9.1"
+          "text": "Exercise 10.1"
         },
         {
           "line": 268,
-          "text": "Exercise 9.2"
+          "text": "Exercise 10.2"
         },
         {
           "line": 276,
-          "text": "Exercise 9.3"
+          "text": "Exercise 10.3"
         },
         {
           "line": 288,
-          "text": "Exercise 9.4"
+          "text": "Exercise 10.4"
         },
         {
           "line": 296,
-          "text": "Exercise 9.5"
+          "text": "Exercise 10.5"
         }
       ]
     },
     {
-      "path": "src/content/transformers/10-detection-encoders.mdx",
+      "path": "src/content/transformers/12-detection-encoders.mdx",
       "slug": "detection-encoders",
       "title": "Encoder Readouts, Contrastive Alignment, and Detection",
-      "chapter": 10,
+      "chapter": 12,
       "part": 3,
       "labelIds": [
-        "def-tf10-auroc",
-        "def-tf10-contrastive",
-        "def-tf10-cosine-temp",
-        "def-tf10-encoder-classifier",
-        "def-tf10-ood-score",
-        "def-tf10-pooled-rep",
-        "prop-tf10-auroc-rank",
-        "prop-tf10-contrastive-alignment",
-        "prop-tf10-contrastive-ce",
-        "rem-tf10-auroc-caveat",
-        "rem-tf10-bidirectional",
-        "rem-tf10-crossmodal-canonical",
-        "rem-tf10-scores-unified",
-        "rem-tf10-separation-geometry"
+        "def-auroc",
+        "def-contrastive",
+        "def-cosine-temp",
+        "def-encoder-classifier",
+        "def-ood-score",
+        "def-pooled-rep",
+        "prop-auroc-rank",
+        "prop-contrastive-alignment",
+        "prop-contrastive-ce",
+        "rem-auroc-caveat",
+        "rem-bidirectional",
+        "rem-crossmodal-canonical",
+        "rem-scores-unified",
+        "rem-separation-geometry"
       ],
       "objectiveIds": [
-        "TF-10.1",
-        "TF-10.2",
-        "TF-10.3",
-        "TF-10.4",
-        "TF-10.5"
+        "lo-contrastive-geometry-and-temperature",
+        "lo-cross-modal-contrastive-alignment",
+        "lo-encoder-pooling-and-classification",
+        "lo-ood-ranking-and-auroc",
+        "lo-symmetric-contrastive-cross-entropy"
       ],
       "xrefs": [
+        "def-auroc",
+        "def-autoregressive-lm",
+        "def-connector",
+        "def-contrastive",
+        "def-cross-attention",
         "def-cross-entropy",
+        "def-embedding-interface",
+        "def-encoder-classifier",
+        "def-patterns",
+        "def-pooled-rep",
         "def-softmax",
-        "def-tf1-embedding-interface",
-        "def-tf10-auroc",
-        "def-tf10-contrastive",
-        "def-tf10-encoder-classifier",
-        "def-tf10-pooled-rep",
-        "def-tf15-connector",
-        "def-tf18-zeroshot",
-        "def-tf7-cross-attention",
-        "def-tf8-patterns",
-        "def-tf9-autoregressive-lm",
+        "def-zeroshot",
+        "prop-auroc-rank",
         "prop-ce-kl",
+        "prop-contrastive-alignment",
+        "prop-contrastive-ce",
         "prop-row-stochastic-convex",
         "prop-softmax-jacobian",
         "prop-softmax-translation-inv",
-        "prop-tf10-auroc-rank",
-        "prop-tf10-contrastive-alignment",
-        "prop-tf10-contrastive-ce",
+        "rem-separation-geometry",
         "rem-softmax-temperature",
-        "rem-tf10-separation-geometry",
-        "rem-tf7-vit"
+        "rem-vit"
       ],
       "kindCounts": {
         "definition": 6,
@@ -1036,86 +864,66 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-10.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-10.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-10.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-10.4"
-        },
-        {
-          "line": 21,
-          "text": "TF-10.5"
-        },
-        {
           "line": 213,
-          "text": "Exercise 10.1"
+          "text": "Exercise 12.1"
         },
         {
           "line": 221,
-          "text": "Exercise 10.2"
+          "text": "Exercise 12.2"
         },
         {
           "line": 229,
-          "text": "Exercise 10.3"
+          "text": "Exercise 12.3"
         },
         {
           "line": 237,
-          "text": "Exercise 10.4"
+          "text": "Exercise 12.4"
         },
         {
           "line": 245,
-          "text": "Exercise 10.5"
+          "text": "Exercise 12.5"
         }
       ]
     },
     {
-      "path": "src/content/transformers/11-training-optimizations.mdx",
+      "path": "src/content/transformers/14-training-optimizations.mdx",
       "slug": "training-optimizations",
       "title": "Practical Training Optimizations",
-      "chapter": 11,
+      "chapter": 14,
       "part": 4,
       "labelIds": [
-        "def-tf11-lora",
-        "def-tf11-mixed-precision",
-        "def-tf11-train-memory",
-        "def-tf11-zero",
-        "prop-tf11-fp32-adam",
-        "prop-tf11-lora-savings",
-        "prop-tf11-mixed-precision",
-        "prop-tf11-zero-memory",
-        "rem-tf11-activations",
-        "rem-tf11-bf16",
-        "rem-tf11-bottleneck",
-        "rem-tf11-fsdp-bandwidth",
-        "rem-tf11-lora-breaks",
-        "rem-tf11-selective",
-        "rem-tf11-throughput",
-        "thm-tf11-checkpointing"
+        "def-lora",
+        "def-mixed-precision",
+        "def-train-memory",
+        "def-zero",
+        "prop-fp32-adam",
+        "prop-lora-savings",
+        "prop-mixed-precision",
+        "prop-zero-memory",
+        "rem-activations",
+        "rem-bf16",
+        "rem-bottleneck",
+        "rem-fsdp-bandwidth",
+        "rem-lora-breaks",
+        "rem-selective",
+        "rem-throughput",
+        "thm-checkpointing"
       ],
       "objectiveIds": [
-        "TF-11.1",
-        "TF-11.2",
-        "TF-11.3",
-        "TF-11.4",
-        "TF-11.5"
+        "lo-gradient-checkpointing-tradeoff",
+        "lo-lora-parameter-savings",
+        "lo-mixed-precision-accounting",
+        "lo-training-memory-accounting",
+        "lo-zero-memory-and-communication"
       ],
       "xrefs": [
-        "def-tf11-train-memory",
-        "def-tf11-zero",
-        "prop-tf11-fp32-adam",
-        "prop-tf11-lora-savings",
-        "prop-tf11-mixed-precision",
-        "prop-tf11-zero-memory",
-        "thm-tf11-checkpointing"
+        "def-train-memory",
+        "def-zero",
+        "prop-fp32-adam",
+        "prop-lora-savings",
+        "prop-mixed-precision",
+        "prop-zero-memory",
+        "thm-checkpointing"
       ],
       "kindCounts": {
         "definition": 4,
@@ -1127,100 +935,80 @@
       "proofMarkers": 10,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-11.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-11.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-11.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-11.4"
-        },
-        {
-          "line": 21,
-          "text": "TF-11.5"
-        },
-        {
           "line": 251,
-          "text": "Exercise 11.1"
+          "text": "Exercise 14.1"
         },
         {
           "line": 259,
-          "text": "Exercise 11.2"
+          "text": "Exercise 14.2"
         },
         {
           "line": 267,
-          "text": "Exercise 11.3"
+          "text": "Exercise 14.3"
         },
         {
           "line": 275,
-          "text": "Exercise 11.4"
+          "text": "Exercise 14.4"
         },
         {
           "line": 283,
-          "text": "Exercise 11.5"
+          "text": "Exercise 14.5"
         }
       ]
     },
     {
-      "path": "src/content/transformers/12-inference-optimizations.mdx",
+      "path": "src/content/transformers/15-inference-optimizations.mdx",
       "slug": "inference-optimizations",
       "title": "Inference Optimizations",
-      "chapter": 12,
+      "chapter": 15,
       "part": 4,
       "labelIds": [
-        "def-tf12-affine-quant",
-        "def-tf12-cost-eq",
-        "def-tf12-kv-cache",
-        "def-tf12-moe",
-        "def-tf12-online-softmax",
-        "def-tf12-spec-decode",
-        "prop-tf12-decode-cost",
-        "prop-tf12-kv-memory",
-        "prop-tf12-memory-bound",
-        "prop-tf12-moe-flops",
-        "prop-tf12-quant-error",
-        "prop-tf12-spec-speedup",
-        "rem-tf12-activation-quant",
-        "rem-tf12-expert-parallel",
-        "rem-tf12-flash-versions",
-        "rem-tf12-kv-bytes",
-        "rem-tf12-prefill-decode",
-        "rem-tf12-spec-regime",
-        "thm-tf12-online-softmax-exact"
+        "def-affine-quant",
+        "def-cost-eq",
+        "def-kv-cache",
+        "def-moe",
+        "def-online-softmax",
+        "def-spec-decode",
+        "prop-decode-cost",
+        "prop-kv-memory",
+        "prop-memory-bound",
+        "prop-moe-flops",
+        "prop-quant-error",
+        "prop-spec-speedup",
+        "rem-activation-quant",
+        "rem-expert-parallel",
+        "rem-flash-versions",
+        "rem-kv-bytes",
+        "rem-prefill-decode",
+        "rem-spec-regime",
+        "thm-online-softmax-exact"
       ],
       "objectiveIds": [
-        "TF-12.1",
-        "TF-12.2",
-        "TF-12.3",
-        "TF-12.5",
-        "TF-12.6",
-        "TF-12.7"
+        "lo-affine-quantization-error",
+        "lo-inference-roofline",
+        "lo-kv-cache-memory-and-compute",
+        "lo-moe-cost-accounting",
+        "lo-online-softmax-and-flash-attention",
+        "lo-speculative-decoding-speedup"
       ],
       "xrefs": [
+        "def-affine-quant",
+        "def-cost-eq",
+        "def-kv-cache",
+        "def-moe",
+        "def-online-softmax",
         "def-softmax",
-        "def-tf12-affine-quant",
-        "def-tf12-cost-eq",
-        "def-tf12-kv-cache",
-        "def-tf12-moe",
-        "def-tf12-online-softmax",
+        "prop-decode-cost",
+        "prop-decode-state",
+        "prop-kv-cache",
+        "prop-kv-memory",
+        "prop-memory-bound",
+        "prop-prefix-reuse",
+        "prop-quant-error",
         "prop-softmax-translation-inv",
-        "prop-tf12-decode-cost",
-        "prop-tf12-kv-memory",
-        "prop-tf12-memory-bound",
-        "prop-tf12-quant-error",
-        "prop-tf12-spec-speedup",
-        "prop-tf14-decode-state",
-        "prop-tf14-state-recall",
-        "prop-tf5-kv-cache",
-        "prop-tf8-prefix-reuse",
-        "thm-tf12-online-softmax-exact"
+        "prop-spec-speedup",
+        "prop-state-recall",
+        "thm-online-softmax-exact"
       ],
       "kindCounts": {
         "definition": 6,
@@ -1232,107 +1020,83 @@
       "proofMarkers": 13,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-12.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-12.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-12.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-12.5"
-        },
-        {
-          "line": 21,
-          "text": "TF-12.6"
-        },
-        {
-          "line": 23,
-          "text": "TF-12.7"
-        },
-        {
           "line": 335,
-          "text": "Exercise 12.1"
+          "text": "Exercise 15.1"
         },
         {
           "line": 343,
-          "text": "Exercise 12.2"
+          "text": "Exercise 15.2"
         },
         {
           "line": 351,
-          "text": "Exercise 12.3"
+          "text": "Exercise 15.3"
         },
         {
           "line": 365,
-          "text": "Exercise 12.4"
+          "text": "Exercise 15.4"
         },
         {
           "line": 373,
-          "text": "Exercise 12.5"
+          "text": "Exercise 15.5"
         },
         {
           "line": 381,
-          "text": "Exercise 12.6"
+          "text": "Exercise 15.6"
         }
       ]
     },
     {
-      "path": "src/content/transformers/13-selective-state-spaces.mdx",
+      "path": "src/content/transformers/18-selective-state-spaces.mdx",
       "slug": "selective-state-spaces",
       "title": "Selective State Spaces and State Space Duality",
-      "chapter": 13,
+      "chapter": 18,
       "part": 5,
       "labelIds": [
-        "def-tf13-selective-ssm",
-        "def-tf13-transfer-matrix",
-        "ex-tf13-selective-copy",
+        "def-selective-ssm",
+        "def-transfer-matrix",
+        "ex-selective-copy",
         "fig-semiseparable-mask",
-        "prop-tf13-chunked",
-        "prop-tf13-gate-equivalence",
-        "prop-tf13-not-lti",
-        "prop-tf13-selective-scan",
-        "thm-tf13-linattn-rnn",
-        "thm-tf13-semiseparable",
-        "thm-tf13-ssd"
+        "prop-chunked",
+        "prop-gate-equivalence",
+        "prop-not-lti",
+        "prop-selective-scan",
+        "thm-linattn-rnn",
+        "thm-semiseparable",
+        "thm-ssd"
       ],
       "objectiveIds": [
-        "TF-13.1",
-        "TF-13.2",
-        "TF-13.3",
-        "TF-13.4"
+        "lo-linear-attention-recurrence",
+        "lo-selective-scan",
+        "lo-selective-ssm-gating",
+        "lo-ssd-semiseparability-and-chunking"
       ],
       "xrefs": [
-        "def-tf12-cost-eq",
-        "def-tf13-selective-ssm",
-        "def-tf2-gru",
-        "def-tf3-scan-op",
-        "def-tf3-ssm",
-        "def-tf4-attention",
-        "def-tf4-causal-mask",
-        "def-tf8-causal",
+        "def-attention",
+        "def-causal",
+        "def-causal-mask",
+        "def-cost-eq",
+        "def-gru",
+        "def-scan-op",
+        "def-selective-ssm",
+        "def-ssm",
+        "prop-cec",
+        "prop-chunked",
+        "prop-gate-equivalence",
+        "prop-kv-memory",
+        "prop-legs-nplr",
+        "prop-lti-obstruction",
+        "prop-not-lti",
         "prop-row-stochastic-convex",
-        "prop-tf12-kv-memory",
-        "prop-tf13-chunked",
-        "prop-tf13-gate-equivalence",
-        "prop-tf13-not-lti",
-        "prop-tf13-selective-scan",
-        "prop-tf2-cec",
-        "prop-tf3-legs-nplr",
-        "prop-tf3-lti-obstruction",
-        "prop-tf3-scan",
-        "prop-tf8-sequential-depth",
-        "rem-tf3-toward-selectivity",
-        "rem-tf7-linear-attention",
-        "thm-tf13-linattn-rnn",
-        "thm-tf13-semiseparable",
-        "thm-tf13-ssd",
-        "thm-tf3-conv-recurrence",
-        "thm-tf3-zoh"
+        "prop-scan",
+        "prop-selective-scan",
+        "prop-sequential-depth",
+        "rem-linear-attention",
+        "rem-toward-selectivity",
+        "thm-conv-recurrence",
+        "thm-linattn-rnn",
+        "thm-semiseparable",
+        "thm-ssd",
+        "thm-zoh"
       ],
       "kindCounts": {
         "definition": 2,
@@ -1343,22 +1107,6 @@
       },
       "proofMarkers": 13,
       "printedNumberHits": [
-        {
-          "line": 13,
-          "text": "TF-13.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-13.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-13.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-13.4"
-        },
         {
           "line": 33,
           "text": "ch. 3"
@@ -1377,84 +1125,84 @@
         },
         {
           "line": 399,
-          "text": "Exercise 13.1"
+          "text": "Exercise 18.1"
         },
         {
           "line": 407,
-          "text": "Exercise 13.2"
+          "text": "Exercise 18.2"
         },
         {
           "line": 415,
-          "text": "Exercise 13.3"
+          "text": "Exercise 18.3"
         },
         {
           "line": 429,
-          "text": "Exercise 13.4"
+          "text": "Exercise 18.4"
         },
         {
           "line": 443,
-          "text": "Exercise 13.5"
+          "text": "Exercise 18.5"
         },
         {
           "line": 467,
-          "text": "Exercise 13.6"
+          "text": "Exercise 18.6"
         }
       ]
     },
     {
-      "path": "src/content/transformers/14-hybrid-architectures.mdx",
+      "path": "src/content/transformers/19-hybrid-architectures.mdx",
       "slug": "hybrid-architectures",
       "title": "Modern Recurrent Models and Hybrid Architectures",
-      "chapter": 14,
+      "chapter": 19,
       "part": 5,
       "labelIds": [
-        "cor-tf14-gated-deltanet",
-        "def-tf14-delta",
-        "def-tf14-hybrid-stack",
-        "def-tf14-mlstm",
-        "def-tf14-rwkv",
-        "def-tf14-swa",
-        "prop-tf14-decode-state",
-        "prop-tf14-mlstm-gated-state",
-        "prop-tf14-rwkv-linattn",
-        "prop-tf14-state-recall",
-        "rem-tf14-design-space",
-        "thm-tf14-delta-descent"
+        "cor-gated-deltanet",
+        "def-delta",
+        "def-hybrid-stack",
+        "def-mlstm",
+        "def-rwkv",
+        "def-swa",
+        "prop-decode-state",
+        "prop-mlstm-gated-state",
+        "prop-rwkv-linattn",
+        "prop-state-recall",
+        "rem-design-space",
+        "thm-delta-descent"
       ],
       "objectiveIds": [
-        "TF-14.1",
-        "TF-14.2",
-        "TF-14.3",
-        "TF-14.4"
+        "lo-delta-rule-descent",
+        "lo-fixed-state-recall-bound",
+        "lo-hybrid-stack-memory",
+        "lo-modern-recurrent-linear-attention"
       ],
       "xrefs": [
-        "def-tf12-online-softmax",
-        "def-tf13-selective-ssm",
-        "def-tf14-delta",
-        "def-tf14-hybrid-stack",
-        "def-tf14-mlstm",
-        "def-tf14-rwkv",
-        "def-tf14-swa",
-        "def-tf4-causal-mask",
-        "def-tf8-bidirectional-scan",
-        "def-tf8-causal",
-        "def-tf8-patterns",
+        "def-bidirectional-scan",
+        "def-causal",
+        "def-causal-mask",
+        "def-delta",
+        "def-hybrid-stack",
+        "def-mlstm",
+        "def-online-softmax",
+        "def-patterns",
+        "def-rwkv",
+        "def-selective-ssm",
+        "def-swa",
+        "prop-causal-closure",
+        "prop-decode-state",
+        "prop-gate-equivalence",
+        "prop-kv-cache",
+        "prop-kv-memory",
+        "prop-memory-bound",
+        "prop-mlstm-gated-state",
         "prop-row-stochastic-convex",
-        "prop-tf12-kv-memory",
-        "prop-tf12-memory-bound",
-        "prop-tf13-gate-equivalence",
-        "prop-tf14-decode-state",
-        "prop-tf14-mlstm-gated-state",
-        "prop-tf14-rwkv-linattn",
-        "prop-tf14-state-recall",
-        "prop-tf2-bottleneck",
-        "prop-tf5-kv-cache",
-        "prop-tf8-causal-closure",
-        "rem-tf14-design-space",
-        "thm-tf13-linattn-rnn",
-        "thm-tf13-ssd",
-        "thm-tf14-delta-descent",
-        "thm-tf8-one-pass"
+        "prop-rwkv-linattn",
+        "prop-seq2seq-fixed-vector-bottleneck",
+        "prop-state-recall",
+        "rem-design-space",
+        "thm-delta-descent",
+        "thm-linattn-rnn",
+        "thm-one-pass",
+        "thm-ssd"
       ],
       "kindCounts": {
         "corollary": 1,
@@ -1467,103 +1215,91 @@
       "proofMarkers": 12,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-14.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-14.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-14.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-14.4"
-        },
-        {
           "line": 96,
-          "text": "ch. 13"
+          "text": "ch. 18"
         },
         {
           "line": 190,
-          "text": "Exercise 14.3"
+          "text": "Exercise 19.3"
+        },
+        {
+          "line": 312,
+          "text": "chapter 2"
         },
         {
           "line": 318,
-          "text": "Exercise 14.1"
+          "text": "Exercise 19.1"
         },
         {
           "line": 326,
-          "text": "Exercise 14.2"
+          "text": "Exercise 19.2"
         },
         {
           "line": 334,
-          "text": "Exercise 14.3"
+          "text": "Exercise 19.3"
         },
         {
           "line": 342,
-          "text": "Exercise 14.4"
+          "text": "Exercise 19.4"
         },
         {
           "line": 350,
-          "text": "Exercise 14.5"
+          "text": "Exercise 19.5"
         },
         {
           "line": 358,
-          "text": "Exercise 14.6"
+          "text": "Exercise 19.6"
         }
       ]
     },
     {
-      "path": "src/content/transformers/15-connectors-resamplers.mdx",
+      "path": "src/content/transformers/20-connectors-resamplers.mdx",
       "slug": "connectors-resamplers",
       "title": "Connectors and Resamplers",
-      "chapter": 15,
+      "chapter": 20,
       "part": 6,
       "labelIds": [
-        "def-tf15-connector",
-        "def-tf15-gated-xattn",
-        "def-tf15-mutual-information",
-        "def-tf15-projector",
-        "def-tf15-resampler",
+        "def-connector",
+        "def-gated-xattn",
+        "def-mutual-information",
+        "def-projector",
+        "def-resampler",
         "fig-gated-xattn",
         "fig-resampler-funnel",
-        "prop-tf15-bottleneck",
-        "prop-tf15-resampler-convex",
-        "prop-tf15-resampler-cost",
-        "rem-tf15-lora-analogy",
-        "thm-tf15-gated-identity"
+        "prop-connector-data-processing-bound",
+        "prop-resampler-convex",
+        "prop-resampler-cost",
+        "rem-lora-analogy",
+        "thm-gated-identity"
       ],
       "objectiveIds": [
-        "TF-15.1",
-        "TF-15.2",
-        "TF-15.3",
-        "TF-15.4",
-        "TF-15.5"
+        "lo-connector-data-processing-bound",
+        "lo-connector-embedding-interface",
+        "lo-gated-cross-attention-identity",
+        "lo-projector-resampler-geometry",
+        "lo-resampler-compute-and-cache"
       ],
       "xrefs": [
+        "def-codebook-embedding",
+        "def-connector",
+        "def-cross-attention",
+        "def-decoder-only",
+        "def-embedding-interface",
         "def-entropy",
-        "def-tf1-codebook-embedding",
-        "def-tf1-embedding-interface",
-        "def-tf1-pe-2d",
-        "def-tf11-lora",
-        "def-tf12-kv-cache",
-        "def-tf15-connector",
-        "def-tf15-gated-xattn",
-        "def-tf15-projector",
-        "def-tf15-resampler",
-        "def-tf7-cross-attention",
-        "def-tf7-decoder-only",
+        "def-gated-xattn",
+        "def-kv-cache",
+        "def-lora",
+        "def-pe-2d",
+        "def-projector",
+        "def-resampler",
+        "prop-connector-data-processing-bound",
+        "prop-kv-memory",
+        "prop-resampler-convex",
+        "prop-resampler-cost",
         "prop-row-stochastic-convex",
-        "prop-tf12-kv-memory",
-        "prop-tf15-bottleneck",
-        "prop-tf15-resampler-convex",
-        "prop-tf15-resampler-cost",
-        "rem-tf1-modality-blind",
-        "rem-tf7-vit",
-        "thm-tf15-gated-identity"
+        "rem-modality-blind",
+        "rem-vit",
+        "thm-gated-identity"
       ],
       "kindCounts": {
         "definition": 5,
@@ -1575,93 +1311,73 @@
       "proofMarkers": 9,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-15.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-15.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-15.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-15.4"
-        },
-        {
-          "line": 21,
-          "text": "TF-15.5"
-        },
-        {
           "line": 196,
-          "text": "Exercise 15.1"
+          "text": "Exercise 20.1"
         },
         {
           "line": 204,
-          "text": "Exercise 15.2"
+          "text": "Exercise 20.2"
         },
         {
           "line": 212,
-          "text": "Exercise 15.3"
+          "text": "Exercise 20.3"
         },
         {
           "line": 220,
-          "text": "Exercise 15.4"
+          "text": "Exercise 20.4"
         },
         {
           "line": 235,
-          "text": "Exercise 15.5"
+          "text": "Exercise 20.5"
         }
       ]
     },
     {
-      "path": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+      "path": "src/content/transformers/21-discrete-visual-tokenization.mdx",
       "slug": "discrete-visual-tokenization",
       "title": "Discrete Visual Tokenization",
-      "chapter": 16,
+      "chapter": 21,
       "part": 6,
       "labelIds": [
-        "def-tf16-codebook",
-        "def-tf16-ste",
-        "def-tf16-vq-loss",
+        "def-codebook",
+        "def-ste",
+        "def-vq-loss",
         "fig-grid-sequence",
         "fig-voronoi-kmeans",
         "fig-vq-pipeline",
-        "prop-tf16-rate",
-        "prop-tf16-voronoi",
-        "prop-tf16-vq-gradient",
-        "rem-tf16-new-vs-reused",
-        "thm-tf16-codebook-kmeans",
-        "thm-tf16-dual-footing",
-        "thm-tf16-ste-identity"
+        "prop-rate",
+        "prop-voronoi",
+        "prop-vq-gradient",
+        "rem-new-vs-reused",
+        "thm-codebook-kmeans",
+        "thm-dual-footing",
+        "thm-ste-identity"
       ],
       "objectiveIds": [
-        "TF-16.1",
-        "TF-16.2",
-        "TF-16.3",
-        "TF-16.4",
-        "TF-16.5"
+        "lo-codebook-kmeans",
+        "lo-straight-through-estimator",
+        "lo-vector-quantization-geometry",
+        "lo-vector-quantization-loss",
+        "lo-visual-token-language-modeling"
       ],
       "xrefs": [
+        "def-autoregressive-lm",
+        "def-ce-loss",
+        "def-codebook",
+        "def-codebook-embedding",
         "def-entropy",
-        "def-tf1-codebook-embedding",
-        "def-tf16-codebook",
-        "def-tf16-ste",
-        "def-tf16-vq-loss",
-        "def-tf9-autoregressive-lm",
-        "def-tf9-ce-loss",
-        "def-tf9-teacher-forcing",
-        "prop-tf15-bottleneck",
-        "prop-tf16-rate",
-        "prop-tf16-voronoi",
-        "prop-tf16-vq-gradient",
-        "prop-tf9-ce-kl-training",
-        "rem-tf1-modality-blind",
-        "thm-tf16-codebook-kmeans",
-        "thm-tf16-dual-footing",
-        "thm-tf16-ste-identity"
+        "def-ste",
+        "def-teacher-forcing",
+        "def-vq-loss",
+        "prop-ce-kl-training",
+        "prop-connector-data-processing-bound",
+        "prop-rate",
+        "prop-voronoi",
+        "prop-vq-gradient",
+        "rem-modality-blind",
+        "thm-codebook-kmeans",
+        "thm-dual-footing",
+        "thm-ste-identity"
       ],
       "kindCounts": {
         "definition": 3,
@@ -1673,100 +1389,80 @@
       "proofMarkers": 11,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-16.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-16.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-16.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-16.4"
-        },
-        {
-          "line": 21,
-          "text": "TF-16.5"
-        },
-        {
           "line": 48,
           "text": "ch. 1"
         },
         {
           "line": 204,
-          "text": "Exercise 16.1"
+          "text": "Exercise 21.1"
         },
         {
           "line": 212,
-          "text": "Exercise 16.2"
+          "text": "Exercise 21.2"
         },
         {
           "line": 220,
-          "text": "Exercise 16.3"
+          "text": "Exercise 21.3"
         },
         {
           "line": 228,
-          "text": "Exercise 16.4"
+          "text": "Exercise 21.4"
         },
         {
           "line": 236,
-          "text": "Exercise 16.5"
+          "text": "Exercise 21.5"
         }
       ]
     },
     {
-      "path": "src/content/transformers/17-unified-multimodal-models.mdx",
+      "path": "src/content/transformers/22-unified-multimodal-models.mdx",
       "slug": "unified-multimodal-models",
       "title": "Unified Multimodal Models",
-      "chapter": 17,
+      "chapter": 22,
       "part": 6,
       "labelIds": [
-        "def-tf17-interleaved",
-        "def-tf17-mixed-mask",
-        "def-tf17-modality-embedding",
-        "def-tf17-routed-heads",
+        "def-interleaved",
+        "def-mixed-mask",
+        "def-modality-embedding",
+        "def-routed-heads",
         "fig-design-space",
         "fig-mixed-mask",
         "fig-unified-decoder",
-        "prop-tf17-merged-vocab",
-        "prop-tf17-why-discrete",
-        "rem-tf17-body-unchanged",
-        "thm-tf17-any-to-any"
+        "prop-merged-vocab",
+        "prop-why-discrete",
+        "rem-body-unchanged",
+        "thm-any-to-any"
       ],
       "objectiveIds": [
-        "TF-17.1",
-        "TF-17.2",
-        "TF-17.3",
-        "TF-17.4",
-        "TF-17.5"
+        "lo-any-to-any-factorization",
+        "lo-finite-discrete-generation-head",
+        "lo-interleaved-multimodal-interfaces",
+        "lo-merged-vocabulary-reduction",
+        "lo-mixed-block-causal-mask"
       ],
       "xrefs": [
-        "def-tf1-embedding-interface",
-        "def-tf1-sinusoidal-pe",
-        "def-tf1-token-embedding",
-        "def-tf12-moe",
-        "def-tf15-connector",
-        "def-tf16-codebook",
-        "def-tf17-interleaved",
-        "def-tf17-mixed-mask",
-        "def-tf17-modality-embedding",
-        "def-tf17-routed-heads",
-        "def-tf4-causal-mask",
-        "def-tf7-cross-attention",
-        "def-tf7-decoder-only",
-        "def-tf9-autoregressive-lm",
-        "def-tf9-ce-loss",
+        "def-autoregressive-lm",
+        "def-causal-mask",
+        "def-ce-loss",
+        "def-codebook",
+        "def-connector",
+        "def-cross-attention",
+        "def-decoder-only",
+        "def-embedding-interface",
+        "def-interleaved",
+        "def-mixed-mask",
+        "def-modality-embedding",
+        "def-moe",
+        "def-routed-heads",
+        "def-sinusoidal-pe",
+        "def-token-embedding",
+        "prop-merged-vocab",
+        "prop-rate",
         "prop-row-stochastic-convex",
-        "prop-tf16-rate",
-        "prop-tf17-merged-vocab",
-        "prop-tf17-why-discrete",
-        "rem-tf1-modality-blind",
-        "thm-tf17-any-to-any",
-        "thm-tf7-universal-approx"
+        "prop-why-discrete",
+        "rem-modality-blind",
+        "thm-any-to-any",
+        "thm-universal-approx"
       ],
       "kindCounts": {
         "definition": 4,
@@ -1778,88 +1474,88 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-17.1"
+          "line": 131,
+          "text": "Ch 20"
         },
         {
-          "line": 15,
-          "text": "TF-17.2"
+          "line": 131,
+          "text": "Ch 21"
         },
         {
-          "line": 17,
-          "text": "TF-17.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-17.4"
-        },
-        {
-          "line": 21,
-          "text": "TF-17.5"
+          "line": 168,
+          "text": "chapters 4–6"
         },
         {
           "line": 175,
-          "text": "Exercise 17.1"
+          "text": "Exercise 22.1"
         },
         {
           "line": 192,
-          "text": "Exercise 17.2"
+          "text": "Exercise 22.2"
         },
         {
           "line": 200,
-          "text": "Exercise 17.3"
+          "text": "Exercise 22.3"
         },
         {
           "line": 208,
-          "text": "Exercise 17.4"
+          "text": "Exercise 22.4"
+        },
+        {
+          "line": 208,
+          "text": "Ch 20"
+        },
+        {
+          "line": 208,
+          "text": "Ch 21"
         },
         {
           "line": 216,
-          "text": "Exercise 17.5"
+          "text": "Exercise 22.5"
         }
       ]
     },
     {
-      "path": "src/content/transformers/18-multimodal-evaluation.mdx",
+      "path": "src/content/transformers/23-multimodal-evaluation.mdx",
       "slug": "multimodal-evaluation",
       "title": "Multimodal Evaluation",
-      "chapter": 18,
+      "chapter": 23,
       "part": 6,
       "labelIds": [
-        "def-tf18-perplexity",
-        "def-tf18-retrieval",
-        "def-tf18-zeroshot",
+        "def-perplexity",
+        "def-retrieval",
+        "def-zeroshot",
         "fig-retrieval-rank",
         "fig-zeroshot-sphere",
-        "prop-tf18-perplexity-kl",
-        "prop-tf18-recall-accuracy",
-        "prop-tf18-zeroshot-classifier",
-        "rem-tf18-all-reduced",
-        "rem-tf18-surface-metrics"
+        "prop-perplexity-kl",
+        "prop-recall-accuracy",
+        "prop-zeroshot-classifier",
+        "rem-all-reduced",
+        "rem-surface-metrics"
       ],
       "objectiveIds": [
-        "TF-18.1",
-        "TF-18.2",
-        "TF-18.3",
-        "TF-18.4"
+        "lo-multimodal-metric-reductions",
+        "lo-multimodal-retrieval-metrics",
+        "lo-perplexity-proper-scoring",
+        "lo-zero-shot-classification"
       ],
       "xrefs": [
-        "def-tf10-contrastive",
-        "def-tf10-cosine-temp",
-        "def-tf10-encoder-classifier",
-        "def-tf10-pooled-rep",
-        "def-tf18-zeroshot",
-        "def-tf9-ce-loss",
-        "ex-tf9-captioning",
-        "prop-tf10-auroc-rank",
-        "prop-tf10-contrastive-alignment",
-        "prop-tf10-contrastive-ce",
-        "prop-tf18-perplexity-kl",
-        "prop-tf18-recall-accuracy",
-        "prop-tf18-zeroshot-classifier",
-        "prop-tf9-ce-kl-training",
-        "rem-tf1-modality-blind",
-        "rem-tf10-crossmodal-canonical"
+        "def-ce-loss",
+        "def-contrastive",
+        "def-cosine-temp",
+        "def-encoder-classifier",
+        "def-pooled-rep",
+        "def-zeroshot",
+        "ex-captioning",
+        "prop-auroc-rank",
+        "prop-ce-kl-training",
+        "prop-contrastive-alignment",
+        "prop-contrastive-ce",
+        "prop-perplexity-kl",
+        "prop-recall-accuracy",
+        "prop-zeroshot-classifier",
+        "rem-crossmodal-canonical",
+        "rem-modality-blind"
       ],
       "kindCounts": {
         "definition": 3,
@@ -1870,36 +1566,20 @@
       "proofMarkers": 7,
       "printedNumberHits": [
         {
-          "line": 13,
-          "text": "TF-18.1"
-        },
-        {
-          "line": 15,
-          "text": "TF-18.2"
-        },
-        {
-          "line": 17,
-          "text": "TF-18.3"
-        },
-        {
-          "line": 19,
-          "text": "TF-18.4"
-        },
-        {
           "line": 129,
-          "text": "Exercise 18.1"
+          "text": "Exercise 23.1"
         },
         {
           "line": 137,
-          "text": "Exercise 18.2"
+          "text": "Exercise 23.2"
         },
         {
           "line": 145,
-          "text": "Exercise 18.3"
+          "text": "Exercise 23.3"
         },
         {
           "line": 153,
-          "text": "Exercise 18.4"
+          "text": "Exercise 23.4"
         }
       ]
     }

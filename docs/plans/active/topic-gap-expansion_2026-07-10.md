@@ -7,8 +7,8 @@ dossiers; issues #5/#6 must resolve against those owners rather than by creating
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
 (`docs/audits/roadmap-readiness_2026-07-11.md`) flagged two fixes, folded in below: the structure-design
 pass becomes a hard **B0 exit gate** (not an at-execution afterthought), and evidence reconciliation **runs in parallel
-with Track A** (only authoring waits on A3 + evidence acceptance) — so the critical path is evidence readiness, not
-Track A completion.
+with Track A**. The A3 prerequisite is now complete; evidence acceptance and the locked merge sequence remain the
+authoring gates, so the critical path is evidence readiness, not Track A completion.
 
 ## Context
 
@@ -25,7 +25,7 @@ from primaries.** Any genuinely new dossier or top-up uses the same strict-live 
 ## The four additions
 
 ### 1. RLHF / Preference Optimization (DPO) — load-bearing
-- **Why:** ch09 "Training a Transformer" promises the training objective "from first principles" but delivers only
+- **Why:** ch10 "Training a Transformer" promises the training objective "from first principles" but delivers only
   pretraining MLE; every model it cites (GPT/Llama) is *defined* by a second objective it never mentions. Undercuts a
   title-level claim.
 - **Shape (DTP-native):** derive the KL-regularized optimal policy $\pi\propto\pi_{\text{ref}}e^{r/\beta}$ → invert to
@@ -36,18 +36,18 @@ from primaries.** Any genuinely new dossier or top-up uses the same strict-live 
   InstructGPT, and PPO; `research_post_training_preference` for DPO and the IPO/KTO/ORPO frontier.
 
 ### 2. Scaling laws / Chinchilla — the unstated capstone
-- **Why:** the capstone the ch11 training-memory + ch12 roofline accounting visibly builds toward ("why models are the
+- **Why:** the capstone the ch14 training-memory + ch15 roofline accounting visibly builds toward ("why models are the
   size they are" is set up, never answered); the book already silently borrows the scaling-laws notation ($N$-params in
-  ch11, $1/T$ in ch09).
+  ch14, $1/T$ in ch10).
 - **Shape:** the empirical power-law fit $L(N,D)$ + a **general Lagrangian derivation** under $C\approx6ND$; claim
   square-root allocation only when the fitted exponents are equal or approximately equal.
 - **Placement:** short chapter that **opens P4**. Evidence owner: `research_llm_pretraining_scaling`, extended only for
   genuinely missing inference-aware/over-training frontier evidence.
 
 ### 3. In-context learning / constructive attention capability — closes an asymmetry
-- **Why:** the book proves the *limitations* of alternatives (ch03 LTI obstruction, ch14 fixed-state recall bound) but
-  never proves attention's *capability* — ch07:116 ("in-context learning replaces explicit cross-attention") and
-  ch14:206 (attention "solves associative recall") gesture without formalizing.
+- **Why:** the book proves the *limitations* of alternatives (ch03 LTI obstruction, ch19 fixed-state recall bound) but
+  never proves attention's *capability* — ch07:126 ("in-context learning replaces explicit cross-attention") and
+  ch19:206 (attention "solves associative recall") gesture without formalizing.
 - **Scope (the Codex/Gemini-vs-Claude split):** the **theorem-shaped version** only — a constructive associative-lookup
   theorem with a softmax retrieval-error bound; copying/induction as a two-layer construction; one controlled ICL result
   (e.g. a transformer implementing linear-regression gradient descent). **Keep empirical "induction heads" and
@@ -58,13 +58,13 @@ from primaries.** Any genuinely new dossier or top-up uses the same strict-live 
 
 ### 4. Tokenization / BPE — textbook, no dossier
 - **Why:** the sharpest **internal-consistency** crack in the dual-footing thesis — vision's tokenizer is *constructed*
-  (ch16 VQ, straight-through, code rate) while text's is *assumed* (ch01 "a vocabulary is a finite set of indices").
-- **Shape:** a **section/remark in ch01** (P1) mirroring ch16's rate/compression view; the BPE merge algorithm + why
+  (ch21 VQ, straight-through, code rate) while text's is *assumed* (ch01 "a vocabulary is a finite set of indices").
+- **Shape:** a **section/remark in ch01** (P1) mirroring ch21's rate/compression view; the BPE merge algorithm + why
   subword beats word/char. Author from primaries (BPE 1508.07909 / SentencePiece 1808.06226) — no strict-live dossier.
 
 ## Deferred / out of scope
 - **DEFERRED (user):** diffusion/flow-matching for generative vision (transformer-as-denoiser, DiT). The AR/VQ route is
-  a legitimate self-contained lens; acknowledge the alternative as a scoped ch17 sidenote now; revisit as a P6 addition
+  a legitimate self-contained lens; acknowledge the alternative as a scoped ch22 sidenote now; revisit as a P6 addition
   (probability-flow ODE + conditional flow-matching) after this program.
 - **OUT OF SCOPE (topic sweep; author may cite):** optimizer-convergence theory (Adam bounds, loss landscape);
   mechanistic-interpretability circuits/superposition; expressivity-as-complexity-classes ($\mathsf{TC}^0$/Dyck — *the
@@ -73,7 +73,8 @@ from primaries.** Any genuinely new dossier or top-up uses the same strict-live 
   in Track A — not gaps.)
 
 ## Structure-design pass — a hard B0 EXIT GATE (per the Codex readiness review)
-Track B grows the guide to ~24 chapters. Because IDs are semantic/chapter-free (Track A), adding chapters is cheap, but
+Track B grows the guide to 24 chapters by filling reserved slots 08 (ICL), 11 (RLHF/DPO), and 13 (Scaling); Track A
+fills 16 (MoE) and 17 (Sparse). Because IDs and slugs are semantic/chapter-free, adding chapters is cheap, but
 **P3 gains ICL + RLHF/DPO**, while Scaling opens P4. Codex flagged "structure pass at execution" as too late; it is now a
 **gate that must clear before any Track B authoring**, with explicit exit criteria:
 - the authoritative DPO/scaling dossiers and the ICL evidence base are accepted (evidence ledgers usable);
@@ -89,7 +90,7 @@ Only then does authoring (B1–B4) begin.
 evidence base without duplicating another dossier's ownership. **Run this in parallel with Track A.**
 (B0-gate) the structure-design **exit gate** above clears.
 (B1) BPE ch01 section (no dossier). (B2) ICL chapter. (B3) RLHF/DPO chapter. (B4) Scaling-laws chapter — each authored
-only after the gate clears and A3 has landed. Drafts may run beside A4–A7, but content merges wait for A7 and proceed
+only after the gate clears; the A3 prerequisite has landed. Drafts may run beside A4–A7, but content merges wait for A7 and proceed
 serially. Each B PR updates apparatus/metadata after rebasing; B4 performs the final whole-corpus sweep.
 Then the pre-seeded proof-audit runs over the full ~24-chapter corpus.
 

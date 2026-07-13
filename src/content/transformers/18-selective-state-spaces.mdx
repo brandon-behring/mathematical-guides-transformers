@@ -1,22 +1,22 @@
 ---
 title: "Selective State Spaces and State Space Duality"
 slug: selective-state-spaces
-chapter: 13
+chapter: 18
 part: 5
 description: "Input-dependent dynamics and the duality with attention: the selective (Mamba) state space model and why it escapes the LTI obstruction, the exact-ZOH gate identity g = sigma(z) recovering the GRU convex combination, the parallel scan surviving time-varying coefficients while the convolution face dies, causal linear attention as a constant-size matrix-state recurrence with a gamma-decay retention variant, the semiseparable transfer matrix and its rank bound, the state-space-duality factorization T = L o (CB^T)diag(Delta) identifying the selective SSM with masked linear attention, and the derived chunked block algorithm with distinct arithmetic-optimal and hardware-shaped chunk choices."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, recurrent-networks, state-space-models, attention, architecture-composition, encoder-decoder-families, inference-optimizations]
 notation_introduced: ['\Delta_t', '\mathbf B_t', '\mathbf C_t', 'g_t', '\mathbf S_t', '\mathbf z_t', '\gamma', '\mathbf T', '\mathbf L', 'c']
-theorems: ['def-tf13-selective-ssm', 'prop-tf13-not-lti', 'ex-tf13-selective-copy', 'prop-tf13-gate-equivalence', 'prop-tf13-selective-scan', 'thm-tf13-linattn-rnn', 'def-tf13-transfer-matrix', 'thm-tf13-semiseparable', 'thm-tf13-ssd', 'prop-tf13-chunked']
+theorems: ['def-selective-ssm', 'prop-not-lti', 'ex-selective-copy', 'prop-gate-equivalence', 'prop-selective-scan', 'thm-linattn-rnn', 'def-transfer-matrix', 'thm-semiseparable', 'thm-ssd', 'prop-chunked']
 los:
-  - id: TF-13.1
+  - id: lo-selective-ssm-gating
     statement: "Define the selective state space model, prove it is not linear time-invariant, and derive the exact-ZOH gate equivalence h_t = (1-g_t)h_{t-1} + g_t u_t with g_t = sigma(x_t w_Delta + b_Delta)."
-  - id: TF-13.2
+  - id: lo-selective-scan
     statement: "Prove that the parallel-scan evaluation survives input-dependent coefficients while the convolution face does not, and identify where time-invariance was never used."
-  - id: TF-13.3
+  - id: lo-linear-attention-recurrence
     statement: "Prove the equivalence of causal linear attention and a matrix-state recurrence with O(D d_v) state and O(1) per-token cost, including the gamma-decay retention variant."
-  - id: TF-13.4
+  - id: lo-ssd-semiseparability-and-chunking
     statement: "Define the transfer matrix, prove its d_s-semiseparability and the duality factorization T = L o (CB^T)diag(Delta), and distinguish the chunked algorithm's arithmetic-minimizing size from its hardware-shaped plateau."
 ---
 
@@ -30,18 +30,18 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Selective State Spaces and State Space Duality
 
-**Where we are.** The state-space chapter closed on an obstruction: an LTI SSM applies one fixed kernel to every input, so it cannot select by content (<XRef id="prop-tf3-lti-obstruction" />), and <XRef id="rem-tf3-toward-selectivity" /> named two escapes — attention, built and priced in the intervening chapters, and input-dependent dynamics, built here. We define the **selective SSM**, prove it is not LTI, trace the selective-copy behavior the escape buys, and derive the **gate identity**: scalar exact-ZOH discretization *is* the GRU's convex-combination update. Of ch. 3's three evaluation faces, the **parallel scan survives** — its associativity proof never used time-invariance — while the **convolution face dies**. Then the duality: causal **linear attention is exactly a matrix-state recurrence** (upgrading <XRef id="rem-tf7-linear-attention" /> to a theorem, with a $\gamma$-decay variant covering retention); unrolling the selective recurrence exposes its mixing object, the **transfer matrix** $\mathbf T$, whose sub-diagonal blocks we prove have rank at most $d_s$ (**semiseparability**); for scalar decay $\mathbf T$ factorizes as $\mathbf L \odot (\mathbf C\mathbf B^\top)\operatorname{diag}(\boldsymbol\Delta)$ — the selective SSM **is** masked linear attention (**state space duality**) — and from that factorization we derive the **chunked block algorithm** and its balanced cost.
+**Where we are.** The state-space chapter closed on an obstruction: an LTI SSM applies one fixed kernel to every input, so it cannot select by content (<XRef id="prop-lti-obstruction" />), and <XRef id="rem-toward-selectivity" /> named two escapes — attention, built and priced in the intervening chapters, and input-dependent dynamics, built here. We define the **selective SSM**, prove it is not LTI, trace the selective-copy behavior the escape buys, and derive the **gate identity**: scalar exact-ZOH discretization *is* the GRU's convex-combination update. Of ch. 3's three evaluation faces, the **parallel scan survives** — its associativity proof never used time-invariance — while the **convolution face dies**. Then the duality: causal **linear attention is exactly a matrix-state recurrence** (upgrading <XRef id="rem-linear-attention" /> to a theorem, with a $\gamma$-decay variant covering retention); unrolling the selective recurrence exposes its mixing object, the **transfer matrix** $\mathbf T$, whose sub-diagonal blocks we prove have rank at most $d_s$ (**semiseparability**); for scalar decay $\mathbf T$ factorizes as $\mathbf L \odot (\mathbf C\mathbf B^\top)\operatorname{diag}(\boldsymbol\Delta)$ — the selective SSM **is** masked linear attention (**state space duality**) — and from that factorization we derive the **chunked block algorithm** and its balanced cost.
 
 ## Notation
 
-The standing symbols $n$, $d$, $d_s$, the state quintuple $(\statemat,\inputmat,\outputmat,\feedmat)$ with discretization $(\discA,\discB)$, the scan operator $\bullet$, and the scalar SSM input $u_t$ — one channel's coordinate of the token $\mathbf x_t\in\R^{d}$, as in <XRef id="def-tf3-ssm" />, not the raw unit of the notation chapter — are inherited. As in ch. 3, the state $\statevec_t\in\R^{d_s}$ and the vectors $\inputmat_t,\outputmat_t\in\R^{d_s}$ are treated as **columns** (a stated departure from the row convention), and time-ordered products are $\prod_{s=j+1}^{i}\discA_s \defeq \discA_i\discA_{i-1}\cdots\discA_{j+1}$, the empty product ($j=i$) being $\mathbf I$. Two symbols are **chapter-local**: $\mathbf T$, the transfer matrix, and $\mathbf L$, the decay mask (the additive attention mask keeps its standing name $\mathbf M$, <XRef id="def-tf4-causal-mask" />). The chunk size is $c$ (its standing image-channel meaning is unused here); $\gamma$ is a scalar decay; $\phi:\R^{d_k}\to\R^{D}$ and $D$ are as in <XRef id="rem-tf7-linear-attention" />.
+The standing symbols $n$, $d$, $d_s$, the state quintuple $(\statemat,\inputmat,\outputmat,\feedmat)$ with discretization $(\discA,\discB)$, the scan operator $\bullet$, and the scalar SSM input $u_t$ — one channel's coordinate of the token $\mathbf x_t\in\R^{d}$, as in <XRef id="def-ssm" />, not the raw unit of the notation chapter — are inherited. As in ch. 3, the state $\statevec_t\in\R^{d_s}$ and the vectors $\inputmat_t,\outputmat_t\in\R^{d_s}$ are treated as **columns** (a stated departure from the row convention), and time-ordered products are $\prod_{s=j+1}^{i}\discA_s \defeq \discA_i\discA_{i-1}\cdots\discA_{j+1}$, the empty product ($j=i$) being $\mathbf I$. Two symbols are **chapter-local**: $\mathbf T$, the transfer matrix, and $\mathbf L$, the decay mask (the additive attention mask keeps its standing name $\mathbf M$, <XRef id="def-causal-mask" />). The chunk size is $c$ (its standing image-channel meaning is unused here); $\gamma$ is a scalar decay; $\phi:\R^{d_k}\to\R^{D}$ and $D$ are as in <XRef id="rem-linear-attention" />.
 
 ## The selective state space model
 
 An LTI SSM commits to one policy before seeing any data: the same $\discA$, the same $\discB$, at every step. Selectivity re-reads the policy at every token — the current token chooses its own step size (how much time passes, hence how much the state forgets), its own write direction, and its own readout: three learned linear maps of the token where three constants used to be.
 
-<Theorem kind="definition" name="Selective state space model" id="def-tf13-selective-ssm">
-Fix a state dimension $d_s$ and one channel of the residual stream: at position $t$ the token is $\mathbf x_t\in\R^{d}$ and the channel's scalar input is $u_t$. A **selective SSM** replaces the fixed discretization of <XRef id="thm-tf3-zoh" /> with token-dependent quantities
+<Theorem kind="definition" name="Selective state space model" id="def-selective-ssm">
+Fix a state dimension $d_s$ and one channel of the residual stream: at position $t$ the token is $\mathbf x_t\in\R^{d}$ and the channel's scalar input is $u_t$. A **selective SSM** replaces the fixed discretization of <XRef id="thm-zoh" /> with token-dependent quantities
 $$
 \Delta_t \defeq \operatorname{softplus}(\mathbf x_t\mathbf w_\Delta + b_\Delta)\in(0,\infty),
 \qquad
@@ -59,7 +59,7 @@ $$
 \qquad
 y_t = \outputmat_t^\top\statevec_t,
 $$
-from $\statevec_0=\mathbf 0$. The state matrix $\statemat\in\R^{d_s\times d_s}$ — in practice diagonal with entries of negative real part, in the parameterizations descending from <XRef id="prop-tf3-legs-nplr" /> — remains input-independent.<Sidenote>Selective state spaces, the softplus step-size parameterization, and the selective-scan implementation are due to Mamba <Cite key="gu2023mamba" />.</Sidenote> In the full layer each of the $d$ channels runs this recurrence on its own $u_t$ with its own $\Delta_t$, sharing $\inputmat_t,\outputmat_t$; we fix one channel and omit the position-wise feedthrough $\feedmat u_t$, which plays no role in sequence mixing.
+from $\statevec_0=\mathbf 0$. The state matrix $\statemat\in\R^{d_s\times d_s}$ — in practice diagonal with entries of negative real part, in the parameterizations descending from <XRef id="prop-legs-nplr" /> — remains input-independent.<Sidenote>Selective state spaces, the softplus step-size parameterization, and the selective-scan implementation are due to Mamba <Cite key="gu2023mamba" />.</Sidenote> In the full layer each of the $d$ channels runs this recurrence on its own $u_t$ with its own $\Delta_t$, sharing $\inputmat_t,\outputmat_t$; we fix one channel and omit the position-wise feedthrough $\feedmat u_t$, which plays no role in sequence mixing.
 </Theorem>
 
 <MarginNote variant="warning" label="First-order ZOH">$\discB_t=\Delta_t\inputmat_t$ truncates exact ZOH at first order — trustworthy only when $\Delta_t\norm{\statemat}\ll 1$; at the trace's payload ($\Delta_t\norm{\statemat}=3$) it overshoots $3.2\times$.</MarginNote>
@@ -70,8 +70,8 @@ The point of the construction is what it breaks — and input-dependence of $\in
 
 <MarginNote variant="tip" label="Self-explanation">Freeze $\Delta_t$. The selections $\inputmat_t,\outputmat_t$ still read the token. What polynomial degree in $u_1$ does $y_1$ carry — and what degree would linearity allow?</MarginNote>
 
-<Theorem kind="proposition" name="The selective SSM is not LTI" id="prop-tf13-not-lti">
-As a map from the input sequence to the output sequence, the selective SSM of <XRef id="def-tf13-selective-ssm" /> is in general **nonlinear** — homogeneity and additivity both fail — hence not LTI, and it admits no input-independent kernel $\kappa$ with $y=\kappa\ast u$: the convolution representation of <XRef id="thm-tf3-conv-recurrence" /> does not extend. In particular, the hypotheses of <XRef id="prop-tf3-lti-obstruction" /> no longer apply.
+<Theorem kind="proposition" name="The selective SSM is not LTI" id="prop-not-lti">
+As a map from the input sequence to the output sequence, the selective SSM of <XRef id="def-selective-ssm" /> is in general **nonlinear** — homogeneity and additivity both fail — hence not LTI, and it admits no input-independent kernel $\kappa$ with $y=\kappa\ast u$: the convolution representation of <XRef id="thm-conv-recurrence" /> does not extend. In particular, the hypotheses of <XRef id="prop-lti-obstruction" /> no longer apply.
 </Theorem>
 
 <Theorem kind="proof">
@@ -85,7 +85,7 @@ So $y_1(\alpha u)=\alpha^3\,y_1(u)$ — with $\Delta=0.5$ and $u_1=1$ versus $u_
 
 **Step 2 (No kernel).** Convolution against any fixed $\kappa$ is a linear map of $u$ (linearity of $\ast$). A nonlinear map therefore equals no such convolution, whatever $\kappa$.
 
-**Step 3 (The escape).** <XRef id="prop-tf3-lti-obstruction" /> quantifies over maps that are linear *and* time-invariant; the selective SSM sits outside that class, so the obstruction has no force here. Note precisely what died: a one-line induction shows that a zero-padded delay of the input still produces the delayed output — the coefficients travel with the content — so it is **superposition**, not shift structure, that selectivity gives up. $\qquad\blacksquare$
+**Step 3 (The escape).** <XRef id="prop-lti-obstruction" /> quantifies over maps that are linear *and* time-invariant; the selective SSM sits outside that class, so the obstruction has no force here. Note precisely what died: a one-line induction shows that a zero-padded delay of the input still produces the delayed output — the coefficients travel with the content — so it is **superposition**, not shift structure, that selectivity gives up. $\qquad\blacksquare$
 </Theorem>
 
 Escaping the obstruction is necessary for content-dependent selection, not yet evidence of it. The next trace supplies the evidence — and exposes the mechanism: discretization manufactures a gate.
@@ -96,8 +96,8 @@ The task on which the obstruction was exhibited is **selective copying**: keep o
 
 <MarginNote variant="pattern" label="Write-once-hold">Open the gate at the payload ($g\approx 0.95$), close it elsewhere ($g\approx 0.01$): the state writes once, then holds.</MarginNote>
 
-<Theorem kind="example" name="Selective copying, traced" id="ex-tf13-selective-copy">
-Let $d_s=1$, $\statemat=a=-1$, $\inputmat_t\equiv 1$, $\outputmat_t\equiv 1$, with exact ZOH (<XRef id="thm-tf3-zoh" />, scalar case):
+<Theorem kind="example" name="Selective copying, traced" id="ex-selective-copy">
+Let $d_s=1$, $\statemat=a=-1$, $\inputmat_t\equiv 1$, $\outputmat_t\equiv 1$, with exact ZOH (<XRef id="thm-zoh" />, scalar case):
 $$
 \discA_t = e^{-\Delta_t},
 \qquad
@@ -124,12 +124,12 @@ Unrolling, $\statevec_3 = w_1u_1+w_2u_2+w_3u_3$ with content-chosen weights
 $$
 w_1 = g_1(1-g_2)(1-g_3) \approx 0.9314,\qquad w_2 = g_2(1-g_3)\approx 0.0099,\qquad w_3 = g_3 \approx 0.0100 :
 $$
-$93\%$ of the mass sits on the payload, a weight ratio $w_1/w_3\approx 94$ in favor of the *oldest* token. No stable *scalar-state* LTI system can imitate this: at $d_s = 1$ its fixed kernel $\kappa_j = C\discA^{\,j}\discB$ has $\lvert\kappa_2\rvert = \lvert\discA\rvert^2\lvert\kappa_0\rvert < \lvert\kappa_0\rvert$ whenever $\lvert\discA\rvert<1$ — the lag-$2$ weight never exceeds the lag-$0$ weight (larger states with oscillatory modes can bend the kernel's profile, so the monotonicity argument is $d_s=1$ only) — and for LTI systems of *every* state size, the same fixed profile must serve when the payload arrives last, which <XRef id="prop-tf3-lti-obstruction" /> forbids. The honesty margin is quantitative here: at the payload, first-order ZOH would write $\Delta_1 = 3$ against the exact $0.9502$ — a $3.16\times$ overshoot — while at $\Delta=0.01$ the two differ by $0.50\%$.
+$93\%$ of the mass sits on the payload, a weight ratio $w_1/w_3\approx 94$ in favor of the *oldest* token. No stable *scalar-state* LTI system can imitate this: at $d_s = 1$ its fixed kernel $\kappa_j = C\discA^{\,j}\discB$ has $\lvert\kappa_2\rvert = \lvert\discA\rvert^2\lvert\kappa_0\rvert < \lvert\kappa_0\rvert$ whenever $\lvert\discA\rvert<1$ — the lag-$2$ weight never exceeds the lag-$0$ weight (larger states with oscillatory modes can bend the kernel's profile, so the monotonicity argument is $d_s=1$ only) — and for LTI systems of *every* state size, the same fixed profile must serve when the payload arrives last, which <XRef id="prop-lti-obstruction" /> forbids. The honesty margin is quantitative here: at the payload, first-order ZOH would write $\Delta_1 = 3$ against the exact $0.9502$ — a $3.16\times$ overshoot — while at $\Delta=0.01$ the two differ by $0.50\%$.
 </Theorem>
 
 The coefficient pattern in the trace — hold weight and write weight summing to one — is not an accident of the numbers. In the scalar exact-ZOH model it is an identity, and the gate it produces is exactly the logistic gate of the gated RNNs.
 
-<Theorem kind="proposition" name="Gate equivalence" id="prop-tf13-gate-equivalence">
+<Theorem kind="proposition" name="Gate equivalence" id="prop-gate-equivalence">
 Fix $d_s=1$, $\statemat=a=-1$, and $\inputmat_t\equiv 1$ (the write scale is absorbed into $u_t$, and a scale in $\lvert a\rvert$ rescales $\Delta_t$ — without loss of generality for the convex-gate form; the *exact logistic* identity below additionally uses $a = -1$, since for general $a<0$ the gate is $1-(1+e^{\zeta})^{a}$, a generalized sigmoid). Under exact ZOH discretization,
 $$
 \discA_t = e^{-\Delta_t},
@@ -140,17 +140,17 @@ so with $g_t \defeq 1-e^{-\Delta_t}\in(0,1)$ the selective recurrence is the con
 $$
 \statevec_t = (1-g_t)\,\statevec_{t-1} + g_t\,u_t ,
 $$
-and under the softplus parameterization of <XRef id="def-tf13-selective-ssm" /> the gate is exactly logistic:
+and under the softplus parameterization of <XRef id="def-selective-ssm" /> the gate is exactly logistic:
 $$
 g_t = \sigma(\mathbf x_t\mathbf w_\Delta + b_\Delta).
 $$
-This is the GRU update equation (<XRef id="def-tf2-gru" />) with the candidate replaced by the raw input, under the gate relabeling $z_t = 1-g_t$ (the GRU's $z_t$ keeps the old state; here the decay $e^{-\Delta_t}$ does).
+This is the GRU update equation (<XRef id="def-gru" />) with the candidate replaced by the raw input, under the gate relabeling $z_t = 1-g_t$ (the GRU's $z_t$ keeps the old state; here the decay $e^{-\Delta_t}$ does).
 </Theorem>
 
 <MarginNote variant="formula" label="Step size = gate">$g_t=\sigma(\mathbf x_t\mathbf w_\Delta+b_\Delta)$: $\Delta_t\to 0^+ \Leftrightarrow g_t\to 0$ (hold); $\Delta_t\to\infty \Leftrightarrow g_t\to 1$ (write).</MarginNote>
 
 <Theorem kind="proof">
-**Step 1 (Discretize exactly).** <XRef id="thm-tf3-zoh" /> with $A=a=-1$, $B=1$ gives $\discA_t = e^{\Delta_t a}=e^{-\Delta_t}$ and $\discB_t = a^{-1}(e^{\Delta_t a}-1)B = (-1)(e^{-\Delta_t}-1) = 1-e^{-\Delta_t}$. Since $\Delta_t>0$, both lie in $(0,1)$ and $\discA_t+\discB_t = 1$: the pair $(1-g_t,\,g_t)$ is convex, and the recurrence takes the stated interpolation form.
+**Step 1 (Discretize exactly).** <XRef id="thm-zoh" /> with $A=a=-1$, $B=1$ gives $\discA_t = e^{\Delta_t a}=e^{-\Delta_t}$ and $\discB_t = a^{-1}(e^{\Delta_t a}-1)B = (-1)(e^{-\Delta_t}-1) = 1-e^{-\Delta_t}$. Since $\Delta_t>0$, both lie in $(0,1)$ and $\discA_t+\discB_t = 1$: the pair $(1-g_t,\,g_t)$ is convex, and the recurrence takes the stated interpolation form.
 
 **Step 2 (The gate is a sigmoid).** For any $\zeta\in\R$, with $\operatorname{softplus}(\zeta)=\log(1+e^{\zeta})$,
 $$
@@ -159,7 +159,7 @@ $$
 $$
 so $g_t=\sigma(\mathbf x_t\mathbf w_\Delta+b_\Delta)$ exactly.
 
-**Step 3 (Limits and the GRU reading).** $\Delta_t\to\infty$: $g_t\to 1$, $\statevec_t\to u_t$ (write/reset); $\Delta_t\to 0^+$: $g_t\to 0$, $\statevec_t\to\statevec_{t-1}$ (hold). The GRU update $\statevec_t=z_t\statevec_{t-1}+(1-z_t)\tilde{\statevec}_t$ (<XRef id="def-tf2-gru" />) matches term for term with keep gate $z_t\mapsto 1-g_t = e^{-\Delta_t}$ and candidate $\tilde{\statevec}_t\mapsto u_t$; and the state-to-state gradient $\prod_{s>t}(1-g_s)$ is the gate-controlled path of <XRef id="prop-tf2-cec" /> — the error carousel returns, its gate now learned through a step size. $\qquad\blacksquare$
+**Step 3 (Limits and the GRU reading).** $\Delta_t\to\infty$: $g_t\to 1$, $\statevec_t\to u_t$ (write/reset); $\Delta_t\to 0^+$: $g_t\to 0$, $\statevec_t\to\statevec_{t-1}$ (hold). The GRU update $\statevec_t=z_t\statevec_{t-1}+(1-z_t)\tilde{\statevec}_t$ (<XRef id="def-gru" />) matches term for term with keep gate $z_t\mapsto 1-g_t = e^{-\Delta_t}$ and candidate $\tilde{\statevec}_t\mapsto u_t$; and the state-to-state gradient $\prod_{s>t}(1-g_s)$ is the gate-controlled path of <XRef id="prop-cec" /> — the error carousel returns, its gate now learned through a step size. $\qquad\blacksquare$
 </Theorem>
 
 The first synthesis is now visible: discretizing a selective ODE *derives* the gating that ch. 2 postulated. Gates are step sizes — "how much to forget" is "how much time passes at this token."
@@ -168,11 +168,11 @@ The first synthesis is now visible: discretizing a selective ODE *derives* the g
 
 Chapter 3 evaluated the LTI recurrence three ways — stepwise recurrence, convolution by the kernel $\kappa$, and parallel scan. Selectivity revokes exactly one of the three, and the scan survives for a reason worth stating precisely: associativity of the scan operator is a fact about *three arbitrary pairs*, whose proof never consulted the coefficients' constancy.
 
-<Theorem kind="proposition" name="The selective scan" id="prop-tf13-selective-scan">
-For the selective recurrence $\statevec_t=\discA_t\statevec_{t-1}+\discB_tu_t$ define per-step elements $m_t \defeq (\discA_t,\ \discB_tu_t)$. Then, with the scan operator $\bullet$ of <XRef id="def-tf3-scan-op" />:
+<Theorem kind="proposition" name="The selective scan" id="prop-selective-scan">
+For the selective recurrence $\statevec_t=\discA_t\statevec_{t-1}+\discB_tu_t$ define per-step elements $m_t \defeq (\discA_t,\ \discB_tu_t)$. Then, with the scan operator $\bullet$ of <XRef id="def-scan-op" />:
 1. $m_t\bullet m_{t-1}\bullet\cdots\bullet m_1 = \bigl(\prod_{s=1}^{t}\discA_s,\ \statevec_t\bigr)$, the product time-ordered and $\statevec_0=\mathbf 0$;
-2. $\bullet$ is associative on time-varying elements — the proof of <XRef id="prop-tf3-scan" /> never uses equality of the $a$-components — so all $n$ prefix states are computable in $\lceil\log_2 n\rceil$ parallel rounds exactly as in the LTI case, and the $\Theta(\log n)$ sequential depth of <XRef id="prop-tf8-sequential-depth" /> survives selectivity;
-3. no convolution face remains: there is no input-independent $\kappa$ with $y=\kappa\ast u$ (<XRef id="prop-tf13-not-lti" />), so of the three evaluation modes only recurrence and scan are left.
+2. $\bullet$ is associative on time-varying elements — the proof of <XRef id="prop-scan" /> never uses equality of the $a$-components — so all $n$ prefix states are computable in $\lceil\log_2 n\rceil$ parallel rounds exactly as in the LTI case, and the $\Theta(\log n)$ sequential depth of <XRef id="prop-sequential-depth" /> survives selectivity;
+3. no convolution face remains: there is no input-independent $\kappa$ with $y=\kappa\ast u$ (<XRef id="prop-not-lti" />), so of the three evaluation modes only recurrence and scan are left.
 </Theorem>
 
 <MarginNote variant="pattern" label="Why it survives">The operator never asks whether the $a$-slots agree across elements: associativity is an identity in three arbitrary pairs.</MarginNote>
@@ -180,20 +180,20 @@ For the selective recurrence $\statevec_t=\discA_t\statevec_{t-1}+\discB_tu_t$ d
 <Theorem kind="proof">
 **Step 1 (Pairs compose affine maps).** Read $(\mathbf a,\mathbf b)$ as the affine map $\statevec\mapsto \mathbf a\statevec+\mathbf b$. The operator $(\mathbf a_2,\mathbf b_2)\bullet(\mathbf a_1,\mathbf b_1)=(\mathbf a_2\mathbf a_1,\ \mathbf a_2\mathbf b_1+\mathbf b_2)$ is their composition, second applied after first: $\mathbf a_2(\mathbf a_1\statevec+\mathbf b_1)+\mathbf b_2 = (\mathbf a_2\mathbf a_1)\statevec + (\mathbf a_2\mathbf b_1+\mathbf b_2)$. By induction, $m_t\bullet\cdots\bullet m_1$ represents $\statevec\mapsto(\prod_{s\le t}\discA_s)\statevec + \statevec_t$, where the constant slot is the state reached from $\statevec_0=\mathbf 0$ — claim (1).
 
-**Step 2 (Associativity without time-invariance).** The computation in <XRef id="prop-tf3-scan" /> evaluates both parenthesizations of three *arbitrary* pairs to $(\mathbf a_3\mathbf a_2\mathbf a_1,\ \mathbf a_3\mathbf a_2\mathbf b_1+\mathbf a_3\mathbf b_2+\mathbf b_3)$, using only associativity of the matrix product and distributivity — nowhere $\mathbf a_1=\mathbf a_2=\mathbf a_3$, and nowhere commutativity (the order $\mathbf a_3\mathbf a_2\mathbf a_1$ is preserved). Hence the log-depth prefix schedule applies verbatim to time-varying elements. For diagonal $\statemat$ each combine costs $O(d_s)$: $O(n\,d_s\log n)$ work under the doubling schedule, and $O(n\,d_s)$ either sequentially or with a work-efficient scan <Cite key="blelloch1990prefix" />.
+**Step 2 (Associativity without time-invariance).** The computation in <XRef id="prop-scan" /> evaluates both parenthesizations of three *arbitrary* pairs to $(\mathbf a_3\mathbf a_2\mathbf a_1,\ \mathbf a_3\mathbf a_2\mathbf b_1+\mathbf a_3\mathbf b_2+\mathbf b_3)$, using only associativity of the matrix product and distributivity — nowhere $\mathbf a_1=\mathbf a_2=\mathbf a_3$, and nowhere commutativity (the order $\mathbf a_3\mathbf a_2\mathbf a_1$ is preserved). Hence the log-depth prefix schedule applies verbatim to time-varying elements. For diagonal $\statemat$ each combine costs $O(d_s)$: $O(n\,d_s\log n)$ work under the doubling schedule, and $O(n\,d_s)$ either sequentially or with a work-efficient scan <Cite key="blelloch1990prefix" />.
 
-**Step 3 (The convolution face dies).** <XRef id="thm-tf3-conv-recurrence" /> produced $\kappa_j = \outputmat^\top\discA^{\,j}\discB$ *from constancy of the coefficients*: the coupling depended on the lag $i-j$ alone. With token-dependent $\discA_s$ the coupling $\outputmat_i^\top(\prod_{s=j+1}^{i}\discA_s)\discB_j$ depends on the absolute positions — and more fundamentally, $u\mapsto\kappa\ast u$ is linear, which <XRef id="prop-tf13-not-lti" /> rules out. $\qquad\blacksquare$
+**Step 3 (The convolution face dies).** <XRef id="thm-conv-recurrence" /> produced $\kappa_j = \outputmat^\top\discA^{\,j}\discB$ *from constancy of the coefficients*: the coupling depended on the lag $i-j$ alone. With token-dependent $\discA_s$ the coupling $\outputmat_i^\top(\prod_{s=j+1}^{i}\discA_s)\discB_j$ depends on the absolute positions — and more fundamentally, $u\mapsto\kappa\ast u$ is linear, which <XRef id="prop-not-lti" /> rules out. $\qquad\blacksquare$
 </Theorem>
 
 This resolves the cliffhanger algorithmically: selection cost the FFT-able kernel, and the price is payable because the scan face never needed time-invariance. It is this scan that trains Mamba <Cite key="gu2023mamba" />; the rest of the chapter shows a second, matrix-shaped evaluation mode also exists — and that it is attention.
 
 ## Linear attention is a recurrent model
 
-<XRef id="rem-tf7-linear-attention" /> replaced the softmax kernel by a feature map $\phi$ and observed that the resulting sums are shared across queries. In the causal case the observation becomes an exact equivalence: the running sums *are* a recurrent state, and linear attention *is* an RNN with matrix-valued state. As there, we treat $\phi(\mathbf k_j)$ and $\mathbf v_j$ as columns, so $\phi(\mathbf k_j)\mathbf v_j^\top$ is a $D\times d_v$ outer product, and outputs $\mathbf y_i$ are rows.
+<XRef id="rem-linear-attention" /> replaced the softmax kernel by a feature map $\phi$ and observed that the resulting sums are shared across queries. In the causal case the observation becomes an exact equivalence: the running sums *are* a recurrent state, and linear attention *is* an RNN with matrix-valued state. As there, we treat $\phi(\mathbf k_j)$ and $\mathbf v_j$ as columns, so $\phi(\mathbf k_j)\mathbf v_j^\top$ is a $D\times d_v$ outer product, and outputs $\mathbf y_i$ are rows.
 
 <MarginNote variant="tip" label="Self-explanation">Unroll $\mathbf S_3=\mathbf S_2+\phi(\mathbf k_3)\mathbf v_3^\top$ by hand: which $j$-indexed terms appear, with what coefficients? Now repeat with the $\gamma$-update.</MarginNote>
 
-<Theorem kind="theorem" name="Causal linear attention is a matrix-state recurrence" id="thm-tf13-linattn-rnn">
+<Theorem kind="theorem" name="Causal linear attention is a matrix-state recurrence" id="thm-linattn-rnn">
 Let $\phi:\R^{d_k}\to\R^{D}$ have entrywise positive values (e.g. $\operatorname{elu}(x)+1$), and let $\mathbf q_i,\mathbf k_i\in\R^{d_k}$, $\mathbf v_i\in\R^{d_v}$ be query, key, and value vectors. Define **causal linear attention**<Sidenote>Linear attention and its recurrent reading are due to <Cite key="katharopoulos2020transformers" />.</Sidenote>
 $$
 \mathbf y_i \defeq \frac{\sum_{j\le i}\inner{\phi(\mathbf q_i)}{\phi(\mathbf k_j)}\,\mathbf v_j^\top}{\sum_{j\le i}\inner{\phi(\mathbf q_i)}{\phi(\mathbf k_j)}}.
@@ -226,13 +226,13 @@ and $\phi(\mathbf q_i)^\top\mathbf z_i=\sum_{j\le i}\inner{\phi(\mathbf q_i)}{\p
 **Step 4 (Cost).** Per token: one outer product and one add ($O(Dd_v)$), the readouts $\phi(\mathbf q_i)^\top\mathbf S_i$ ($O(Dd_v)$) and $\phi(\mathbf q_i)^\top\mathbf z_i$ ($O(D)$) — independent of $i$. $\qquad\blacksquare$
 </Theorem>
 
-Three consequences. The weights $\inner{\phi(\mathbf q_i)}{\phi(\mathbf k_j)}$ are nonnegative and row-normalized, so each output remains a convex combination of the values (<XRef id="prop-row-stochastic-convex" />). The recurrence consumes its prefix only — causal in the sense of <XRef id="def-tf8-causal" /> — and decodes with a state that **does not grow with $n$**: $D(d_v+1)$ numbers per head against the KV-cache's lossless $2nd$ per layer (<XRef id="prop-tf12-kv-memory" />); what the compression forfeits is quantified in the next chapter. And the $\gamma$-variant<Sidenote>Retention <Cite key="sun2023retnet" /> is the $\gamma$-decay variant with $\phi=\mathrm{id}$ composed with per-position rotations, the normalizer dropped, and one $\gamma$ per head.</Sidenote> shows the state can *forget* — at a fixed, position-keyed exponential rate. The selective SSM, we now show, is precisely this object with the decay made *content-dependent*; seeing that requires reading the recurrence as a matrix.
+Three consequences. The weights $\inner{\phi(\mathbf q_i)}{\phi(\mathbf k_j)}$ are nonnegative and row-normalized, so each output remains a convex combination of the values (<XRef id="prop-row-stochastic-convex" />). The recurrence consumes its prefix only — causal in the sense of <XRef id="def-causal" /> — and decodes with a state that **does not grow with $n$**: $D(d_v+1)$ numbers per head against the KV-cache's lossless $2nd$ per layer (<XRef id="prop-kv-memory" />); what the compression forfeits is quantified in the next chapter. And the $\gamma$-variant<Sidenote>Retention <Cite key="sun2023retnet" /> is the $\gamma$-decay variant with $\phi=\mathrm{id}$ composed with per-position rotations, the normalizer dropped, and one $\gamma$ per head.</Sidenote> shows the state can *forget* — at a fixed, position-keyed exponential rate. The selective SSM, we now show, is precisely this object with the decay made *content-dependent*; seeing that requires reading the recurrence as a matrix.
 
 ## The transfer matrix is semiseparable
 
-Attention wears its mixing object on its sleeve: the row-stochastic weight matrix of <XRef id="def-tf4-attention" />, built afresh from each input. A recurrence hides its mixing object; unrolling exposes it.
+Attention wears its mixing object on its sleeve: the row-stochastic weight matrix of <XRef id="def-attention" />, built afresh from each input. A recurrence hides its mixing object; unrolling exposes it.
 
-<Theorem kind="definition" name="Transfer matrix" id="def-tf13-transfer-matrix">
+<Theorem kind="definition" name="Transfer matrix" id="def-transfer-matrix">
 Fix a selective SSM, its input sequence, and hence its coefficient sequences $(\discA_t,\discB_t,\outputmat_t)$. The **transfer matrix** $\mathbf T\in\R^{n\times n}$ has entries
 $$
 T_{ij} \defeq
@@ -244,11 +244,11 @@ $$
 so that, collecting the scalar inputs and outputs into columns $u,y\in\R^{n}$, $\;y=\mathbf T u$.
 </Theorem>
 
-That $y=\mathbf Tu$ holds is the recurrence unrolled: by induction $\statevec_i=\sum_{j\le i}\bigl(\prod_{s=j+1}^{i}\discA_s\bigr)\discB_ju_j$ (the update multiplies every term by $\discA_i$ and appends the $j=i$ term $\discB_iu_i$ with its empty product), and applying $\outputmat_i^\top$ gives row $i$. Two readings matter. $\mathbf T$ is *lower-triangular*: causality is the sparsity pattern. And $\mathbf T$ is **input-dependent** — built from the selections exactly as the attention matrix is built from the tokens; the map $u\mapsto y$ is linear only once the coefficients are frozen (<XRef id="prop-tf13-not-lti" />). Both architectures thus materialize a data-dependent $n\times n$ mixing matrix; the difference is structure. Attention's matrix is unconstrained (up to row-stochasticity), while $\mathbf T$ is generated by $O(n\,d_s)$ numbers — and that structure has a name.
+That $y=\mathbf Tu$ holds is the recurrence unrolled: by induction $\statevec_i=\sum_{j\le i}\bigl(\prod_{s=j+1}^{i}\discA_s\bigr)\discB_ju_j$ (the update multiplies every term by $\discA_i$ and appends the $j=i$ term $\discB_iu_i$ with its empty product), and applying $\outputmat_i^\top$ gives row $i$. Two readings matter. $\mathbf T$ is *lower-triangular*: causality is the sparsity pattern. And $\mathbf T$ is **input-dependent** — built from the selections exactly as the attention matrix is built from the tokens; the map $u\mapsto y$ is linear only once the coefficients are frozen (<XRef id="prop-not-lti" />). Both architectures thus materialize a data-dependent $n\times n$ mixing matrix; the difference is structure. Attention's matrix is unconstrained (up to row-stochasticity), while $\mathbf T$ is generated by $O(n\,d_s)$ numbers — and that structure has a name.
 
 <MarginNote variant="tip" label="Self-explanation">Every route from $u_j$ to $y_i$ with $j\le p\le i$ threads the $d_s$-dimensional state $\statevec_p$. What rank can a block of such couplings then have?</MarginNote>
 
-<Theorem kind="theorem" name="The transfer matrix is d_s-semiseparable" id="thm-tf13-semiseparable">
+<Theorem kind="theorem" name="The transfer matrix is d_s-semiseparable" id="thm-semiseparable">
 Call a lower-triangular matrix **$N$-semiseparable** if every submatrix $\mathbf T[\mathcal I,\mathcal J]$ whose index rectangle lies in the lower-triangular region — $\max \mathcal J\le\min \mathcal I$, in particular every strictly-sub-diagonal rectangle — has rank at most $N$.<Sidenote>Semiseparable structure is classical in numerical linear algebra; its identification with SSM transfer matrices, and the name *state space duality*, are due to <Cite key="dao2024ssd" />.</Sidenote> The transfer matrix of any selective SSM with state dimension $d_s$ is $d_s$-semiseparable.
 </Theorem>
 
@@ -290,8 +290,8 @@ A generic lower-triangular matrix has $n(n+1)/2$ free entries; semiseparability 
 
 Restrict the decay to the structure practice actually uses — all state coordinates decaying at one token-chosen rate — and the transfer matrix falls apart into named pieces: the readouts stack into a query matrix, the writes into a key matrix, and the leftover scalar products form a causal decay mask. That is the duality.
 
-<Theorem kind="theorem" name="State space duality (scalar decay)" id="thm-tf13-ssd">
-Let the selective SSM have scalar decay $\discA_t=a_t\mathbf I_{d_s}$ with $a_t\in(0,1]$ — e.g. $a_t=e^{\Delta_t a}$ for a scalar $a<0$ — and the first-order writes $\discB_t=\Delta_t\inputmat_t$ of <XRef id="def-tf13-selective-ssm" />. Stack $\mathbf C\in\R^{n\times d_s}$ with rows $\outputmat_i^\top$, $\mathbf B\in\R^{n\times d_s}$ with rows $\inputmat_j^\top$, write $\boldsymbol\Delta\defeq(\Delta_1,\dots,\Delta_n)$, and define the **decay mask** $\mathbf L\in\R^{n\times n}$ by
+<Theorem kind="theorem" name="State space duality (scalar decay)" id="thm-ssd">
+Let the selective SSM have scalar decay $\discA_t=a_t\mathbf I_{d_s}$ with $a_t\in(0,1]$ — e.g. $a_t=e^{\Delta_t a}$ for a scalar $a<0$ — and the first-order writes $\discB_t=\Delta_t\inputmat_t$ of <XRef id="def-selective-ssm" />. Stack $\mathbf C\in\R^{n\times d_s}$ with rows $\outputmat_i^\top$, $\mathbf B\in\R^{n\times d_s}$ with rows $\inputmat_j^\top$, write $\boldsymbol\Delta\defeq(\Delta_1,\dots,\Delta_n)$, and define the **decay mask** $\mathbf L\in\R^{n\times n}$ by
 $$
 L_{ij}\defeq\prod_{s=j+1}^{i}a_s \quad (j\le i),\qquad L_{ij}\defeq 0 \quad (j>i),\qquad L_{ii}=1 .
 $$
@@ -299,7 +299,7 @@ Then the transfer matrix factorizes as
 $$
 \mathbf T = \mathbf L \odot \bigl(\mathbf C\mathbf B^\top\bigr)\operatorname{diag}(\boldsymbol\Delta),
 $$
-and $\mathbf L$ is $1$-semiseparable. Consequently $y=\mathbf Tu$ is **masked linear attention**: scores $\inner{\outputmat_i}{\inputmat_j}$ with queries the readout selections and keys the write selections, values $\Delta_ju_j$, and a multiplicative, data-dependent causal mask $\mathbf L$ — with no softmax and no row normalization. Two specializations tie back exactly: $a_s\equiv 1$ makes $\mathbf L$ the $0/1$ causal indicator (the entrywise exponential of the additive mask $\mathbf M$, <XRef id="def-tf4-causal-mask" />) and $\mathbf T u$ unnormalized causal linear attention with $\phi=\mathrm{id}$; $a_s\equiv\gamma$ gives $L_{ij}=\gamma^{\,i-j}$, the retention decay of <XRef id="thm-tf13-linattn-rnn" />(2).
+and $\mathbf L$ is $1$-semiseparable. Consequently $y=\mathbf Tu$ is **masked linear attention**: scores $\inner{\outputmat_i}{\inputmat_j}$ with queries the readout selections and keys the write selections, values $\Delta_ju_j$, and a multiplicative, data-dependent causal mask $\mathbf L$ — with no softmax and no row normalization. Two specializations tie back exactly: $a_s\equiv 1$ makes $\mathbf L$ the $0/1$ causal indicator (the entrywise exponential of the additive mask $\mathbf M$, <XRef id="def-causal-mask" />) and $\mathbf T u$ unnormalized causal linear attention with $\phi=\mathrm{id}$; $a_s\equiv\gamma$ gives $L_{ij}=\gamma^{\,i-j}$, the retention decay of <XRef id="thm-linattn-rnn" />(2).
 </Theorem>
 
 <Theorem kind="proof">
@@ -315,9 +315,9 @@ y_i=\sum_{j\le i}\Bigl(\prod_{s=j+1}^{i}a_s\Bigr)\bigl(\outputmat_i^\top\inputma
 $$
 since $\bigl[(\mathbf C\mathbf B^\top)\operatorname{diag}(\boldsymbol\Delta)\bigr]_{ij}=(\outputmat_i^\top\inputmat_j)\Delta_j$ and the Hadamard factor $L_{ij}$ supplies the decay product below the diagonal and the zero above it. Both sides vanish for $j>i$, so the matrices agree entrywise: $\mathbf T=\mathbf L\odot(\mathbf C\mathbf B^\top)\operatorname{diag}(\boldsymbol\Delta)$.
 
-**Step 3 ($\mathbf L$ is $1$-semiseparable).** With $\alpha_i\defeq\prod_{s\le i}a_s>0$, every lower-triangular entry is a ratio, $L_{ij}=\alpha_i/\alpha_j$, so any rectangle with $\max \mathcal J\le\min \mathcal I$ is a submatrix of the outer product $(\alpha_i)_i\,(1/\alpha_j)_j^\top$ — rank at most $1$. (Equivalently: $\mathbf L$ is itself the transfer matrix of the scalar SSM with $d_s=1$, $\discB=\outputmat=1$, so <XRef id="thm-tf13-semiseparable" /> applies with $d_s=1$.)
+**Step 3 ($\mathbf L$ is $1$-semiseparable).** With $\alpha_i\defeq\prod_{s\le i}a_s>0$, every lower-triangular entry is a ratio, $L_{ij}=\alpha_i/\alpha_j$, so any rectangle with $\max \mathcal J\le\min \mathcal I$ is a submatrix of the outer product $(\alpha_i)_i\,(1/\alpha_j)_j^\top$ — rank at most $1$. (Equivalently: $\mathbf L$ is itself the transfer matrix of the scalar SSM with $d_s=1$, $\discB=\outputmat=1$, so <XRef id="thm-semiseparable" /> applies with $d_s=1$.)
 
-**Step 4 (Specializations).** If $a_s\equiv 1$, every product is $1$: $\mathbf L$ is the lower-triangular all-ones matrix, i.e. $e^{M_{ij}}$ entrywise, and $\mathbf Tu=\bigl(\text{causal mask}\odot\mathbf C\mathbf B^\top\bigr)\operatorname{diag}(\boldsymbol\Delta)u$ — the unnormalized form of <XRef id="thm-tf13-linattn-rnn" /> with $\phi=\mathrm{id}$, queries $\outputmat_i$, keys $\inputmat_j$, values $\Delta_ju_j$. If $a_s\equiv\gamma$, then $L_{ij}=\gamma^{\,i-j}$, matching Step 3 of that theorem's proof. $\qquad\blacksquare$
+**Step 4 (Specializations).** If $a_s\equiv 1$, every product is $1$: $\mathbf L$ is the lower-triangular all-ones matrix, i.e. $e^{M_{ij}}$ entrywise, and $\mathbf Tu=\bigl(\text{causal mask}\odot\mathbf C\mathbf B^\top\bigr)\operatorname{diag}(\boldsymbol\Delta)u$ — the unnormalized form of <XRef id="thm-linattn-rnn" /> with $\phi=\mathrm{id}$, queries $\outputmat_i$, keys $\inputmat_j$, values $\Delta_ju_j$. If $a_s\equiv\gamma$, then $L_{ij}=\gamma^{\,i-j}$, matching Step 3 of that theorem's proof. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="formula" label="The mask family">$a_s\equiv 1$: $\mathbf L$ = causal $0/1$ mask. $a_s\equiv\gamma$: $L_{ij}=\gamma^{\,i-j}$ (retention). Token-chosen $a_s$: learned, content-keyed recency.</MarginNote>
@@ -334,14 +334,14 @@ The correspondence, element by element:
 
 <MarginNote variant="analogy-limit" label="Where it breaks">No softmax, no normalization: score rows need not sum to one, so outputs are not convex combinations of the values.</MarginNote>
 
-The correspondence breaks in exactly one row: nothing normalizes. The decay mask does the tempering the softmax kernel once did, and a normalizer, if wanted, is the same machinery run with values $\equiv 1$ — the $\mathbf z$-state of <XRef id="thm-tf13-linattn-rnn" />, which SSD-style models simply omit. The duality is therefore a statement about *algorithms*: one function, two evaluation orders. As a recurrence (or scan), $y=\mathbf Tu$ costs $O(n\,d_s)$ per channel; as a masked matmul it costs $O(n^2)$-scale work like attention — and the same numbers come out. The practical algorithm interpolates.
+The correspondence breaks in exactly one row: nothing normalizes. The decay mask does the tempering the softmax kernel once did, and a normalizer, if wanted, is the same machinery run with values $\equiv 1$ — the $\mathbf z$-state of <XRef id="thm-linattn-rnn" />, which SSD-style models simply omit. The duality is therefore a statement about *algorithms*: one function, two evaluation orders. As a recurrence (or scan), $y=\mathbf Tu$ costs $O(n\,d_s)$ per channel; as a masked matmul it costs $O(n^2)$-scale work like attention — and the same numbers come out. The practical algorithm interpolates.
 
 ## The chunked block algorithm
 
 Near the diagonal the transfer matrix is dense but *small* if tiled; everything strictly below the tiles is rank-$\le d_s$, generated by boundary states. So tile it: dense masked matmuls on the $c\times c$ diagonal blocks, and one short scan over $n/c$ chunk summaries to carry the state across boundaries.
 
-<Theorem kind="proposition" name="Chunked evaluation: cost and balance" id="prop-tf13-chunked">
-Let the SSD model of <XRef id="thm-tf13-ssd" /> act on $d$ channels sharing $(a_t,\Delta_t,\inputmat_t,\outputmat_t)$ — the Mamba-2/SSD coarsening of <XRef id="def-tf13-selective-ssm" />'s per-channel $\Delta_t$, and exactly what lets one mask $\mathbf L$ serve all $d$ channels — with value block $\mathbf U\in\R^{n\times d}$, and let $c\mid n$ split positions into chunks $\mathcal I_k=\{(k-1)c+1,\dots,kc\}$ with boundaries $p_k\defeq(k-1)c$, $k=1,\dots,n/c$. Then for $t\in\mathcal I_k$,
+<Theorem kind="proposition" name="Chunked evaluation: cost and balance" id="prop-chunked">
+Let the SSD model of <XRef id="thm-ssd" /> act on $d$ channels sharing $(a_t,\Delta_t,\inputmat_t,\outputmat_t)$ — the Mamba-2/SSD coarsening of <XRef id="def-selective-ssm" />'s per-channel $\Delta_t$, and exactly what lets one mask $\mathbf L$ serve all $d$ channels — with value block $\mathbf U\in\R^{n\times d}$, and let $c\mid n$ split positions into chunks $\mathcal I_k=\{(k-1)c+1,\dots,kc\}$ with boundaries $p_k\defeq(k-1)c$, $k=1,\dots,n/c$. Then for $t\in\mathcal I_k$,
 $$
 y_t=\underbrace{\sum_{j\in\mathcal I_k,\,j\le t} T_{tj}\,u_j}_{\text{intra-chunk}}
 \;+\;
@@ -356,7 +356,7 @@ $$
 The resulting algorithm costs, counting multiplications across all $d$ channels (boundary states stacked as $\statevec_{p_k}\in\R^{d_s\times d}$):
 1. **intra-chunk masked matmuls** — the diagonal blocks of $\mathbf T$ in SSD form: $O(c^2(d_s+d))$ per chunk, total $O\bigl(n\,c(d_s+d)\bigr)$;
 2. **chunk summaries and boundary broadcasts**: $O(c\,d_s\,d)$ per chunk, total $O(n\,d_s\,d)$;
-3. **the cross-chunk scan** on the pairs $(\Pi_k,\mathbf w_k)$: $n/c$ combines at $O(d_s\,d)$ each, total $O\bigl((n/c)\,d_s\,d\bigr)$ — sequential, or $\lceil\log_2(n/c)\rceil$ rounds by <XRef id="prop-tf13-selective-scan" />.
+3. **the cross-chunk scan** on the pairs $(\Pi_k,\mathbf w_k)$: $n/c$ combines at $O(d_s\,d)$ each, total $O\bigl((n/c)\,d_s\,d\bigr)$ — sequential, or $\lceil\log_2(n/c)\rceil$ rounds by <XRef id="prop-selective-scan" />.
 
 Ignoring lower-order mask bookkeeping but retaining the $\mathbf C\mathbf B^\top$ formation, a scalar-multiplication proxy for these three terms is
 $$
@@ -377,9 +377,9 @@ $$
 \sum_{j\le p_k}\Bigl(\prod_{s=j+1}^{t}a_s\Bigr)\bigl(\outputmat_t^\top\inputmat_j\bigr)\Delta_ju_j
 =\outputmat_t^\top\Bigl(\prod_{s=p_k+1}^{t}a_s\Bigr)\underbrace{\sum_{j\le p_k}\Bigl(\prod_{s=j+1}^{p_k}a_s\Bigr)\Delta_j\inputmat_ju_j}_{=\;\statevec_{p_k}} ,
 $$
-the underbraced sum being the unrolled state at time $p_k$ (Step 1 of <XRef id="thm-tf13-ssd" />) — which is the cross-chunk term. The intra-chunk sum is the diagonal block of $\mathbf T$ applied to the chunk's inputs — a chunk-sized instance of <XRef id="thm-tf13-ssd" /> with zero initial state.
+the underbraced sum being the unrolled state at time $p_k$ (Step 1 of <XRef id="thm-ssd" />) — which is the cross-chunk term. The intra-chunk sum is the diagonal block of $\mathbf T$ applied to the chunk's inputs — a chunk-sized instance of <XRef id="thm-ssd" /> with zero initial state.
 
-**Step 2 (Boundary states are a scan).** Grouping the unrolled $\statevec_{p_{k+1}}$ by whether $j\le p_k$ or $j\in\mathcal I_k$: every early term acquires the whole chunk's decay $\Pi_k$, and the in-chunk terms sum to $\mathbf w_k$; hence $\statevec_{p_{k+1}}=\Pi_k\statevec_{p_k}+\mathbf w_k$. This is a length-$(n/c)$ recurrence in the elements $(\Pi_k,\mathbf w_k)$, evaluable sequentially or by $\bullet$ — associativity holding by <XRef id="prop-tf13-selective-scan" />.
+**Step 2 (Boundary states are a scan).** Grouping the unrolled $\statevec_{p_{k+1}}$ by whether $j\le p_k$ or $j\in\mathcal I_k$: every early term acquires the whole chunk's decay $\Pi_k$, and the in-chunk terms sum to $\mathbf w_k$; hence $\statevec_{p_{k+1}}=\Pi_k\statevec_{p_k}+\mathbf w_k$. This is a length-$(n/c)$ recurrence in the elements $(\Pi_k,\mathbf w_k)$, evaluable sequentially or by $\bullet$ — associativity holding by <XRef id="prop-selective-scan" />.
 
 **Step 3 (Count).** *(1)* Diagonal block $k$: form $\mathbf C^{(k)}\mathbf B^{(k)\top}$ from the chunk's rows of $\mathbf C,\mathbf B$ ($c^2d_s$ multiplications), apply the chunk's mask $\mathbf L^{(k)}$ (lower-order $O(c^2)$ bookkeeping), and multiply into the chunk's value block in $\R^{c\times d}$ ($c^2d$ multiplications). Across $n/c$ chunks, the two matrix products therefore contribute $nc(d_s+d)$ multiplications. *(2)* Each $\mathbf w_k$ is $\mathbf B^{(k)\top}$ times the chunk's decay-and-$\Delta$-scaled values ($c\,d_s\,d$ multiplications); each broadcast is $\mathbf C^{(k)}$ (decay-scaled) times $\statevec_{p_k}\in\R^{d_s\times d}$ (another $c\,d_s\,d$), totaling $2n\,d_s\,d$. *(3)* Each combine scales a $d_s\times d$ state, contributing $d_s d$ multiplications, for the proxy $(n/c)d_s d$ across the chunk-level scan. Summing gives the stated $P(c)$; operation fusion and the fact that a length-$n/c$ sequential scan has one fewer combine affect constants or endpoints, not the balance.
 
@@ -390,29 +390,29 @@ $$
 with equality at $c=c_*$. Writing $c=c_*e^u$ makes the variable term $2\sqrt{d_s d(d+d_s)}\cosh u$. Restricting first to $1\le c\le n$ clamps the target to $\widehat c_*$; among divisors of $n$, strict monotonicity of $\cosh |u|$ makes the optimum exactly the divisor with smallest $|\log(c/\widehat c_*)|$. The constant $2n d_s d$ term is a floor. When $d_s\le d$ and $1\le c\le\min(d_s,n)$, the intra term is at most $2n d_s d$ and the scan term at most $n d_s d$, while the constant state terms supply a matching lower bound; hence the total remains $\Theta(n\,d_s\,d)$. If also $d_s\le n$ and the divisor constraint admits $c=\Theta(d_s)$, that hardware-shaped choice is asymptotically optimal: it equalizes the intra-chunk and state-summary scales and pushes work into larger dense products, although it does more scalar multiplications than the interior $c_*\approx\sqrt{d_s}$ when $d\gg d_s$. At $c=n$ there is one chunk, so cross-chunk summaries, broadcasts, and scans can be omitted; forming the full $\mathbf C\mathbf B^\top$ factor and multiplying the masked matrix by $\mathbf U$ costs $O\bigl(n^2(d_s+d)\bigr)$ (the attention face). At $c=1$ the diagonal blocks are trivial and the scan is the whole algorithm (the recurrent face). $\qquad\blacksquare$
 </Theorem>
 
-Why choose the hardware-shaped middle of the plateau rather than the scalar-count minimizer? Because the *shape* of the arithmetic changes: larger chunks spend more operations in dense $c\times c$ and $c\times d$ products — high arithmetic intensity, the compute-bound side of <XRef id="def-tf12-cost-eq" /> — where the elementwise sequential scan streams its state through memory. Same asymptotic count, different exact count and achieved throughput; this matmul-rich reorganization is the training-time algorithm of <Cite key="dao2024ssd" />. The chapter's arc is closed: the selective SSM escapes the LTI obstruction, keeps the scan, *is* masked linear attention with a semiseparable mask, and evaluates anywhere on the dial between its recurrent and attention faces. What remains for the next chapter is the model zoo this machinery generates — and what a constant-size state can and cannot remember.
+Why choose the hardware-shaped middle of the plateau rather than the scalar-count minimizer? Because the *shape* of the arithmetic changes: larger chunks spend more operations in dense $c\times c$ and $c\times d$ products — high arithmetic intensity, the compute-bound side of <XRef id="def-cost-eq" /> — where the elementwise sequential scan streams its state through memory. Same asymptotic count, different exact count and achieved throughput; this matmul-rich reorganization is the training-time algorithm of <Cite key="dao2024ssd" />. The chapter's arc is closed: the selective SSM escapes the LTI obstruction, keeps the scan, *is* masked linear attention with a semiseparable mask, and evaluates anywhere on the dial between its recurrent and attention faces. What remains for the next chapter is the model zoo this machinery generates — and what a constant-size state can and cannot remember.
 
 ## Exercises
 
 Attempt each before expanding its solution.
 
-**Exercise 13.1 (Prove).** Show that $(\mathbf a_2,\mathbf b_2)\bullet(\mathbf a_1,\mathbf b_1)=(\mathbf a_2\mathbf a_1,\ \mathbf a_2\mathbf b_1+\mathbf b_2)$ composes the affine maps $\statevec\mapsto\mathbf a\statevec+\mathbf b$; verify associativity on three arbitrary (time-varying) pairs; and state exactly where an LTI assumption would have been needed.
+**Exercise 18.1 (Prove).** Show that $(\mathbf a_2,\mathbf b_2)\bullet(\mathbf a_1,\mathbf b_1)=(\mathbf a_2\mathbf a_1,\ \mathbf a_2\mathbf b_1+\mathbf b_2)$ composes the affine maps $\statevec\mapsto\mathbf a\statevec+\mathbf b$; verify associativity on three arbitrary (time-varying) pairs; and state exactly where an LTI assumption would have been needed.
 
 <SolutionBox>
 
-Composition: $(\mathbf a_2,\mathbf b_2)$ after $(\mathbf a_1,\mathbf b_1)$ maps $\statevec\mapsto\mathbf a_2(\mathbf a_1\statevec+\mathbf b_1)+\mathbf b_2=(\mathbf a_2\mathbf a_1)\statevec+(\mathbf a_2\mathbf b_1+\mathbf b_2)$, which is the pair claimed. Associativity: $\bigl((\mathbf a_3,\mathbf b_3)\bullet(\mathbf a_2,\mathbf b_2)\bigr)\bullet(\mathbf a_1,\mathbf b_1)=(\mathbf a_3\mathbf a_2,\ \mathbf a_3\mathbf b_2+\mathbf b_3)\bullet(\mathbf a_1,\mathbf b_1)=(\mathbf a_3\mathbf a_2\mathbf a_1,\ \mathbf a_3\mathbf a_2\mathbf b_1+\mathbf a_3\mathbf b_2+\mathbf b_3)$, and $(\mathbf a_3,\mathbf b_3)\bullet\bigl((\mathbf a_2,\mathbf b_2)\bullet(\mathbf a_1,\mathbf b_1)\bigr)=(\mathbf a_3,\mathbf b_3)\bullet(\mathbf a_2\mathbf a_1,\ \mathbf a_2\mathbf b_1+\mathbf b_2)=(\mathbf a_3\mathbf a_2\mathbf a_1,\ \mathbf a_3\mathbf a_2\mathbf b_1+\mathbf a_3\mathbf b_2+\mathbf b_3)$ — equal. Only associativity of the matrix product and distributivity were used; the $\mathbf a_i$ were never assumed equal (time-invariance) nor commuting. An LTI assumption is needed nowhere — which is <XRef id="prop-tf13-selective-scan" />. $\qquad\blacksquare$
+Composition: $(\mathbf a_2,\mathbf b_2)$ after $(\mathbf a_1,\mathbf b_1)$ maps $\statevec\mapsto\mathbf a_2(\mathbf a_1\statevec+\mathbf b_1)+\mathbf b_2=(\mathbf a_2\mathbf a_1)\statevec+(\mathbf a_2\mathbf b_1+\mathbf b_2)$, which is the pair claimed. Associativity: $\bigl((\mathbf a_3,\mathbf b_3)\bullet(\mathbf a_2,\mathbf b_2)\bigr)\bullet(\mathbf a_1,\mathbf b_1)=(\mathbf a_3\mathbf a_2,\ \mathbf a_3\mathbf b_2+\mathbf b_3)\bullet(\mathbf a_1,\mathbf b_1)=(\mathbf a_3\mathbf a_2\mathbf a_1,\ \mathbf a_3\mathbf a_2\mathbf b_1+\mathbf a_3\mathbf b_2+\mathbf b_3)$, and $(\mathbf a_3,\mathbf b_3)\bullet\bigl((\mathbf a_2,\mathbf b_2)\bullet(\mathbf a_1,\mathbf b_1)\bigr)=(\mathbf a_3,\mathbf b_3)\bullet(\mathbf a_2\mathbf a_1,\ \mathbf a_2\mathbf b_1+\mathbf b_2)=(\mathbf a_3\mathbf a_2\mathbf a_1,\ \mathbf a_3\mathbf a_2\mathbf b_1+\mathbf a_3\mathbf b_2+\mathbf b_3)$ — equal. Only associativity of the matrix product and distributivity were used; the $\mathbf a_i$ were never assumed equal (time-invariance) nor commuting. An LTI assumption is needed nowhere — which is <XRef id="prop-selective-scan" />. $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 13.2 (Derive).** From exact ZOH with $a=-1$, $B_t\equiv 1$, derive $\discA_t=e^{-\Delta_t}$ and $\discB_t=1-e^{-\Delta_t}$; prove $1-e^{-\operatorname{softplus}(\zeta)}=\sigma(\zeta)$ for all $\zeta\in\R$; and give the recurrence's limits as $\Delta_t\to 0^+$ and $\Delta_t\to\infty$.
+**Exercise 18.2 (Derive).** From exact ZOH with $a=-1$, $B_t\equiv 1$, derive $\discA_t=e^{-\Delta_t}$ and $\discB_t=1-e^{-\Delta_t}$; prove $1-e^{-\operatorname{softplus}(\zeta)}=\sigma(\zeta)$ for all $\zeta\in\R$; and give the recurrence's limits as $\Delta_t\to 0^+$ and $\Delta_t\to\infty$.
 
 <SolutionBox>
 
-<XRef id="thm-tf3-zoh" /> in the scalar case gives $\discA_t=e^{\Delta_t a}=e^{-\Delta_t}$ and $\discB_t=a^{-1}(e^{\Delta_t a}-1)B=(-1)(e^{-\Delta_t}-1)=1-e^{-\Delta_t}$, so $\statevec_t=(1-g_t)\statevec_{t-1}+g_tu_t$ with $g_t=1-e^{-\Delta_t}$. Sigmoid identity: $e^{-\operatorname{softplus}(\zeta)}=e^{-\log(1+e^{\zeta})}=(1+e^{\zeta})^{-1}$, hence $1-e^{-\operatorname{softplus}(\zeta)}=e^{\zeta}/(1+e^{\zeta})=\sigma(\zeta)$. Limits: $\Delta_t\to 0^+$ gives $g_t\to 0$, $\statevec_t\to\statevec_{t-1}$ (hold, the token is ignored); $\Delta_t\to\infty$ gives $g_t\to 1$, $\statevec_t\to u_t$ (write, the state resets to the input) — <XRef id="prop-tf13-gate-equivalence" />. $\qquad\blacksquare$
+<XRef id="thm-zoh" /> in the scalar case gives $\discA_t=e^{\Delta_t a}=e^{-\Delta_t}$ and $\discB_t=a^{-1}(e^{\Delta_t a}-1)B=(-1)(e^{-\Delta_t}-1)=1-e^{-\Delta_t}$, so $\statevec_t=(1-g_t)\statevec_{t-1}+g_tu_t$ with $g_t=1-e^{-\Delta_t}$. Sigmoid identity: $e^{-\operatorname{softplus}(\zeta)}=e^{-\log(1+e^{\zeta})}=(1+e^{\zeta})^{-1}$, hence $1-e^{-\operatorname{softplus}(\zeta)}=e^{\zeta}/(1+e^{\zeta})=\sigma(\zeta)$. Limits: $\Delta_t\to 0^+$ gives $g_t\to 0$, $\statevec_t\to\statevec_{t-1}$ (hold, the token is ignored); $\Delta_t\to\infty$ gives $g_t\to 1$, $\statevec_t\to u_t$ (write, the state resets to the input) — <XRef id="prop-gate-equivalence" />. $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 13.3 (Prove).** For the $\gamma$-decay recurrence $\mathbf S_i=\gamma\mathbf S_{i-1}+\phi(\mathbf k_i)\mathbf v_i^\top$ with $\mathbf S_0=\mathbf 0$, prove by induction that $\mathbf S_i=\sum_{j\le i}\gamma^{\,i-j}\phi(\mathbf k_j)\mathbf v_j^\top$, and identify which $\gamma$ recovers the running-sum state of <XRef id="thm-tf13-linattn-rnn" />(1) and which mask entries of <XRef id="thm-tf13-ssd" /> this corresponds to.
+**Exercise 18.3 (Prove).** For the $\gamma$-decay recurrence $\mathbf S_i=\gamma\mathbf S_{i-1}+\phi(\mathbf k_i)\mathbf v_i^\top$ with $\mathbf S_0=\mathbf 0$, prove by induction that $\mathbf S_i=\sum_{j\le i}\gamma^{\,i-j}\phi(\mathbf k_j)\mathbf v_j^\top$, and identify which $\gamma$ recovers the running-sum state of <XRef id="thm-linattn-rnn" />(1) and which mask entries of <XRef id="thm-ssd" /> this corresponds to.
 
 <SolutionBox>
 
@@ -426,7 +426,7 @@ Readout against $\phi(\mathbf q_i)$ multiplies each weight by $\gamma^{\,i-j}$. 
 
 </SolutionBox>
 
-**Exercise 13.4 (Prove).** For diagonal $\discA_s=\operatorname{diag}(\bar{\mathbf a}_s)$ with strictly positive entries, define $\boldsymbol\alpha_t\defeq\bar{\mathbf a}_t\odot\cdots\odot\bar{\mathbf a}_1$ and prove that every submatrix of $\mathbf T$ with index rectangle in the lower triangle has rank at most $d_s$, by exhibiting the generating inner-product form $T_{ij}=\inner{\outputmat_i\odot\boldsymbol\alpha_i}{\discB_j\oslash\boldsymbol\alpha_j}$. Where is positivity (or at least nonvanishing) of the entries used?
+**Exercise 18.4 (Prove).** For diagonal $\discA_s=\operatorname{diag}(\bar{\mathbf a}_s)$ with strictly positive entries, define $\boldsymbol\alpha_t\defeq\bar{\mathbf a}_t\odot\cdots\odot\bar{\mathbf a}_1$ and prove that every submatrix of $\mathbf T$ with index rectangle in the lower triangle has rank at most $d_s$, by exhibiting the generating inner-product form $T_{ij}=\inner{\outputmat_i\odot\boldsymbol\alpha_i}{\discB_j\oslash\boldsymbol\alpha_j}$. Where is positivity (or at least nonvanishing) of the entries used?
 
 <SolutionBox>
 
@@ -436,11 +436,11 @@ T_{ij}=\outputmat_i^\top\operatorname{diag}(\boldsymbol\alpha_i\oslash\boldsymbo
 =\sum_{m=1}^{d_s} C_{i,m}\,\alpha_{i,m}\,\frac{1}{\alpha_{j,m}}\,\bar B_{j,m}
 =\inner{\outputmat_i\odot\boldsymbol\alpha_i}{\discB_j\oslash\boldsymbol\alpha_j}.
 $$
-Stack rows $(\outputmat_i\odot\boldsymbol\alpha_i)^\top$ over $i\in \mathcal I$ into $\widetilde{\mathbf R}\in\R^{\lvert \mathcal I\rvert\times d_s}$ and columns $\discB_j\oslash\boldsymbol\alpha_j$ over $j\in \mathcal J$ into $\widetilde{\mathbf G}\in\R^{d_s\times\lvert \mathcal J\rvert}$; if the rectangle $\mathcal I\times \mathcal J$ lies in the lower triangle, every entry of $\mathbf T[\mathcal I,\mathcal J]$ is the corresponding entry of $\widetilde{\mathbf R}\widetilde{\mathbf G}$, whose rank is at most the inner dimension $d_s$ — <XRef id="thm-tf13-semiseparable" />, Step 3. $\qquad\blacksquare$
+Stack rows $(\outputmat_i\odot\boldsymbol\alpha_i)^\top$ over $i\in \mathcal I$ into $\widetilde{\mathbf R}\in\R^{\lvert \mathcal I\rvert\times d_s}$ and columns $\discB_j\oslash\boldsymbol\alpha_j$ over $j\in \mathcal J$ into $\widetilde{\mathbf G}\in\R^{d_s\times\lvert \mathcal J\rvert}$; if the rectangle $\mathcal I\times \mathcal J$ lies in the lower triangle, every entry of $\mathbf T[\mathcal I,\mathcal J]$ is the corresponding entry of $\widetilde{\mathbf R}\widetilde{\mathbf G}$, whose rank is at most the inner dimension $d_s$ — <XRef id="thm-semiseparable" />, Step 3. $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 13.5 (Compute).** Take $n=3$, $d_s=1$, $a=-1$, $\Delta=(\ln 2,\ \ln 4,\ \ln 2)\approx(0.6931,\,1.3863,\,0.6931)$ (so $a_t=e^{-\Delta_t}=(0.5,\,0.25,\,0.5)$), $B=(1,-1,2)$, $C=(1,2,1)$, $u=(2,1,-1)$, with first-order writes $\discB_t=\Delta_tB_t$. Compute $y$ (a) by the recurrence and (b) by materializing $\mathbf T=\mathbf L\odot(\mathbf C\mathbf B^\top)\operatorname{diag}(\boldsymbol\Delta)$, and verify they agree.
+**Exercise 18.5 (Compute).** Take $n=3$, $d_s=1$, $a=-1$, $\Delta=(\ln 2,\ \ln 4,\ \ln 2)\approx(0.6931,\,1.3863,\,0.6931)$ (so $a_t=e^{-\Delta_t}=(0.5,\,0.25,\,0.5)$), $B=(1,-1,2)$, $C=(1,2,1)$, $u=(2,1,-1)$, with first-order writes $\discB_t=\Delta_tB_t$. Compute $y$ (a) by the recurrence and (b) by materializing $\mathbf T=\mathbf L\odot(\mathbf C\mathbf B^\top)\operatorname{diag}(\boldsymbol\Delta)$, and verify they agree.
 
 <SolutionBox>
 
@@ -460,11 +460,11 @@ e.g. $T_{31}=L_{31}\,C_3B_1\,\Delta_1=0.125\cdot 1\cdot 0.6931=0.0866$ and $T_{2
 $$
 \mathbf Tu=\bigl(0.6931\cdot 2,\ \ 0.3466\cdot 2-2.7726,\ \ 0.0866\cdot 2-0.6931-1.3863\bigr)=(1.3863,\ -2.0794,\ -1.9062),
 $$
-matching (a) to rounding — <XRef id="thm-tf13-ssd" /> in numbers. $\qquad\blacksquare$
+matching (a) to rounding — <XRef id="thm-ssd" /> in numbers. $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 13.6 (Compute).** For $n=8192$, $d=1024$, $d_s=16$, use the multiplication proxy $P(c)$ of <XRef id="prop-tf13-chunked" /> to count intra-chunk products, summaries + broadcasts, and scan products at $c=4$, $c=16$, and $c=256$. Identify the arithmetic-minimizing admissible chunk size, explain why $c=16$ is still a hardware-shaped choice on the same asymptotic plateau, and compare both with the $c=n$ masked-matmul mode.
+**Exercise 18.6 (Compute).** For $n=8192$, $d=1024$, $d_s=16$, use the multiplication proxy $P(c)$ of <XRef id="prop-chunked" /> to count intra-chunk products, summaries + broadcasts, and scan products at $c=4$, $c=16$, and $c=256$. Identify the arithmetic-minimizing admissible chunk size, explain why $c=16$ is still a hardware-shaped choice on the same asymptotic plateau, and compare both with the $c=n$ masked-matmul mode.
 
 <SolutionBox>
 

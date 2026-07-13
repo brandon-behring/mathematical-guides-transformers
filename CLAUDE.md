@@ -6,6 +6,13 @@ Per-guide sibling of the `mathematical-guides` family (formal lens). Built on
 recurrence and linear state → transformer architectures and objectives → efficient and conditional
 computation → sub-quadratic and selective sequence models → multimodal models.
 
+## Numbering contract
+Final display numbering intentionally reserves 08 (in-context learning), 11 (RLHF/DPO), 13
+(scaling laws), 16 (mixture of experts), and 17 (sparse attention). Until those planned chapters
+land, the 19 current chapters occupy 00–07, 09–10, 12, 14–15, and 18–23. Keep each frontmatter
+`slug` number-free: filenames and `chapter:` values may fill the reserved slots, but existing URLs
+must remain stable.
+
 ## Authoring contract
 Follow `~/Claude/mathematical-guides/docs/style-guide-formal-v0.3.md`: motivated Definition–Theorem–Proof;
 intuition-first; **structured proofs read inline** (appendix only for the longest); `\defeq` +

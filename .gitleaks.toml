@@ -15,7 +15,7 @@ regexTarget = "line"
 regexes = [
   '''<Cite\s+key="[^"]+"''',
   '''@\w+\{[^,]+,''',
-  # Theorem/figure identifiers (def-tf1-..., thm-tf9-..., fig-...): public anchors
+  # Theorem/figure identifiers (def-attention, thm-gradient-highway, fig-attention-shapes): public anchors
   # in frontmatter, <Theorem id=>, and <XRef id=>, mis-flagged as generic-api-key.
   '''(def|thm|prop|rem|ex|lem|cor|fig)-[a-z0-9-]+''',
 ]

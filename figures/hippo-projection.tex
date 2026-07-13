@@ -7,7 +7,7 @@
 % the L^2([0,t])-optimal degree-(d_s - 1) polynomial fit to the whole history
 % u|_[0,t], expressed in a rescaled Legendre basis g_0, g_1, g_2, .... Maintaining
 % these coefficients online, as the window [0,t] grows, is exactly the linear ODE
-% h' = -(1/t) A h + (1/t) B u (thm-tf3-hippo-legs).
+% h' = -(1/t) A h + (1/t) B u (thm-hippo-legs).
 \documentclass[tikz,border=3pt]{standalone}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -68,7 +68,7 @@
   \node[box, fill=black!8, below=6mm of hbox] (dynbox)
     {$\dot{\mathbf h} = -\tfrac{1}{t}\mathbf A\mathbf h + \tfrac{1}{t}\mathbf B u$\\[3pt]
      \scriptsize closed linear ODE\\
-     \scriptsize (\texttt{thm-tf3-hippo-legs})};
+     \scriptsize (\texttt{thm-hippo-legs})};
 
   % ---------- bottom caption: y tracks dynbox's true height, x recentred on figure ----------
   \node[align=center, text width=13.5cm, font=\scriptsize, text=black!75,

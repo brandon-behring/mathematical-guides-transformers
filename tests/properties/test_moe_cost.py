@@ -1,5 +1,5 @@
-"""Mixture-of-experts accounting guards def-tf12-moe and
-prop-tf12-moe-flops.
+"""Mixture-of-experts accounting guards def-moe and
+prop-moe-flops.
 
 Resident capacity, activated arithmetic, and ideal weight traffic are three
 different quantities. These tests make their different dependencies explicit.
@@ -23,7 +23,7 @@ def active_expert_union(routes: list[set[int]]) -> set[int]:
 
 
 def validate_routes(experts: int, k: int, routes: list[set[int]]) -> None:
-    """Enforce the top-k set and expert-index premises of def-tf12-moe."""
+    """Enforce the top-k set and expert-index premises of def-moe."""
     if not routes:
         raise ValueError("a served batch must contain at least one token")
     if not 1 <= k <= experts:
@@ -42,7 +42,7 @@ def account_moe(
     expert_bytes: int,
     expert_call_flops: int,
 ) -> MoEAccounting:
-    """Compute E*mu, T*k*Phi, and A_B*mu (prop-tf12-moe-flops)."""
+    """Compute E*mu, T*k*Phi, and A_B*mu (prop-moe-flops)."""
     validate_routes(experts, k, routes)
     active = len(active_expert_union(routes))
     return MoEAccounting(

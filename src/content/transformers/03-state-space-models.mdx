@@ -8,17 +8,17 @@ last_verified: 2026-07-09
 rigor_level: rigorous
 prerequisites: [notation, input-representations, recurrent-networks]
 notation_introduced: ['d_s', '\statevec', '\statemat', '\inputmat', '\outputmat', '\feedmat', '\Delta', '\discA', '\discB', '\kappa_j', '\bullet']
-theorems: ['def-tf3-ssm', 'thm-tf3-zoh', 'thm-tf3-conv-recurrence', 'def-tf3-scan-op', 'prop-tf3-scan', 'ex-tf3-impulse-trace', 'prop-tf3-gradient-timescale', 'lem-tf3-legendre', 'thm-tf3-hippo-legs', 'prop-tf3-legs-nplr', 'prop-tf3-lti-obstruction', 'rem-tf3-toward-selectivity']
+theorems: ['def-ssm', 'thm-zoh', 'thm-conv-recurrence', 'def-scan-op', 'prop-scan', 'ex-impulse-trace', 'prop-gradient-timescale', 'lem-legendre', 'thm-hippo-legs', 'prop-legs-nplr', 'prop-lti-obstruction', 'rem-toward-selectivity']
 los:
-  - id: TF-3.1
+  - id: lo-ssm-zoh-discretization
     statement: "Define the continuous-time linear state space model and prove the zero-order-hold discretization formulas Ā = e^{ΔA} and B̄ = A^{-1}(e^{ΔA} - I)B."
-  - id: TF-3.2
+  - id: lo-ssm-three-evaluation-forms
     statement: "Prove that the recurrent, convolutional, and prefix-scan evaluations of the discrete SSM compute the same map, and derive the ceil(log2 n)-round parallel scan from associativity of the scan operator."
-  - id: TF-3.3
+  - id: lo-ssm-gradient-timescales
     statement: "Derive the state-to-state Jacobian Ā^{T-t} and analyze how the spectrum of A and the step size Δ set controlled gradient timescales, in contrast to the nonlinear recurrent bound."
-  - id: TF-3.4
+  - id: lo-hippo-legs-dynamics
     statement: "Prove the HiPPO-LegS coefficient dynamics from the Legendre generating function and state the normal-plus-low-rank decomposition of the LegS state matrix."
-  - id: TF-3.5
+  - id: lo-lti-selective-copy-obstruction
     statement: "Construct an explicit selective-copy witness proving that no linear time-invariant system performs content-dependent selection."
 ---
 
@@ -32,13 +32,13 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Linear Recurrences and State Space Models
 
-**Where we are.** The recurrent network of the previous chapter carries a state through time and pays for it twice: the gradient bound (<XRef id="thm-tf2-gradient-bound" />) transports gradients through a product of data-dependent Jacobians that neither the designer nor the optimizer controls, and the nonlinear recurrence admits no evaluation other than one step after another. This chapter deletes the nonlinearity and studies what remains. The linear recurrence that survives — the discrete face of a **state space model** — is exactly solvable in every direction we need. We define the continuous-time model and discretize it exactly (<XRef id="thm-tf3-zoh" />); prove that the resulting recurrence, a causal convolution, and a parallel prefix scan compute the *same* map, the scan finishing in $\lceil\log_2 n\rceil$ rounds (<XRef id="thm-tf3-conv-recurrence" />, <XRef id="prop-tf3-scan" />); differentiate the recurrence in closed form, so that gradient timescales become a dial set by the spectrum of the state matrix rather than an accident of training (<XRef id="prop-tf3-gradient-timescale" />); derive from the Legendre generating function the HiPPO answer to what that matrix *should* be (<XRef id="lem-tf3-legendre" />, <XRef id="thm-tf3-hippo-legs" />) together with the structure that makes it practical (<XRef id="prop-tf3-legs-nplr" />); and close by proving what all this exactness costs — a linear time-invariant system cannot select by content (<XRef id="prop-tf3-lti-obstruction" />). The remark that ends the chapter names the two known escapes from that obstruction; the remainder of the book is the story of both.
+**Where we are.** The recurrent network of the previous chapter carries a state through time and pays for it twice: the gradient bound (<XRef id="thm-gradient-bound" />) transports gradients through a product of data-dependent Jacobians that neither the designer nor the optimizer controls, and the nonlinear recurrence admits no evaluation other than one step after another. This chapter deletes the nonlinearity and studies what remains. The linear recurrence that survives — the discrete face of a **state space model** — is exactly solvable in every direction we need. We define the continuous-time model and discretize it exactly (<XRef id="thm-zoh" />); prove that the resulting recurrence, a causal convolution, and a parallel prefix scan compute the *same* map, the scan finishing in $\lceil\log_2 n\rceil$ rounds (<XRef id="thm-conv-recurrence" />, <XRef id="prop-scan" />); differentiate the recurrence in closed form, so that gradient timescales become a dial set by the spectrum of the state matrix rather than an accident of training (<XRef id="prop-gradient-timescale" />); derive from the Legendre generating function the HiPPO answer to what that matrix *should* be (<XRef id="lem-legendre" />, <XRef id="thm-hippo-legs" />) together with the structure that makes it practical (<XRef id="prop-legs-nplr" />); and close by proving what all this exactness costs — a linear time-invariant system cannot select by content (<XRef id="prop-lti-obstruction" />). The remark that ends the chapter names the two known escapes from that obstruction; the remainder of the book is the story of both.
 
 ## The continuous-time model
 
-Strip the recurrent cell (<XRef id="def-tf2-rnn" />) to its skeleton: replace the activation $\varphi$ by the identity, and let time flow continuously rather than in token steps. What is left is a vector of $d_s$ numbers — the **state** — whose instantaneous motion is a fixed linear function of itself plus a fixed linear injection of the input, with the output read off by a fixed linear functional. Every coefficient is frozen: the same dynamics act at every time and on every input. This is the classical state space model of control theory.<Sidenote>The state space formulation of filtering and prediction is due to <Cite key="kalman1960filtering" />.</Sidenote>
+Strip the recurrent cell (<XRef id="def-rnn" />) to its skeleton: replace the activation $\varphi$ by the identity, and let time flow continuously rather than in token steps. What is left is a vector of $d_s$ numbers — the **state** — whose instantaneous motion is a fixed linear function of itself plus a fixed linear injection of the input, with the output read off by a fixed linear functional. Every coefficient is frozen: the same dynamics act at every time and on every input. This is the classical state space model of control theory.<Sidenote>The state space formulation of filtering and prediction is due to <Cite key="kalman1960filtering" />.</Sidenote>
 
-<Theorem kind="definition" name="Linear time-invariant state space model" id="def-tf3-ssm">
+<Theorem kind="definition" name="Linear time-invariant state space model" id="def-ssm">
 A (single-input, single-output) **linear time-invariant state space model** with state dimension $d_s$ is the pair of equations
 $$
 \dot{\statevec}(t) = \statemat\,\statevec(t) + \inputmat\,u(t),
@@ -50,7 +50,7 @@ where $u:\R_{\ge 0}\to\R$ is the input signal, $\statevec(t)\in\R^{d_s}$ is the 
 
 <MarginNote variant="pattern" label="Per channel">A width-$d$ model runs $d$ independent copies of this scalar-in, scalar-out system — one per channel of the embedded sequence $\hat{\mathbf X}$.</MarginNote>
 
-Three conventions hold for this chapter. The state $\statevec$ is a **column** vector acted on by left multiplication — the same stated departure from the row convention that the notation chapter made for the softmax Jacobian. The symbol $u$ denotes the scalar input signal, a chapter-local reading distinct from the raw *units* $u_t$ of the notation chapter's modality table; when the model consumes an embedded sequence, $u_t$ is one channel of the $t$-th row of $\hat{\mathbf X}\in\R^{n\times d}$ (<XRef id="def-tf1-embedding-interface" />). And $\Delta > 0$ denotes the discretization step size fixed below.
+Three conventions hold for this chapter. The state $\statevec$ is a **column** vector acted on by left multiplication — the same stated departure from the row convention that the notation chapter made for the softmax Jacobian. The symbol $u$ denotes the scalar input signal, a chapter-local reading distinct from the raw *units* $u_t$ of the notation chapter's modality table; when the model consumes an embedded sequence, $u_t$ is one channel of the $t$-th row of $\hat{\mathbf X}\in\R^{n\times d}$ (<XRef id="def-embedding-interface" />). And $\Delta > 0$ denotes the discretization step size fixed below.
 
 ## Exact discretization: zero-order hold
 
@@ -58,7 +58,7 @@ Tokens do not arrive continuously; they arrive as $n$ samples $u_0, u_1, \dots, 
 
 <MarginNote variant="tip" label="Self-explanation">Solve $\dot h = ah + b\bar u$ with $\bar u$ constant by hand first. Which of your two integration steps needs $a \ne 0$ — and what should replace division by $a$ when $a$ becomes a matrix?</MarginNote>
 
-<Theorem kind="theorem" name="Zero-order-hold discretization" id="thm-tf3-zoh">
+<Theorem kind="theorem" name="Zero-order-hold discretization" id="thm-zoh">
 Let $\statevec$ solve $\dot{\statevec}(s) = \statemat\statevec(s) + \inputmat u(s)$ on an interval of length $\Delta$ on which the input is held constant, $u \equiv \bar u$. Then the state at the end of the interval is an exact linear function of the state at its start and the held sample:
 $$
 \statevec(\text{end}) = \discA\,\statevec(\text{start}) + \discB\,\bar u,
@@ -112,13 +112,13 @@ $$
 y_t = \outputmat\,\statevec_t + \feedmat\,u_t,
 \qquad t = 0,1,\dots,n-1.
 $$
-This is the recurrence of <XRef id="def-tf2-rnn" /> with the activation removed and the weights tied to a continuous-time parent through $\Delta$ — a tie we will exploit when we read timescales off eigenvalues. First, the payoff of linearity: two more ways to evaluate the same equations.
+This is the recurrence of <XRef id="def-rnn" /> with the activation removed and the weights tied to a continuous-time parent through $\Delta$ — a tie we will exploit when we read timescales off eigenvalues. First, the payoff of linearity: two more ways to evaluate the same equations.
 
 ## Three faces of one map
 
 Unroll the recurrence by hand for three steps: $\statevec_0 = \discB u_0$, then $\statevec_1 = \discA\discB u_0 + \discB u_1$, then $\statevec_2 = \discA^2\discB u_0 + \discA\discB u_1 + \discB u_2$. Each state is a weighted sum of *all* past inputs, with the weight of an input decaying through powers of $\discA$ as it recedes. The output is therefore a fixed pattern — a **kernel** — slid across the input: a causal convolution whose coefficients enumerate powers of $\discA$.
 
-<Theorem kind="theorem" name="The recurrence is a causal convolution" id="thm-tf3-conv-recurrence">
+<Theorem kind="theorem" name="The recurrence is a causal convolution" id="thm-conv-recurrence">
 For the discrete SSM with $\statevec_{-1}=\mathbf 0$, define the **impulse-response kernel** $\kappa_j \defeq \outputmat\,\discA^{j}\,\discB \in \R$ for $j \ge 0$. Then for every input sequence and every $t$,
 $$
 \statevec_t = \sum_{j=0}^{t}\discA^{j}\discB\,u_{t-j},
@@ -145,7 +145,7 @@ reindexing $i = j+1$; the last two terms assemble to $\sum_{i=0}^{t}\discA^i\dis
 
 The convolution face evaluates all $n$ outputs at once when the whole input is known in advance, and the recurrence face emits one output per step with $O(d_s)$ state when it is not — training and decoding, respectively. The third face is subtler. The recurrence *looks* inherently sequential: $\statevec_t$ needs $\statevec_{t-1}$. But each step acts on the state as an **affine map** $\statevec\mapsto a\statevec + \mathbf b$, and affine maps compose. If composition is associative — it is — the chain of $n$ compositions can be regrouped into a balanced tree of depth $\lceil\log_2 n\rceil$.
 
-<Theorem kind="definition" name="Scan operator" id="def-tf3-scan-op">
+<Theorem kind="definition" name="Scan operator" id="def-scan-op">
 On pairs $(a, \mathbf b)$ with $a\in\R^{d_s\times d_s}$ and $\mathbf b\in\R^{d_s}$ — the pair $(a,\mathbf b)$ encoding the affine map $\statevec\mapsto a\statevec + \mathbf b$, written lowercase to keep generic per-step data distinct from the fixed $\statemat$ — define the **scan operator**
 $$
 (a_2, \mathbf b_2)\bullet(a_1, \mathbf b_1) \defeq \big(a_2 a_1,\; a_2\mathbf b_1 + \mathbf b_2\big),
@@ -153,7 +153,7 @@ $$
 the composition "first apply $(a_1,\mathbf b_1)$, then $(a_2,\mathbf b_2)$": indeed $a_2(a_1\statevec + \mathbf b_1) + \mathbf b_2 = a_2a_1\statevec + a_2\mathbf b_1 + \mathbf b_2$.
 </Theorem>
 
-<Theorem kind="proposition" name="Associativity and the log-depth scan" id="prop-tf3-scan">
+<Theorem kind="proposition" name="Associativity and the log-depth scan" id="prop-scan">
 Let $p_t \defeq (a_t, \mathbf b_t)$, $t = 0,\dots,n-1$, be **arbitrary** pairs — the matrices $a_t$ need not be equal across steps. Then:
 
 1. $\bullet$ is associative, with identity element $(\mathbf I, \mathbf 0)$.
@@ -173,7 +173,7 @@ $$
 = (a_3,\mathbf b_3)\bullet(a_2a_1,\ a_2\mathbf b_1 + \mathbf b_2)
 = (a_3a_2a_1,\ a_3a_2\mathbf b_1 + a_3\mathbf b_2 + \mathbf b_3).
 $$
-The two agree, using only associativity of matrix multiplication and distributivity — equivalently, $\bullet$ is composition of affine maps, and composition of maps is associative. That $(\mathbf I,\mathbf 0)$ is an identity is immediate. We record what the computation did **not** use: at no point were the three matrices required to be equal. Associativity holds for arbitrary per-step pairs $(a_t, \mathbf b_t)$ — this chapter's time-invariant systems do not need that generality, but Chapter 13's input-dependent systems will inherit this proof verbatim.
+The two agree, using only associativity of matrix multiplication and distributivity — equivalently, $\bullet$ is composition of affine maps, and composition of maps is associative. That $(\mathbf I,\mathbf 0)$ is an identity is immediate. We record what the computation did **not** use: at no point were the three matrices required to be equal. Associativity holds for arbitrary per-step pairs $(a_t, \mathbf b_t)$ — this chapter's time-invariant systems do not need that generality, but Chapter 18's input-dependent systems will inherit this proof verbatim.
 
 **Step 2 (The prefixes realize the recurrence).** Induct on $t$. For $t=0$, $P_0 = (a_0, \mathbf b_0)$ and $\statevec_0 = a_0\mathbf 0 + \mathbf b_0 = \mathbf b_0$. For the step, write $P_{t-1} = (a_{t-1}\cdots a_0,\ \statevec_{t-1})$ by hypothesis; then
 $$
@@ -185,21 +185,21 @@ $$
 
 <Sidenote>The doubling scheme performs $O(n\log n)$ total $\bullet$-work; work-efficient $O(n)$ scans exist <Cite key="blelloch1990prefix" />, with the depth/size trade mapped by <Cite key="ladner1980parallel" />. The scan is the evaluation mode of the S5 layer <Cite key="smith2023s5" />.</Sidenote>
 
-For the discrete SSM the per-step pair is $p_t = (\discA,\ \discB u_t)$: all first components happen to coincide, and part 2 of the proposition returns exactly the states of <XRef id="thm-tf3-conv-recurrence" />.
+For the discrete SSM the per-step pair is $p_t = (\discA,\ \discB u_t)$: all first components happen to coincide, and part 2 of the proposition returns exactly the states of <XRef id="thm-conv-recurrence" />.
 
 <MarginNote variant="pattern" label="Three regimes">Recurrence: $O(1)$ state per emitted token (decode). Convolution: one FFT pass over a known input (train). Scan: $\lceil\log_2 n\rceil$ parallel rounds (train, without materializing $\kappa$).</MarginNote>
 
 <Figure
   src="/figures/ssm-three-faces.svg"
-  caption="One discrete SSM, three evaluation schedules. The recurrence steps through time with O(1) state per token; the convolution slides the impulse-response kernel κ_j = C Ā^j B̄ across the whole input at once; the parallel scan regroups the same affine steps into a balanced tree of depth ceil(log2 n). The three compute identical outputs (thm-tf3-conv-recurrence, prop-tf3-scan)."
+  caption="One discrete SSM, three evaluation schedules. The recurrence steps through time with O(1) state per token; the convolution slides the impulse-response kernel κ_j = C Ā^j B̄ across the whole input at once; the parallel scan regroups the same affine steps into a balanced tree of depth ceil(log2 n). The three compute identical outputs (thm-conv-recurrence, prop-scan)."
   id="fig-ssm-three-faces"
   width="85%"
 />
 
 The three faces are one map. We verify this concretely on a system small enough to trace by hand — and large enough to show two different memory timescales at work, a preview of the next section.
 
-<Theorem kind="example" name="Impulse response, computed both ways" id="ex-tf3-impulse-trace">
-Take $d_s = 2$, $\statemat = \operatorname{diag}(-1, -0.1)$, $\inputmat = (1, 1)^\top$, $\outputmat = (1, 1)$, $\feedmat = 0$, and $\Delta = 0.5$; we carry full precision and display four decimals. Because $\statemat$ is diagonal, <XRef id="thm-tf3-zoh" /> acts per coordinate:
+<Theorem kind="example" name="Impulse response, computed both ways" id="ex-impulse-trace">
+Take $d_s = 2$, $\statemat = \operatorname{diag}(-1, -0.1)$, $\inputmat = (1, 1)^\top$, $\outputmat = (1, 1)$, $\feedmat = 0$, and $\Delta = 0.5$; we carry full precision and display four decimals. Because $\statemat$ is diagonal, <XRef id="thm-zoh" /> acts per coordinate:
 $$
 \discA = \operatorname{diag}\big(e^{-0.5},\,e^{-0.05}\big) = \operatorname{diag}(0.6065,\ 0.9512),
 \qquad
@@ -224,14 +224,14 @@ $$
 \kappa_2 &= \outputmat\discA^2\discB = 0.3679\cdot 0.3935 + 0.9048\cdot 0.4877 = 0.1447 + 0.4413 = 0.5860.
 \end{aligned}
 $$
-The two computations agree to every digit carried, as <XRef id="thm-tf3-conv-recurrence" /> demands: $y \approx (0.8812,\ 0.7026,\ 0.5860)$. Note the two channels forgetting at different rates: the fast mode ($\lambda = -1$) retains the factor $0.6065$ per step, the slow mode ($\lambda = -0.1$) retains $0.9512$ — after a few steps the response is carried almost entirely by the slow channel.
+The two computations agree to every digit carried, as <XRef id="thm-conv-recurrence" /> demands: $y \approx (0.8812,\ 0.7026,\ 0.5860)$. Note the two channels forgetting at different rates: the fast mode ($\lambda = -1$) retains the factor $0.6065$ per step, the slow mode ($\lambda = -0.1$) retains $0.9512$ — after a few steps the response is carried almost entirely by the slow channel.
 </Theorem>
 
 ## Gradients and controlled timescales
 
-In the nonlinear recurrence, the Jacobian from $\statevec_t$ to $\statevec_T$ was a product of $T-t$ *different*, data-dependent factors, and the best available statement was an inequality — the bound of <XRef id="thm-tf2-gradient-bound" /> — whose base $\sigma_{\max}(\mathbf W_h)\cdot\sup\lvert\varphi'\rvert$ the designer can only crudely influence. Linearity replaces the inequality by an equality, and the product of unknowable factors by the power of one known matrix.
+In the nonlinear recurrence, the Jacobian from $\statevec_t$ to $\statevec_T$ was a product of $T-t$ *different*, data-dependent factors, and the best available statement was an inequality — the bound of <XRef id="thm-gradient-bound" /> — whose base $\sigma_{\max}(\mathbf W_h)\cdot\sup\lvert\varphi'\rvert$ the designer can only crudely influence. Linearity replaces the inequality by an equality, and the product of unknowable factors by the power of one known matrix.
 
-<Theorem kind="proposition" name="Gradients flow through powers; eigenvalues set timescales" id="prop-tf3-gradient-timescale">
+<Theorem kind="proposition" name="Gradients flow through powers; eigenvalues set timescales" id="prop-gradient-timescale">
 For the discrete SSM:
 
 1. $\dfrac{\partial \statevec_T}{\partial \statevec_t} = \discA^{\,T-t}$ for all $t \le T$ — an exact identity, not a bound.
@@ -240,7 +240,7 @@ For the discrete SSM:
 </Theorem>
 
 <Theorem kind="proof">
-**Step 1 (Unroll and differentiate).** Unrolling the recurrence from time $t$ (as in the proof of <XRef id="thm-tf3-conv-recurrence" />), $\statevec_T = \discA^{T-t}\statevec_t + \sum_{j=t+1}^{T}\discA^{T-j}\discB\,u_j$. The inputs do not depend on $\statevec_t$, so the map $\statevec_t\mapsto\statevec_T$ is affine with linear part $\discA^{T-t}$; its Jacobian is that linear part.
+**Step 1 (Unroll and differentiate).** Unrolling the recurrence from time $t$ (as in the proof of <XRef id="thm-conv-recurrence" />), $\statevec_T = \discA^{T-t}\statevec_t + \sum_{j=t+1}^{T}\discA^{T-j}\discB\,u_j$. The inputs do not depend on $\statevec_t$, so the map $\statevec_t\mapsto\statevec_T$ is affine with linear part $\discA^{T-t}$; its Jacobian is that linear part.
 
 **Step 2 (Spectral mapping).** From $\statemat\mathbf v = \lambda\mathbf v$ we get $\statemat^k\mathbf v = \lambda^k\mathbf v$ for every $k$, hence, summing the exponential series termwise, $e^{\Delta\statemat}\mathbf v = \sum_k \frac{\Delta^k\lambda^k}{k!}\mathbf v = e^{\Delta\lambda}\mathbf v$.
 
@@ -253,7 +253,7 @@ For the discrete SSM:
 
 <MarginNote variant="warning" label="Non-normal transients">The spectrum controls only asymptotics: for non-normal $\discA$, $\norm{\discA^k}$ can grow enormously before decaying even with all $\lvert\mu_i\rvert < 1$ (Exercise 3.5).</MarginNote>
 
-The contrast with the previous chapter is the point. There, gradient magnitude over a horizon was an *emergent* property of trained weights passed through a pessimistic bound — vanishing or exploding by accident. Here it is a design parameter: choose $\operatorname{Re}\lambda_i$ (and $\Delta$) and you have *chosen* the memory horizon of each mode, exactly. The gating mechanisms of the LSTM bought a controllable additive gradient path architecturally (<XRef id="prop-tf2-cec" />); the SSM gets a stronger version for free, because there is no nonlinearity for the gradient to fight. What linearity does **not** decide is which timescales are worth having — the eigenvalues are still hyperparameters. The next section replaces that guess with a derivation.
+The contrast with the previous chapter is the point. There, gradient magnitude over a horizon was an *emergent* property of trained weights passed through a pessimistic bound — vanishing or exploding by accident. Here it is a design parameter: choose $\operatorname{Re}\lambda_i$ (and $\Delta$) and you have *chosen* the memory horizon of each mode, exactly. The gating mechanisms of the LSTM bought a controllable additive gradient path architecturally (<XRef id="prop-cec" />); the SSM gets a stronger version for free, because there is no nonlinearity for the gradient to fight. What linearity does **not** decide is which timescales are worth having — the eigenvalues are still hyperparameters. The next section replaces that guess with a derivation.
 
 ## HiPPO: deriving the state matrix from optimal memory
 
@@ -270,7 +270,7 @@ $$
 
 <MarginNote variant="tip" label="Self-explanation">Before the proof: both sides of each identity are coefficient sequences of some function of $z$. Which single function should you integrate or differentiate to compare them all at once?</MarginNote>
 
-<Theorem kind="lemma" name="Legendre identities from the generating function" id="lem-tf3-legendre">
+<Theorem kind="lemma" name="Legendre identities from the generating function" id="lem-legendre">
 For all degrees $m, k \ge 0$:
 
 1. **(Orthogonality)** $\displaystyle\int_{-1}^{1} P_m(x)P_k(x)\,dx = \frac{2}{2m+1}\,\delta_{mk}$.
@@ -308,7 +308,7 @@ Now fix $t > 0$ and set up the projection. Equip $[0,t]$ with the uniform probab
 
 <MarginNote variant="tip" label="Self-explanation">As $t$ advances two things happen at once: new signal enters at the right endpoint, and the window $[0,t]$ stretches, sliding every basis function under the old signal. Which term of the derivative below captures each effect?</MarginNote>
 
-<Theorem kind="theorem" name="HiPPO-LegS coefficient dynamics" id="thm-tf3-hippo-legs">
+<Theorem kind="theorem" name="HiPPO-LegS coefficient dynamics" id="thm-hippo-legs">
 Let $u:[0,\infty)\to\R$ be continuous and define, for $t > 0$ and $m = 0,\dots,d_s-1$,
 $$
 h_m(t) \defeq \inner{u}{g^{(t)}_m}_t = \frac{\sqrt{2m+1}}{t}\int_0^t u(s)\,P_m\!\Big(\frac{2s}{t}-1\Big)\,ds,
@@ -344,7 +344,7 @@ $$
 $$
 The boundary term is the new sample entering at the right endpoint; the integral is the stretching window sliding the basis under the old signal. Since $\frac{2s}{t} = 1 + x$, the bracket is $P_m(x) + (1+x)P_m'(x)$.
 
-**Step 3 (Apply the Legendre identities).** By part 2 of <XRef id="lem-tf3-legendre" />, $P_m(1) = 1$. By part 3,
+**Step 3 (Apply the Legendre identities).** By part 2 of <XRef id="lem-legendre" />, $P_m(1) = 1$. By part 3,
 $$
 P_m(x) + (1+x)P_m'(x) = (m+1)\,P_m(x) + \sum_{k<m}(2k+1)\,P_k(x).
 $$
@@ -358,10 +358,10 @@ $$
 which is row $m$ of the stated system. Because $\statemat$ is lower triangular, $\dot h_m$ involves only $h_k$ with $k\le m$: the first $d_s$ coefficients form a **closed** subsystem, so the truncation to $d_s$ modes is exact, not an approximation. $\qquad\blacksquare$
 </Theorem>
 
-The dynamics are linear but time-varying — the $1/t$ reflects the ever-stretching window, so the system has no fixed timescale to prefer (its memory is scale-equivariant by construction). Practice transplants the derived matrices into the time-invariant template of <XRef id="def-tf3-ssm" />: S4 initializes $\statemat$ (up to sign) to the LegS matrix and learns all of $(\statemat, \Delta, \inputmat, \outputmat, \feedmat)$ from there — the state matrix at a reduced learning rate — discretizing by <XRef id="thm-tf3-zoh" />.<Sidenote>S4 <Cite key="gu2022s4" />; its diagonal simplification S4D <Cite key="gu2022s4d" />; the scan-based diagonal MIMO variant S5 <Cite key="smith2023s5" />.</Sidenote> What makes that computationally viable is a hidden symmetry of the LegS matrix: it misses being a *normal* matrix — unitarily diagonalizable, powers and exponentials computable in a stable eigenbasis — by exactly a rank-one term.
+The dynamics are linear but time-varying — the $1/t$ reflects the ever-stretching window, so the system has no fixed timescale to prefer (its memory is scale-equivariant by construction). Practice transplants the derived matrices into the time-invariant template of <XRef id="def-ssm" />: S4 initializes $\statemat$ (up to sign) to the LegS matrix and learns all of $(\statemat, \Delta, \inputmat, \outputmat, \feedmat)$ from there — the state matrix at a reduced learning rate — discretizing by <XRef id="thm-zoh" />.<Sidenote>S4 <Cite key="gu2022s4" />; its diagonal simplification S4D <Cite key="gu2022s4d" />; the scan-based diagonal MIMO variant S5 <Cite key="smith2023s5" />.</Sidenote> What makes that computationally viable is a hidden symmetry of the LegS matrix: it misses being a *normal* matrix — unitarily diagonalizable, powers and exponentials computable in a stable eigenbasis — by exactly a rank-one term.
 
-<Theorem kind="proposition" name="LegS is normal plus low-rank" id="prop-tf3-legs-nplr">
-Let $\statemat$, $\inputmat$ be the HiPPO-LegS matrices of <XRef id="thm-tf3-hippo-legs" />. Then
+<Theorem kind="proposition" name="LegS is normal plus low-rank" id="prop-legs-nplr">
+Let $\statemat$, $\inputmat$ be the HiPPO-LegS matrices of <XRef id="thm-hippo-legs" />. Then
 $$
 -\statemat + \tfrac{1}{2}\,\inputmat\inputmat^\top = -\tfrac{1}{2}\mathbf I + \mathbf T,
 \qquad \mathbf T^\top = -\mathbf T,
@@ -381,29 +381,29 @@ Compute the $(m,k)$ entry of $\mathbf S \defeq -\statemat + \tfrac12\inputmat\in
 So $\mathbf S = -\tfrac12\mathbf I + \mathbf T$ with $\mathbf T_{mk} = \tfrac12\sqrt{(2m+1)(2k+1)}\cdot\operatorname{sign}(k-m)$, which satisfies $\mathbf T_{km} = -\mathbf T_{mk}$. A skew-symmetric matrix commutes with its transpose, and adding $-\tfrac12\mathbf I$ preserves that, so $-\tfrac12\mathbf I + \mathbf T$ is normal. $\qquad\blacksquare$
 </Theorem>
 
-Unitarily diagonalizing the normal part turns $-\statemat$ into a *diagonal-plus-low-rank* matrix, which is what lets S4 evaluate the kernel $\kappa$ of <XRef id="thm-tf3-conv-recurrence" /> quickly and stably; dropping the rank-one term altogether — leaving a purely diagonal $\statemat$, as in our worked example — loses little, an observation due to <Cite key="gupta2022dss" /> that S4D turns into principled diagonal parameterizations, and S5 pairs diagonal dynamics with the scan of <XRef id="prop-tf3-scan" />. In all three, the memory structure derived here is the initialization, not an accident of training.
+Unitarily diagonalizing the normal part turns $-\statemat$ into a *diagonal-plus-low-rank* matrix, which is what lets S4 evaluate the kernel $\kappa$ of <XRef id="thm-conv-recurrence" /> quickly and stably; dropping the rank-one term altogether — leaving a purely diagonal $\statemat$, as in our worked example — loses little, an observation due to <Cite key="gupta2022dss" /> that S4D turns into principled diagonal parameterizations, and S5 pairs diagonal dynamics with the scan of <XRef id="prop-scan" />. In all three, the memory structure derived here is the initialization, not an accident of training.
 
 <Figure
   src="/figures/hippo-projection.svg"
-  caption="HiPPO-LegS: the state as an online optimal summary. The history u restricted to [0,t] is projected, in L2 of the uniform measure on the window, onto the first d_s rescaled Legendre basis functions; the coefficient vector is the SSM state. As t advances, the new sample enters at the boundary and the stretching window slides the basis — together producing the linear dynamics of thm-tf3-hippo-legs."
+  caption="HiPPO-LegS: the state as an online optimal summary. The history u restricted to [0,t] is projected, in L2 of the uniform measure on the window, onto the first d_s rescaled Legendre basis functions; the coefficient vector is the SSM state. As t advances, the new sample enters at the boundary and the stretching window slides the basis — together producing the linear dynamics of thm-hippo-legs."
   id="fig-hippo-projection"
   width="80%"
 />
 
 ## The price of linearity
 
-Everything in this chapter — exact discretization, three interchangeable evaluation schedules, gradients read off a spectrum, a derivable optimal memory — followed from two properties of <XRef id="def-tf3-ssm" />: the map from input sequence to output sequence is *linear*, and it is *time-invariant* (the kernel $\kappa_j$ of <XRef id="thm-tf3-conv-recurrence" /> depends on the offset $j$ only, never on the position $t$ or the data). We now prove precisely what those two properties forbid. The test is the simplest task that requires reading the data to decide what to keep: **selective copying** — remember the token that is marked, ignore the ones that are not.
+Everything in this chapter — exact discretization, three interchangeable evaluation schedules, gradients read off a spectrum, a derivable optimal memory — followed from two properties of <XRef id="def-ssm" />: the map from input sequence to output sequence is *linear*, and it is *time-invariant* (the kernel $\kappa_j$ of <XRef id="thm-conv-recurrence" /> depends on the offset $j$ only, never on the position $t$ or the data). We now prove precisely what those two properties forbid. The test is the simplest task that requires reading the data to decide what to keep: **selective copying** — remember the token that is marked, ignore the ones that are not.
 
-For this section we allow vector inputs, $u_t\in\R^2$ with $\inputmat\in\R^{d_s\times 2}$ and $\feedmat\in\R^{1\times 2}$; the unrolled formula of <XRef id="thm-tf3-conv-recurrence" /> holds verbatim, with matrix-valued kernel entries.
+For this section we allow vector inputs, $u_t\in\R^2$ with $\inputmat\in\R^{d_s\times 2}$ and $\feedmat\in\R^{1\times 2}$; the unrolled formula of <XRef id="thm-conv-recurrence" /> holds verbatim, with matrix-valued kernel entries.
 
 <MarginNote variant="tip" label="Self-explanation">Before the proof: superposition says the response to a sum of inputs is the sum of responses. Can a map with that property give the marker channel *veto power* over the value channel?</MarginNote>
 
-<Theorem kind="proposition" name="No LTI system selects by content" id="prop-tf3-lti-obstruction">
+<Theorem kind="proposition" name="No LTI system selects by content" id="prop-lti-obstruction">
 Consider the **selective-copy specification**: inputs are length-$2$ sequences of pairs $u_t = (v_t, m_t)\in\R^2$ with exactly one marked position ($m_{t^\ast} = 1$, the other $0$), and the required final output is the marked value, $y_1 = v_{t^\ast}$. No discrete LTI state space model — of any state dimension $d_s$ and any parameters $(\discA, \discB, \outputmat, \feedmat)$ — meets this specification on the four inputs displayed in the proof. More strongly, no map whose final output is additive in the input sequence does.
 </Theorem>
 
 <Theorem kind="proof">
-**Step 1 (LTI outputs are additive).** By <XRef id="thm-tf3-conv-recurrence" />, the final output of any discrete SSM is $y_1 = \feedmat u_1 + \sum_{j=0}^{1}\outputmat\discA^{j}\discB\,u_{1-j}$, a fixed linear — in particular additive — function $F$ of the input sequence $(u_0, u_1)$: $F(\mathbf x + \mathbf x') = F(\mathbf x) + F(\mathbf x')$.
+**Step 1 (LTI outputs are additive).** By <XRef id="thm-conv-recurrence" />, the final output of any discrete SSM is $y_1 = \feedmat u_1 + \sum_{j=0}^{1}\outputmat\discA^{j}\discB\,u_{1-j}$, a fixed linear — in particular additive — function $F$ of the input sequence $(u_0, u_1)$: $F(\mathbf x + \mathbf x') = F(\mathbf x) + F(\mathbf x')$.
 
 **Step 2 (Four well-formed task instances).** Each of the following inputs has exactly one marked position, so the specification assigns each a target:
 $$
@@ -434,8 +434,8 @@ The same input $\mathbf w$ would need two different outputs; additivity fails nu
 
 Linearity is the property the witness kills: selection is a *product* of marker and value — a bilinear interaction — and superposition admits no interactions. Time-invariance is independently obstructive: even granting nonlinearity downstream, a kernel whose weights depend only on the offset $j$ assigns position $t-j$ the same weight whether the marker landed there or not. The weight given to the past was fixed before the data arrived; selection requires weights computed *from* the data.
 
-<Theorem kind="remark" name="Toward selectivity: two escapes" id="rem-tf3-toward-selectivity">
-Two known modifications restore content-dependent selection, and they divide the rest of this book between them. **Escape one: recompute the weights from content, pairwise.** Abandon the fixed kernel and let the weight on position $s$ at query position $t$ be a learned function of the *data* at both positions. This is attention (<XRef id="def-tf4-attention" />, next chapter): it selects exactly, at the price of comparing all pairs — quadratic cost, and no fixed-size state (the memory grows with the sequence). **Escape two: keep the recurrence, let the dynamics read the input.** Make the step size and projection matrices functions of the current input, $(\Delta_t, \inputmat_t, \outputmat_t)$, so the system can dilate time around content it wants to keep and contract it around content it wants to forget. The system is then time-varying: the convolution face of <XRef id="thm-tf3-conv-recurrence" /> dies with $\kappa$, but the parallel scan survives untouched — the associativity proof of <XRef id="prop-tf3-scan" /> never used time-invariance, and it will be reused verbatim. These are the selective state space models of Chapter 13. The book now takes the first escape, and returns for the second.
+<Theorem kind="remark" name="Toward selectivity: two escapes" id="rem-toward-selectivity">
+Two known modifications restore content-dependent selection, and they divide the rest of this book between them. **Escape one: recompute the weights from content, pairwise.** Abandon the fixed kernel and let the weight on position $s$ at query position $t$ be a learned function of the *data* at both positions. This is attention (<XRef id="def-attention" />, next chapter): it selects exactly, at the price of comparing all pairs — quadratic cost, and no fixed-size state (the memory grows with the sequence). **Escape two: keep the recurrence, let the dynamics read the input.** Make the step size and projection matrices functions of the current input, $(\Delta_t, \inputmat_t, \outputmat_t)$, so the system can dilate time around content it wants to keep and contract it around content it wants to forget. The system is then time-varying: the convolution face of <XRef id="thm-conv-recurrence" /> dies with $\kappa$, but the parallel scan survives untouched — the associativity proof of <XRef id="prop-scan" /> never used time-invariance, and it will be reused verbatim. These are the selective state space models of Chapter 18. The book now takes the first escape, and returns for the second.
 </Theorem>
 
 ## Exercises
@@ -446,7 +446,7 @@ Attempt each before expanding its solution.
 
 <SolutionBox>
 
-By <XRef id="thm-tf3-zoh" />, $\discA = e^{-0.6} \approx 0.5488$ and $\discB = \frac{1 - e^{-0.6}}{2} \approx 0.2256$. Recurrence on $u = (1,0,0)$ with $h_{-1} = 0$: $h_0 = \discB \approx 0.2256 = y_0$; $h_1 = \discA h_0 \approx 0.1238 = y_1$; $h_2 = \discA h_1 \approx 0.0679 = y_2$. Kernel: $\kappa_j = \discA^{j}\discB$, so $\kappa_0 \approx 0.2256$, $\kappa_1 \approx 0.5488\cdot 0.2256 \approx 0.1238$, $\kappa_2 \approx 0.5488\cdot 0.1238 \approx 0.0679$. On an impulse $y_t = \kappa_t$, and the two traces agree, as <XRef id="thm-tf3-conv-recurrence" /> guarantees. $\qquad\blacksquare$
+By <XRef id="thm-zoh" />, $\discA = e^{-0.6} \approx 0.5488$ and $\discB = \frac{1 - e^{-0.6}}{2} \approx 0.2256$. Recurrence on $u = (1,0,0)$ with $h_{-1} = 0$: $h_0 = \discB \approx 0.2256 = y_0$; $h_1 = \discA h_0 \approx 0.1238 = y_1$; $h_2 = \discA h_1 \approx 0.0679 = y_2$. Kernel: $\kappa_j = \discA^{j}\discB$, so $\kappa_0 \approx 0.2256$, $\kappa_1 \approx 0.5488\cdot 0.2256 \approx 0.1238$, $\kappa_2 \approx 0.5488\cdot 0.1238 \approx 0.0679$. On an impulse $y_t = \kappa_t$, and the two traces agree, as <XRef id="thm-conv-recurrence" /> guarantees. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -458,7 +458,7 @@ On $[0,\Delta]$ the series $\sum_k \sigma^k\statemat^k/k!$ is dominated termwise
 
 </SolutionBox>
 
-**Exercise 3.3 (Derive).** For the scan operator (<XRef id="def-tf3-scan-op" />): (a) verify that $(\mathbf I, \mathbf 0)$ is a two-sided identity; (b) from $P_t = p_t\bullet P_{t-1}$ derive the closed form $P_t = (a_t\cdots a_0,\ \statevec_t)$; (c) for $n = 8$, list which composite each position holds after each of the $\lceil\log_2 8\rceil = 3$ doubling rounds.
+**Exercise 3.3 (Derive).** For the scan operator (<XRef id="def-scan-op" />): (a) verify that $(\mathbf I, \mathbf 0)$ is a two-sided identity; (b) from $P_t = p_t\bullet P_{t-1}$ derive the closed form $P_t = (a_t\cdots a_0,\ \statevec_t)$; (c) for $n = 8$, list which composite each position holds after each of the $\lceil\log_2 8\rceil = 3$ doubling rounds.
 
 <SolutionBox>
 
@@ -466,7 +466,7 @@ On $[0,\Delta]$ the series $\sum_k \sigma^k\statemat^k/k!$ is dominated termwise
 
 </SolutionBox>
 
-**Exercise 3.4 (Compute).** Write out the HiPPO-LegS matrices $\statemat$ and $\inputmat$ of <XRef id="thm-tf3-hippo-legs" /> for $d_s = 3$ numerically, and verify the NPLR identity of <XRef id="prop-tf3-legs-nplr" /> entrywise: compute $-\statemat + \tfrac12\inputmat\inputmat^\top$ and exhibit the skew-symmetric $\mathbf T$.
+**Exercise 3.4 (Compute).** Write out the HiPPO-LegS matrices $\statemat$ and $\inputmat$ of <XRef id="thm-hippo-legs" /> for $d_s = 3$ numerically, and verify the NPLR identity of <XRef id="prop-legs-nplr" /> entrywise: compute $-\statemat + \tfrac12\inputmat\inputmat^\top$ and exhibit the skew-symmetric $\mathbf T$.
 
 <SolutionBox>
 
@@ -484,11 +484,11 @@ $$
 \quad
 \mathbf T = \begin{pmatrix} 0 & 0.8660 & 1.1180\\ -0.8660 & 0 & 1.9365\\ -1.1180 & -1.9365 & 0\end{pmatrix},
 $$
-and $\mathbf T^\top = -\mathbf T$ by inspection ($0.8660 \approx \tfrac{\sqrt3}{2}$, $1.1180 \approx \tfrac{\sqrt5}{2}$, $1.9365 \approx \tfrac{\sqrt{15}}{2}$), confirming <XRef id="prop-tf3-legs-nplr" />. $\qquad\blacksquare$
+and $\mathbf T^\top = -\mathbf T$ by inspection ($0.8660 \approx \tfrac{\sqrt3}{2}$, $1.1180 \approx \tfrac{\sqrt5}{2}$, $1.9365 \approx \tfrac{\sqrt{15}}{2}$), confirming <XRef id="prop-legs-nplr" />. $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 3.5 (Construct).** Construct a $2\times 2$ matrix $\discA$ with spectral radius $0.9$ whose powers transiently **grow**: exhibit an entry of $\discA^k$ that exceeds $38$ for some $k$ before decaying to $0$, and locate the peak. Conclude that part 3 of <XRef id="prop-tf3-gradient-timescale" /> genuinely needs its diagonalizability hypothesis read with care for non-normal matrices.
+**Exercise 3.5 (Construct).** Construct a $2\times 2$ matrix $\discA$ with spectral radius $0.9$ whose powers transiently **grow**: exhibit an entry of $\discA^k$ that exceeds $38$ for some $k$ before decaying to $0$, and locate the peak. Conclude that part 3 of <XRef id="prop-gradient-timescale" /> genuinely needs its diagonalizability hypothesis read with care for non-normal matrices.
 
 <SolutionBox>
 
@@ -496,7 +496,7 @@ Take $\discA = \begin{pmatrix}0.9 & 10\\ 0 & 0.9\end{pmatrix}$: both eigenvalues
 
 </SolutionBox>
 
-**Exercise 3.6 (Construct).** In the pattern of <XRef id="prop-tf3-lti-obstruction" />, construct a numeric additivity witness proving that no LTI system (indeed no additive map) computes the running maximum $y = \max_t u_t$ over length-$2$ scalar sequences.
+**Exercise 3.6 (Construct).** In the pattern of <XRef id="prop-lti-obstruction" />, construct a numeric additivity witness proving that no LTI system (indeed no additive map) computes the running maximum $y = \max_t u_t$ over length-$2$ scalar sequences.
 
 <SolutionBox>
 

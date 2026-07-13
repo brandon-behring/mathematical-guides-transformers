@@ -8,11 +8,11 @@ last_verified: 2026-05-27
 rigor_level: rigorous
 prerequisites: [notation]
 notation_introduced: ['\mathbf M', 'd_v']
-theorems: ['def-tf4-attention', 'def-tf4-causal-mask', 'thm-variance-preservation']
+theorems: ['def-attention', 'def-causal-mask', 'thm-variance-preservation']
 los:
-  - id: TF-4.1
+  - id: lo-scaled-dot-product-attention
     statement: "Define scaled dot-product attention and prove its weight matrix is row-stochastic."
-  - id: TF-4.3
+  - id: lo-attention-logit-variance
     statement: "Prove the variance-preservation theorem: scaling logits by 1/sqrt(d_k) restores unit variance."
 ---
 
@@ -26,7 +26,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # The Attention Mechanism
 
-**Where we are.** Attention is the transformer's central operation — each token aggregates information from every other token, selectively — though not its invention: content addressing was born inside the recurrent encoder–decoder (<XRef id="def-tf2-additive-attention" />), and what the transformer did was let it stand alone. We build it from one nonlinearity (softmax), one similarity (the dot product), and one piece of normalization (the $1/\sqrt{d_k}$ scaling), and prove the property that makes each true.
+**Where we are.** Attention is the transformer's central operation — each token aggregates information from every other token, selectively — though not its invention: content addressing was born inside the recurrent encoder–decoder (<XRef id="def-additive-attention" />), and what the transformer did was let it stand alone. We build it from one nonlinearity (softmax), one similarity (the dot product), and one piece of normalization (the $1/\sqrt{d_k}$ scaling), and prove the property that makes each true.
 
 ## Notation
 
@@ -40,11 +40,11 @@ Softmax turns a vector of scores into a probability distribution: larger scores 
 
 Structurally, attention is **Nadaraya–Watson kernel regression with a learned kernel**: each output is a kernel-weighted average of the value vectors, where the weight value $j$ receives is proportional to $\exp(\inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k})$. The correspondence is exact — *kernel weights* ↦ *a softmax row*, *kernel-regression estimate* ↦ *the attention output* — and it breaks in exactly one place: the kernel is **learned**, so it need not be symmetric or positive-definite, and the classical kernel-smoothing guarantees do not transfer. We make the construction precise.
 
-<Theorem kind="remark" name="The addressing lineage" id="rem-tf4-addressing-lineage">
-Score–normalize–average is older than the transformer: additive attention (<XRef id="def-tf2-additive-attention" />) already computed $\softmax$ weights over content and took the convex combination — inside a recurrent encoder–decoder, with the score $\mathbf v_a^\top\tanh(\mathbf W_a\mathbf s + \mathbf U_a\mathbf h)$ computed by a small network. Scaled dot-product attention makes two substitutions: the additive score becomes an inner product (one matmul, no extra nonlinearity), and the recurrent controller that manufactured queries and keys is deleted — learned projections of the sequence itself produce them. The kernel-regression reading above covers both: they are the same estimator under different kernels.
+<Theorem kind="remark" name="The addressing lineage" id="rem-addressing-lineage">
+Score–normalize–average is older than the transformer: additive attention (<XRef id="def-additive-attention" />) already computed $\softmax$ weights over content and took the convex combination — inside a recurrent encoder–decoder, with the score $\mathbf v_a^\top\tanh(\mathbf W_a\mathbf s + \mathbf U_a\mathbf h)$ computed by a small network. Scaled dot-product attention makes two substitutions: the additive score becomes an inner product (one matmul, no extra nonlinearity), and the recurrent controller that manufactured queries and keys is deleted — learned projections of the sequence itself produce them. The kernel-regression reading above covers both: they are the same estimator under different kernels.
 </Theorem>
 
-<Theorem kind="definition" name="Scaled dot-product attention" id="def-tf4-attention">
+<Theorem kind="definition" name="Scaled dot-product attention" id="def-attention">
 Given queries $\mathbf Q\in\R^{n\times d_k}$, keys $\mathbf K\in\R^{n\times d_k}$, and values $\mathbf V\in\R^{n\times d_v}$,
 $$
 \operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V) \defeq \softmax\!\Big(\tfrac{\mathbf Q\mathbf K^\top}{\sqrt{d_k}}\Big)\,\mathbf V,
@@ -58,14 +58,14 @@ Because each softmax row is non-negative and sums to one (<XRef id="def-softmax"
   src="/figures/attention-shapes.svg"
   alt="Scaled dot-product attention as a shape pipeline: Q and K form an n×n weight matrix A, which averages the rows of V into the context C."
   desc="Query and key matrices (each n×d_k) combine through a QKᵀ/√d_k, row-wise softmax step into the n×n attention matrix A, drawn as a concrete 3×3 grayscale magnitude heatmap whose rows sum to one. Row 1 is highlighted and expanded below as C_{1,:} = 0.56 V_{1,:} + 0.09 V_{2,:} + 0.35 V_{3,:}, showing that each output row is a weighted average of the value rows. A then multiplies V (n×d_v) at a product node to give the context C (n×d_v)."
-  caption="Scaled dot-product attention as a shape pipeline (def-tf4-attention). Q·Kᵀ/√d_k then row-wise softmax gives the n×n weight matrix A — each row a probability distribution — so the context C = AV has each row a convex combination of the value rows (prop-row-stochastic-convex). The highlighted row makes one such weighted average concrete. Shapes flow n×d_k → n×n → n×d_v."
+  caption="Scaled dot-product attention as a shape pipeline (def-attention). Q·Kᵀ/√d_k then row-wise softmax gives the n×n weight matrix A — each row a probability distribution — so the context C = AV has each row a convex combination of the value rows (prop-row-stochastic-convex). The highlighted row makes one such weighted average concrete. Shapes flow n×d_k → n×n → n×d_v."
   id="fig-attention-shapes"
   width="92%"
 />
 
 For language modeling, attention must additionally respect time: position $i$ may consult only positions $j \le i$. This is imposed not by changing the operator but by adding a fixed mask to the logits before the softmax.
 
-<Theorem kind="definition" name="Causal (masked) attention" id="def-tf4-causal-mask">
+<Theorem kind="definition" name="Causal (masked) attention" id="def-causal-mask">
 The **causal mask** $\mathbf M \in \R^{n\times n}$ has entries
 $$
 M_{ij} \defeq \begin{cases} 0 & j \le i,\\ -\infty & j > i,\end{cases}

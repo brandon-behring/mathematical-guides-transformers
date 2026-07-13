@@ -13,6 +13,8 @@
     "build:notebooks": "book-scaffold render-notebooks",
     "check:corpus": "node scripts/corpus-manifest.mjs --check",
     "update:corpus": "node scripts/corpus-manifest.mjs --write",
+    "check:id-migration": "node scripts/semantic-id-migration.mjs --check",
+    "test:id-migration": "node scripts/semantic-id-migration.mjs --self-test",
     "check:properties": "node scripts/check-property-coverage.mjs --check",
     "update:property-coverage": "node scripts/check-property-coverage.mjs --write",
     "test:properties": "python3 -m unittest discover -s tests/properties -p 'test_*.py' -v",

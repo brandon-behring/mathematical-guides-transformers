@@ -23,7 +23,8 @@ definitions, in `src/content/transformers/*.mdx`.
 > that is a lighter pass than this plan's falsify → blind-derive → compare → verify
 > pipeline, which still applies to all 19 chapters. Theorem/LO/exercise ids were
 > renamed under `MAP = {2:4,3:5,4:6,5:7,6:9,7:10,8:11,9:12,10:15,11:16,12:17,13:18}`
-> (tf0/tf1 self-map); any id this plan names is post-rename.
+> during that historical expansion (the already-semantic ch00/ch01 anchors mapped to themselves). A3 later replaced
+> the chapter-prefixed identifiers with semantic IDs; any ID this plan names is post-migration.
 
 > **Further superseded by the dossier-integration + topic-gap expansion (2026-07-10).** This audit now runs AFTER
 > both `dossier-guide-integration_2026-07-10.md` (Track A: 6-part restructure, +MoE & Sparse chapters, MLA→ch05,
@@ -38,33 +39,33 @@ definitions, in `src/content/transformers/*.mdx`.
 > **lightweight per-chapter proof/numeric gate as it lands**; only the exhaustive falsify→derive→compare→verify sweep is
 > terminal. (3) The **`tests/properties/` harness is landed by Track A (PR1), not created here** — this audit *extends*
 > it, so migration and the new chapters already run under regression protection. The sweep inventories **semantic IDs**
-> (post-migration), not `tf\d+`.
+> (post-migration), not chapter-prefixed IDs.
 
 ## Pre-seeded findings (from the 2026-07-10 three-round review — confirmed by ≥2 independent voices)
 
 All items below are owned by Track A A1 and become explicit non-regression targets for Stage A/C/D; the audit does not
 defer known-invalid material. The list is retained so the terminal report can record independent confirmation:
-- **ch10 contrastive minimizer** (`prop-tf10-contrastive-alignment`): the "equivalently, on L2-normalized embeddings"
+- **ch12 contrastive minimizer** (`prop-contrastive-alignment`): the "equivalently, on L2-normalized embeddings"
   step is false (fixed-τ margin ≤ 2/τ cannot diverge); split into unconstrained-logit lemma / constrained spherical-code
-  optimum / directional tendency, and fix ch18:33's "correct precisely because" over-claim to match ch18:114's caveat.
+  optimum / directional tendency, and fix ch23:33's "correct precisely because" over-claim to match ch23:114's caveat.
 - **ch07 encoder⟺cross-attention contradiction**: line 129's "an encoder exists exactly
   when cross-attention is present" contradicts the encoder-only row + ViT (55) + LLaVA (133) in-chapter; the real switch
   is whether the encoder feeds cross-attention vs. a concat-projector. (Expository.) **Fix the merged `three-architectures`
   figure caption (#10) in the same change** — it renders the same "unused 4th cell" framing (bidirectional self-attention
   + cross-attention is used in fusion / cross-encoders, so scope the claim to *generating* stacks).
-- **ch17 any-to-any tag-factor**: the proof drops $p(c_t\mid u_{<t})$; add $p(u_t\mid u_{<t})=p(c_t\mid u_{<t})\,
+- **ch22 any-to-any tag-factor**: the proof drops $p(c_t\mid u_{<t})$; add $p(u_t\mid u_{<t})=p(c_t\mid u_{<t})\,
   p(x_t\mid u_{<t},c_t)$ (theorem survives).
-- **ch17 finite-alphabet wording** (`prop-tf17-why-discrete` + Exercise 17.3): "only over a finite alphabet / finite sum
+- **ch22 finite-alphabet wording** (`prop-why-discrete` + Exercise 22.3): "only over a finite alphabet / finite sum
   ⟺ finite alphabet" wrongly excludes countably-infinite categoricals; tighten in both spots (continuous half is already
   hedged "in general" — leave it).
-- **ch18 prose numbers**: N-4 (ch18:77 "ch. 6" → ch. 9, `def-tf9-ce-loss`), N-5 (ch18:118 "ch. 7 classifier" → ch. 10,
-  `def-tf10-encoder-classifier`).
-- **ch08 definition-before-use**: uses `def-tf9-autoregressive-lm` before ch09 defines it; host the bare AR factorization
-  in ch08 or add the `training` prereq.
+- **ch23 prose numbers**: N-4 (ch23:77 "ch. 6" → ch. 10, `def-ce-loss`), N-5 (ch23:118 "ch. 7 classifier" → ch. 12,
+  `def-encoder-classifier`).
+- **ch09 definition-before-use**: uses `def-autoregressive-lm` before ch10 defines it; host the bare AR factorization
+  in ch09 or add the `training` prereq.
 
-**Reviewed and REFUTED (do NOT seed):** ch13 dual-discretization (the chapter explicitly names + numerically quantifies
-each ZOH switch) and ch10 Mahalanobis "singular covariance" (pooled reps live in ambient $\R^d$; the unit sphere is a
-*nonlinear* manifold, so the covariance is generically full-rank). Optional: a one-line note that `def-tf10-ood-score`
+**Reviewed and REFUTED (do NOT seed):** ch18 dual-discretization (the chapter explicitly names + numerically quantifies
+each ZOH switch) and ch12 Mahalanobis "singular covariance" (pooled reps live in ambient $\R^d$; the unit sphere is a
+*nonlinear* manifold, so the covariance is generically full-rank). Optional: a one-line note that `def-ood-score`
 presumes the pre-normalization representation, to forestall the R3-4 confusion.
 
 ## The 8 decisions
@@ -150,19 +151,19 @@ are the citation-grounded evidence base the sweep should draw on when checking p
 - **ch01 pos-enc (RoPE/ALiBi/sinusoidal), ch04 attention, ch05 MHA, ch06 LayerNorm/RMSNorm/block** →
   `research_transformer_architecture`.
 - **ch04/07 sparse & efficient attention** → `research_{sparse_attention_patterns,trainable_sparse_attention,kv_cache_sparsity}` (built 2026-07-09).
-- **ch03 SSM (S4/HiPPO), ch13 SSD/duality/RetNet, ch14 RWKV/xLSTM/DeltaNet/hybrids** →
+- **ch03 SSM (S4/HiPPO), ch18 SSD/duality/RetNet, ch19 RWKV/xLSTM/DeltaNet/hybrids** →
   `post_transformers/references/dossier/` + `ssm-foundations` ch09–14 (already anchored — cross-link, do not re-derive).
-- **ch11 PEFT/LoRA** → `research_peft`.
-- **new MoE chapter, ch17 routing** → `research_mixture_of_experts` (**MERGED** research-dossiers PR #4, 2026-07-10).
-- **ch07 enc/dec taxonomy + cross-attn, ch08 masks/MLM/prefix-LM/UniLM** → `research_encoder_decoder_seq2seq` (**MERGED** PR #4).
+- **ch14 PEFT/LoRA** → `research_peft`.
+- **new ch16 MoE chapter, ch22 routing** → `research_mixture_of_experts` (**MERGED** research-dossiers PR #4, 2026-07-10).
+- **ch07 enc/dec taxonomy + cross-attn, ch09 masks/MLM/prefix-LM/UniLM** → `research_encoder_decoder_seq2seq` (**MERGED** PR #4).
 - **ch02 RNN/LSTM/GRU/BPTT/seq2seq/Bahdanau** → `research_recurrent_seq2seq` (**MERGED** PR #4).
-- **new Sparse chapter** → `research_{sparse_attention_patterns,trainable_sparse_attention,kv_cache_sparsity}` (**MERGED** PR #4).
+- **new ch17 Sparse chapter** → `research_{sparse_attention_patterns,trainable_sparse_attention,kv_cache_sparsity}` (**MERGED** PR #4).
 
 Track-B evidence owners (see `topic-gap-expansion_2026-07-10.md`):
-- **new RLHF/DPO chapter** → `research_rlhf` + `research_post_training_preference`.
-- **new Scaling-laws chapter** → `research_llm_pretraining_scaling` plus its targeted top-up (note the corrected
+- **new ch11 RLHF/DPO chapter** → `research_rlhf` + `research_post_training_preference`.
+- **new ch13 Scaling-laws chapter** → `research_llm_pretraining_scaling` plus its targeted top-up (note the corrected
   MoE *traffic* model must be DERIVED from the roofline, not cited).
-- **new ICL chapter** → `research_incontext_associative_memory` (to build; full constructive trio locked in Track B).
+- **new ch08 ICL chapter** → `research_incontext_associative_memory` (to build; full constructive trio locked in Track B).
 - **ch01 BPE section** → author from primaries (BPE/SentencePiece), no dossier.
 
 When the sweep reaches a chapter, pull anchored excerpts + evidence IDs from its dossier's `evidence_ledger.yml`

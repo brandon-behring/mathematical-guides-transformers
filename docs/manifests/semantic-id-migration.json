@@ -1,0 +1,3794 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "scripts/semantic-id-migration.mjs",
+  "baseline": {
+    "commit": "9e10cc16ec61627a59d8445be7763d0fc1d9673c",
+    "corpusManifestSha256": "16d9004b58c04d7c5b74bdd33fa66bb298c52499a3704b7f2d4aa5b09ad67a1d",
+    "totals": {
+      "chapters": 19,
+      "anchors": 252,
+      "learningObjectives": 86,
+      "xrefs": 654,
+      "frontmatterRegistryRefs": 172,
+      "exercises": 101,
+      "exerciseOccurrences": 105,
+      "figures": 27,
+      "labeledFigures": 26
+    }
+  },
+  "chapters": [
+    {
+      "slug": "notation",
+      "title": "Notation and Prerequisites",
+      "part": 1,
+      "oldChapter": 0,
+      "newChapter": 0,
+      "oldPath": "src/content/transformers/00-notation.mdx",
+      "newPath": "src/content/transformers/00-notation.mdx",
+      "status": "unchanged-number"
+    },
+    {
+      "slug": "input-representations",
+      "title": "Input Representations",
+      "part": 1,
+      "oldChapter": 1,
+      "newChapter": 1,
+      "oldPath": "src/content/transformers/01-input-representations.mdx",
+      "newPath": "src/content/transformers/01-input-representations.mdx",
+      "status": "unchanged-number"
+    },
+    {
+      "slug": "recurrent-networks",
+      "title": "Recurrent Networks and the Seq2Seq Lineage",
+      "part": 2,
+      "oldChapter": 2,
+      "newChapter": 2,
+      "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "status": "unchanged-number"
+    },
+    {
+      "slug": "state-space-models",
+      "title": "Linear Recurrences and State Space Models",
+      "part": 2,
+      "oldChapter": 3,
+      "newChapter": 3,
+      "oldPath": "src/content/transformers/03-state-space-models.mdx",
+      "newPath": "src/content/transformers/03-state-space-models.mdx",
+      "status": "unchanged-number"
+    },
+    {
+      "slug": "attention",
+      "title": "The Attention Mechanism",
+      "part": 3,
+      "oldChapter": 4,
+      "newChapter": 4,
+      "oldPath": "src/content/transformers/04-attention.mdx",
+      "newPath": "src/content/transformers/04-attention.mdx",
+      "status": "unchanged-number"
+    },
+    {
+      "slug": "multi-head-attention",
+      "title": "Multi-Head Attention",
+      "part": 3,
+      "oldChapter": 5,
+      "newChapter": 5,
+      "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "status": "unchanged-number"
+    },
+    {
+      "slug": "transformer-block",
+      "title": "The Transformer Block",
+      "part": 3,
+      "oldChapter": 6,
+      "newChapter": 6,
+      "oldPath": "src/content/transformers/06-transformer-block.mdx",
+      "newPath": "src/content/transformers/06-transformer-block.mdx",
+      "status": "unchanged-number"
+    },
+    {
+      "slug": "architecture-composition",
+      "title": "Architecture Composition",
+      "part": 3,
+      "oldChapter": 7,
+      "newChapter": 7,
+      "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+      "newPath": "src/content/transformers/07-architecture-composition.mdx",
+      "status": "unchanged-number"
+    },
+    {
+      "slug": "encoder-decoder-families",
+      "title": "Encoders and Decoders Across Architecture Families",
+      "part": 3,
+      "oldChapter": 8,
+      "newChapter": 9,
+      "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+      "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+      "status": "renumbered"
+    },
+    {
+      "slug": "training",
+      "title": "Training a Transformer",
+      "part": 3,
+      "oldChapter": 9,
+      "newChapter": 10,
+      "oldPath": "src/content/transformers/09-training.mdx",
+      "newPath": "src/content/transformers/10-training.mdx",
+      "status": "renumbered"
+    },
+    {
+      "slug": "detection-encoders",
+      "title": "Encoder Readouts, Contrastive Alignment, and Detection",
+      "part": 3,
+      "oldChapter": 10,
+      "newChapter": 12,
+      "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+      "newPath": "src/content/transformers/12-detection-encoders.mdx",
+      "status": "renumbered"
+    },
+    {
+      "slug": "training-optimizations",
+      "title": "Practical Training Optimizations",
+      "part": 4,
+      "oldChapter": 11,
+      "newChapter": 14,
+      "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+      "newPath": "src/content/transformers/14-training-optimizations.mdx",
+      "status": "renumbered"
+    },
+    {
+      "slug": "inference-optimizations",
+      "title": "Inference Optimizations",
+      "part": 4,
+      "oldChapter": 12,
+      "newChapter": 15,
+      "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+      "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+      "status": "renumbered"
+    },
+    {
+      "slug": "selective-state-spaces",
+      "title": "Selective State Spaces and State Space Duality",
+      "part": 5,
+      "oldChapter": 13,
+      "newChapter": 18,
+      "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+      "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+      "status": "renumbered"
+    },
+    {
+      "slug": "hybrid-architectures",
+      "title": "Modern Recurrent Models and Hybrid Architectures",
+      "part": 5,
+      "oldChapter": 14,
+      "newChapter": 19,
+      "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+      "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+      "status": "renumbered"
+    },
+    {
+      "slug": "connectors-resamplers",
+      "title": "Connectors and Resamplers",
+      "part": 6,
+      "oldChapter": 15,
+      "newChapter": 20,
+      "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+      "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+      "status": "renumbered"
+    },
+    {
+      "slug": "discrete-visual-tokenization",
+      "title": "Discrete Visual Tokenization",
+      "part": 6,
+      "oldChapter": 16,
+      "newChapter": 21,
+      "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+      "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+      "status": "renumbered"
+    },
+    {
+      "slug": "unified-multimodal-models",
+      "title": "Unified Multimodal Models",
+      "part": 6,
+      "oldChapter": 17,
+      "newChapter": 22,
+      "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+      "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+      "status": "renumbered"
+    },
+    {
+      "slug": "multimodal-evaluation",
+      "title": "Multimodal Evaluation",
+      "part": 6,
+      "oldChapter": 18,
+      "newChapter": 23,
+      "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+      "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+      "status": "renumbered"
+    }
+  ],
+  "reservedSlots": [
+    {
+      "chapter": 8,
+      "title": "In-context Learning",
+      "plannedTrack": "B2"
+    },
+    {
+      "chapter": 11,
+      "title": "DPO / Preference Optimization",
+      "plannedTrack": "B3"
+    },
+    {
+      "chapter": 13,
+      "title": "Scaling Laws",
+      "plannedTrack": "B4"
+    },
+    {
+      "chapter": 16,
+      "title": "Mixture-of-Experts",
+      "plannedTrack": "A5"
+    },
+    {
+      "chapter": 17,
+      "title": "Sparse & Sub-Quadratic Attention",
+      "plannedTrack": "A6"
+    }
+  ],
+  "anchors": {
+    "mapped": [
+      {
+        "oldId": "cor-tf14-gated-deltanet",
+        "newId": "cor-gated-deltanet",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-cross-entropy",
+        "newId": "def-cross-entropy",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "def-entropy",
+        "newId": "def-entropy",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "def-kl",
+        "newId": "def-kl",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "def-row-stochastic",
+        "newId": "def-row-stochastic",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "def-softmax",
+        "newId": "def-softmax",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "def-tf1-codebook-embedding",
+        "newId": "def-codebook-embedding",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf1-embedding-interface",
+        "newId": "def-embedding-interface",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf1-input",
+        "newId": "def-input",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf1-patch-embedding",
+        "newId": "def-patch-embedding",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf1-pe-2d",
+        "newId": "def-pe-2d",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf1-rope",
+        "newId": "def-rope",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf1-rotation-2d",
+        "newId": "def-rotation-2d",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf1-sinusoidal-pe",
+        "newId": "def-sinusoidal-pe",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf1-token-embedding",
+        "newId": "def-token-embedding",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf1-vocabulary",
+        "newId": "def-vocabulary",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf10-auroc",
+        "newId": "def-auroc",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf10-contrastive",
+        "newId": "def-contrastive",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf10-cosine-temp",
+        "newId": "def-cosine-temp",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf10-encoder-classifier",
+        "newId": "def-encoder-classifier",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf10-ood-score",
+        "newId": "def-ood-score",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf10-pooled-rep",
+        "newId": "def-pooled-rep",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf11-lora",
+        "newId": "def-lora",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf11-mixed-precision",
+        "newId": "def-mixed-precision",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf11-train-memory",
+        "newId": "def-train-memory",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf11-zero",
+        "newId": "def-zero",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf12-affine-quant",
+        "newId": "def-affine-quant",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf12-cost-eq",
+        "newId": "def-cost-eq",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf12-kv-cache",
+        "newId": "def-kv-cache",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf12-moe",
+        "newId": "def-moe",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf12-online-softmax",
+        "newId": "def-online-softmax",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf12-spec-decode",
+        "newId": "def-spec-decode",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf13-selective-ssm",
+        "newId": "def-selective-ssm",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf13-transfer-matrix",
+        "newId": "def-transfer-matrix",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf14-delta",
+        "newId": "def-delta",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf14-hybrid-stack",
+        "newId": "def-hybrid-stack",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf14-mlstm",
+        "newId": "def-mlstm",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf14-rwkv",
+        "newId": "def-rwkv",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf14-swa",
+        "newId": "def-swa",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf15-connector",
+        "newId": "def-connector",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf15-gated-xattn",
+        "newId": "def-gated-xattn",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf15-mutual-information",
+        "newId": "def-mutual-information",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf15-projector",
+        "newId": "def-projector",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf15-resampler",
+        "newId": "def-resampler",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf16-codebook",
+        "newId": "def-codebook",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf16-ste",
+        "newId": "def-ste",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf16-vq-loss",
+        "newId": "def-vq-loss",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf17-interleaved",
+        "newId": "def-interleaved",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf17-mixed-mask",
+        "newId": "def-mixed-mask",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf17-modality-embedding",
+        "newId": "def-modality-embedding",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf17-routed-heads",
+        "newId": "def-routed-heads",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf18-perplexity",
+        "newId": "def-perplexity",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf18-retrieval",
+        "newId": "def-retrieval",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf18-zeroshot",
+        "newId": "def-zeroshot",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf2-additive-attention",
+        "newId": "def-additive-attention",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf2-gru",
+        "newId": "def-gru",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf2-lstm",
+        "newId": "def-lstm",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf2-rnn",
+        "newId": "def-rnn",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf2-seq2seq",
+        "newId": "def-seq2seq",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf3-scan-op",
+        "newId": "def-scan-op",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf3-ssm",
+        "newId": "def-ssm",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf4-attention",
+        "newId": "def-attention",
+        "ownerSlug": "attention",
+        "oldPath": "src/content/transformers/04-attention.mdx",
+        "newPath": "src/content/transformers/04-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf4-causal-mask",
+        "newId": "def-causal-mask",
+        "ownerSlug": "attention",
+        "oldPath": "src/content/transformers/04-attention.mdx",
+        "newPath": "src/content/transformers/04-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf5-attention-head",
+        "newId": "def-attention-head",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf5-gqa",
+        "newId": "def-gqa",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf5-mha",
+        "newId": "def-mha",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf5-mqa",
+        "newId": "def-mqa",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf6-ffn",
+        "newId": "def-ffn",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf6-ln",
+        "newId": "def-ln",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf6-postnorm",
+        "newId": "def-postnorm",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf6-prenorm",
+        "newId": "def-prenorm",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf6-residual",
+        "newId": "def-residual",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf7-cross-attention",
+        "newId": "def-cross-attention",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf7-decoder-block",
+        "newId": "def-decoder-block",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf7-decoder-only",
+        "newId": "def-decoder-only",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf7-enc-dec",
+        "newId": "def-enc-dec",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf7-encoder",
+        "newId": "def-encoder",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf8-bidirectional-scan",
+        "newId": "def-bidirectional-scan",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf8-causal",
+        "newId": "def-causal",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf8-mixer",
+        "newId": "def-mixer",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf8-mlm",
+        "newId": "def-mlm",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf8-patterns",
+        "newId": "def-patterns",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf8-prefix-lm",
+        "newId": "def-prefix-lm",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf9-autoregressive-lm",
+        "newId": "def-autoregressive-lm",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf9-ce-loss",
+        "newId": "def-ce-loss",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf9-label-smoothing",
+        "newId": "def-label-smoothing",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf9-lr-schedule",
+        "newId": "def-lr-schedule",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf9-teacher-forcing",
+        "newId": "def-teacher-forcing",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "def-tf9-xavier-init",
+        "newId": "def-xavier-init",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "ex-tf13-selective-copy",
+        "newId": "ex-selective-copy",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "ex-tf2-scalar-trace",
+        "newId": "ex-scalar-trace",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "ex-tf3-impulse-trace",
+        "newId": "ex-impulse-trace",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "ex-tf6-trace",
+        "newId": "ex-trace",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "ex-tf7-param-count",
+        "newId": "ex-param-count",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "ex-tf8-incompatible-conditionals",
+        "newId": "ex-incompatible-conditionals",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "ex-tf9-captioning",
+        "newId": "ex-captioning",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "fig-architecture-lattice",
+        "newId": "fig-architecture-lattice",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-attention-shapes",
+        "newId": "fig-attention-shapes",
+        "ownerSlug": "attention",
+        "oldPath": "src/content/transformers/04-attention.mdx",
+        "newPath": "src/content/transformers/04-attention.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-block-anatomy",
+        "newId": "fig-block-anatomy",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-causal-mask",
+        "newId": "fig-causal-mask",
+        "ownerSlug": "attention",
+        "oldPath": "src/content/transformers/04-attention.mdx",
+        "newPath": "src/content/transformers/04-attention.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-cross-attention",
+        "newId": "fig-cross-attention",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-design-space",
+        "newId": "fig-design-space",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-dual-embedding",
+        "newId": "fig-dual-embedding",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-ffn-expansion",
+        "newId": "fig-ffn-expansion",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-gated-xattn",
+        "newId": "fig-gated-xattn",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-grid-sequence",
+        "newId": "fig-grid-sequence",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-hippo-projection",
+        "newId": "fig-hippo-projection",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-kv-sharing",
+        "newId": "fig-kv-sharing",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-mha-split-concat",
+        "newId": "fig-mha-split-concat",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-mixed-mask",
+        "newId": "fig-mixed-mask",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-reading-figures",
+        "newId": "fig-reading-figures",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-resampler-funnel",
+        "newId": "fig-resampler-funnel",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-retrieval-rank",
+        "newId": "fig-retrieval-rank",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-semiseparable-mask",
+        "newId": "fig-semiseparable-mask",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-seq2seq-bottleneck",
+        "newId": "fig-seq2seq-bottleneck",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-ssm-three-faces",
+        "newId": "fig-ssm-three-faces",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-three-architectures",
+        "newId": "fig-three-architectures",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-unified-decoder",
+        "newId": "fig-unified-decoder",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-unrolled-rnn",
+        "newId": "fig-unrolled-rnn",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-voronoi-kmeans",
+        "newId": "fig-voronoi-kmeans",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-vq-pipeline",
+        "newId": "fig-vq-pipeline",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "fig-zeroshot-sphere",
+        "newId": "fig-zeroshot-sphere",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "lem-tf3-legendre",
+        "newId": "lem-legendre",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-ce-kl",
+        "newId": "prop-ce-kl",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "prop-row-stochastic-convex",
+        "newId": "prop-row-stochastic-convex",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "prop-softmax-jacobian",
+        "newId": "prop-softmax-jacobian",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "prop-softmax-translation-inv",
+        "newId": "prop-softmax-translation-inv",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "prop-tf10-auroc-rank",
+        "newId": "prop-auroc-rank",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf10-contrastive-alignment",
+        "newId": "prop-contrastive-alignment",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf10-contrastive-ce",
+        "newId": "prop-contrastive-ce",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf11-fp32-adam",
+        "newId": "prop-fp32-adam",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf11-lora-savings",
+        "newId": "prop-lora-savings",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf11-mixed-precision",
+        "newId": "prop-mixed-precision",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf11-zero-memory",
+        "newId": "prop-zero-memory",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf12-decode-cost",
+        "newId": "prop-decode-cost",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf12-kv-memory",
+        "newId": "prop-kv-memory",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf12-memory-bound",
+        "newId": "prop-memory-bound",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf12-moe-flops",
+        "newId": "prop-moe-flops",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf12-quant-error",
+        "newId": "prop-quant-error",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf12-spec-speedup",
+        "newId": "prop-spec-speedup",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf13-chunked",
+        "newId": "prop-chunked",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf13-gate-equivalence",
+        "newId": "prop-gate-equivalence",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf13-not-lti",
+        "newId": "prop-not-lti",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf13-selective-scan",
+        "newId": "prop-selective-scan",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf14-decode-state",
+        "newId": "prop-decode-state",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf14-mlstm-gated-state",
+        "newId": "prop-mlstm-gated-state",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf14-rwkv-linattn",
+        "newId": "prop-rwkv-linattn",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf14-state-recall",
+        "newId": "prop-state-recall",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf15-bottleneck",
+        "newId": "prop-connector-data-processing-bound",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf15-resampler-convex",
+        "newId": "prop-resampler-convex",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf15-resampler-cost",
+        "newId": "prop-resampler-cost",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf16-rate",
+        "newId": "prop-rate",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf16-voronoi",
+        "newId": "prop-voronoi",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf16-vq-gradient",
+        "newId": "prop-vq-gradient",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf17-merged-vocab",
+        "newId": "prop-merged-vocab",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf17-why-discrete",
+        "newId": "prop-why-discrete",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf18-perplexity-kl",
+        "newId": "prop-perplexity-kl",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf18-recall-accuracy",
+        "newId": "prop-recall-accuracy",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf18-zeroshot-classifier",
+        "newId": "prop-zeroshot-classifier",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf2-bottleneck",
+        "newId": "prop-seq2seq-fixed-vector-bottleneck",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf2-cec",
+        "newId": "prop-cec",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf3-gradient-timescale",
+        "newId": "prop-gradient-timescale",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf3-legs-nplr",
+        "newId": "prop-legs-nplr",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf3-lti-obstruction",
+        "newId": "prop-lti-obstruction",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf3-scan",
+        "newId": "prop-scan",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf5-kv-cache",
+        "newId": "prop-kv-cache",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf5-mha-params",
+        "newId": "prop-mha-params",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf6-ln-jacobian",
+        "newId": "prop-ln-jacobian",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf7-complexity",
+        "newId": "prop-complexity",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf7-params",
+        "newId": "prop-params",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf8-causal-closure",
+        "newId": "prop-causal-closure",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf8-causal-instances",
+        "newId": "prop-causal-instances",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf8-instantiations",
+        "newId": "prop-instantiations",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf8-prefix-reuse",
+        "newId": "prop-prefix-reuse",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf8-sequential-depth",
+        "newId": "prop-sequential-depth",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf9-ce-kl-training",
+        "newId": "prop-ce-kl-training",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf9-ce-logit-gradient",
+        "newId": "prop-ce-logit-gradient",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf9-label-smoothing-decomposition",
+        "newId": "prop-label-smoothing-decomposition",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "prop-tf9-warmup-rationale",
+        "newId": "prop-warmup-rationale",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-softmax-temperature",
+        "newId": "rem-softmax-temperature",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx",
+        "identity": true
+      },
+      {
+        "oldId": "rem-tf1-modality-blind",
+        "newId": "rem-modality-blind",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf1-pe-vs-rope",
+        "newId": "rem-pe-vs-rope",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf1-rope-2d",
+        "newId": "rem-rope-2d",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf1-rope-complex",
+        "newId": "rem-rope-complex",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf10-auroc-caveat",
+        "newId": "rem-auroc-caveat",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf10-bidirectional",
+        "newId": "rem-bidirectional",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf10-crossmodal-canonical",
+        "newId": "rem-crossmodal-canonical",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf10-scores-unified",
+        "newId": "rem-scores-unified",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf10-separation-geometry",
+        "newId": "rem-separation-geometry",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf11-activations",
+        "newId": "rem-activations",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf11-bf16",
+        "newId": "rem-bf16",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf11-bottleneck",
+        "newId": "rem-bottleneck",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf11-fsdp-bandwidth",
+        "newId": "rem-fsdp-bandwidth",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf11-lora-breaks",
+        "newId": "rem-lora-breaks",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf11-selective",
+        "newId": "rem-selective",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf11-throughput",
+        "newId": "rem-throughput",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf12-activation-quant",
+        "newId": "rem-activation-quant",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf12-expert-parallel",
+        "newId": "rem-expert-parallel",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf12-flash-versions",
+        "newId": "rem-flash-versions",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf12-kv-bytes",
+        "newId": "rem-kv-bytes",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf12-prefill-decode",
+        "newId": "rem-prefill-decode",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf12-spec-regime",
+        "newId": "rem-spec-regime",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf14-design-space",
+        "newId": "rem-design-space",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf15-lora-analogy",
+        "newId": "rem-lora-analogy",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf16-new-vs-reused",
+        "newId": "rem-new-vs-reused",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf17-body-unchanged",
+        "newId": "rem-body-unchanged",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf18-all-reduced",
+        "newId": "rem-all-reduced",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf18-surface-metrics",
+        "newId": "rem-surface-metrics",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf2-toward-attention",
+        "newId": "rem-toward-attention",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf3-toward-selectivity",
+        "newId": "rem-toward-selectivity",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf4-addressing-lineage",
+        "newId": "rem-addressing-lineage",
+        "ownerSlug": "attention",
+        "oldPath": "src/content/transformers/04-attention.mdx",
+        "newPath": "src/content/transformers/04-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf5-low-rank",
+        "newId": "rem-low-rank",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf6-kv-memory",
+        "newId": "rem-kv-memory",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf6-prenorm-init",
+        "newId": "rem-prenorm-init",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf6-swiglu",
+        "newId": "rem-swiglu",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf7-depth",
+        "newId": "rem-depth",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf7-existence",
+        "newId": "rem-existence",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf7-flash-attention",
+        "newId": "rem-flash-attention",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf7-linear-attention",
+        "newId": "rem-linear-attention",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf7-multimodal-crossattn",
+        "newId": "rem-multimodal-crossattn",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf7-three-archs",
+        "newId": "rem-three-archs",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf7-unified-sequence",
+        "newId": "rem-unified-sequence",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf7-vit",
+        "newId": "rem-vit",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf8-conditioning-routes",
+        "newId": "rem-conditioning-routes",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf8-decoder-only",
+        "newId": "rem-decoder-only",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "rem-tf8-pseudolikelihood",
+        "newId": "rem-pseudolikelihood",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf1-patch-conv",
+        "newId": "thm-patch-conv",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf1-pe-2d-shift",
+        "newId": "thm-pe-2d-shift",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf1-pe-collision",
+        "newId": "thm-pe-collision",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf1-pe-rotation",
+        "newId": "thm-pe-rotation",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf1-rope-relative",
+        "newId": "thm-rope-relative",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf11-checkpointing",
+        "newId": "thm-checkpointing",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf12-online-softmax-exact",
+        "newId": "thm-online-softmax-exact",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf13-linattn-rnn",
+        "newId": "thm-linattn-rnn",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf13-semiseparable",
+        "newId": "thm-semiseparable",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf13-ssd",
+        "newId": "thm-ssd",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf14-delta-descent",
+        "newId": "thm-delta-descent",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf15-gated-identity",
+        "newId": "thm-gated-identity",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf16-codebook-kmeans",
+        "newId": "thm-codebook-kmeans",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf16-dual-footing",
+        "newId": "thm-dual-footing",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf16-ste-identity",
+        "newId": "thm-ste-identity",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf17-any-to-any",
+        "newId": "thm-any-to-any",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf2-bptt",
+        "newId": "thm-bptt",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf2-gradient-bound",
+        "newId": "thm-gradient-bound",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf3-conv-recurrence",
+        "newId": "thm-conv-recurrence",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf3-hippo-legs",
+        "newId": "thm-hippo-legs",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf3-zoh",
+        "newId": "thm-zoh",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf5-low-rank",
+        "newId": "thm-low-rank",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf6-gradient-highway",
+        "newId": "thm-gradient-highway",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf7-universal-approx",
+        "newId": "thm-universal-approx",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-tf8-one-pass",
+        "newId": "thm-one-pass",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+        "identity": false
+      },
+      {
+        "oldId": "thm-variance-preservation",
+        "newId": "thm-variance-preservation",
+        "ownerSlug": "attention",
+        "oldPath": "src/content/transformers/04-attention.mdx",
+        "newPath": "src/content/transformers/04-attention.mdx",
+        "identity": true
+      }
+    ],
+    "retired": []
+  },
+  "learningObjectives": {
+    "mapped": [
+      {
+        "oldId": "TF-0.1",
+        "newId": "lo-softmax-calculus",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx"
+      },
+      {
+        "oldId": "TF-0.2",
+        "newId": "lo-cross-entropy-kl-equivalence",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx"
+      },
+      {
+        "oldId": "TF-0.3",
+        "newId": "lo-row-stochastic-convex-combinations",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx"
+      },
+      {
+        "oldId": "TF-0.4",
+        "newId": "lo-modality-agnostic-embedding-interface",
+        "ownerSlug": "notation",
+        "oldPath": "src/content/transformers/00-notation.mdx",
+        "newPath": "src/content/transformers/00-notation.mdx"
+      },
+      {
+        "oldId": "TF-1.1",
+        "newId": "lo-token-and-positional-embeddings",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx"
+      },
+      {
+        "oldId": "TF-1.2",
+        "newId": "lo-sinusoidal-position-properties",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx"
+      },
+      {
+        "oldId": "TF-1.3",
+        "newId": "lo-rope-relative-position",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx"
+      },
+      {
+        "oldId": "TF-1.4",
+        "newId": "lo-positional-encoding-computation",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx"
+      },
+      {
+        "oldId": "TF-1.5",
+        "newId": "lo-patch-and-codebook-embeddings",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx"
+      },
+      {
+        "oldId": "TF-1.6",
+        "newId": "lo-factorized-2d-position",
+        "ownerSlug": "input-representations",
+        "oldPath": "src/content/transformers/01-input-representations.mdx",
+        "newPath": "src/content/transformers/01-input-representations.mdx"
+      },
+      {
+        "oldId": "TF-10.1",
+        "newId": "lo-encoder-pooling-and-classification",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx"
+      },
+      {
+        "oldId": "TF-10.2",
+        "newId": "lo-symmetric-contrastive-cross-entropy",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx"
+      },
+      {
+        "oldId": "TF-10.3",
+        "newId": "lo-contrastive-geometry-and-temperature",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx"
+      },
+      {
+        "oldId": "TF-10.4",
+        "newId": "lo-ood-ranking-and-auroc",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx"
+      },
+      {
+        "oldId": "TF-10.5",
+        "newId": "lo-cross-modal-contrastive-alignment",
+        "ownerSlug": "detection-encoders",
+        "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+        "newPath": "src/content/transformers/12-detection-encoders.mdx"
+      },
+      {
+        "oldId": "TF-11.1",
+        "newId": "lo-training-memory-accounting",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-11.2",
+        "newId": "lo-mixed-precision-accounting",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-11.3",
+        "newId": "lo-gradient-checkpointing-tradeoff",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-11.4",
+        "newId": "lo-lora-parameter-savings",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-11.5",
+        "newId": "lo-zero-memory-and-communication",
+        "ownerSlug": "training-optimizations",
+        "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+        "newPath": "src/content/transformers/14-training-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-12.1",
+        "newId": "lo-inference-roofline",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-12.2",
+        "newId": "lo-kv-cache-memory-and-compute",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-12.3",
+        "newId": "lo-affine-quantization-error",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-12.5",
+        "newId": "lo-online-softmax-and-flash-attention",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-12.6",
+        "newId": "lo-speculative-decoding-speedup",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-12.7",
+        "newId": "lo-moe-cost-accounting",
+        "ownerSlug": "inference-optimizations",
+        "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+        "newPath": "src/content/transformers/15-inference-optimizations.mdx"
+      },
+      {
+        "oldId": "TF-13.1",
+        "newId": "lo-selective-ssm-gating",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx"
+      },
+      {
+        "oldId": "TF-13.2",
+        "newId": "lo-selective-scan",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx"
+      },
+      {
+        "oldId": "TF-13.3",
+        "newId": "lo-linear-attention-recurrence",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx"
+      },
+      {
+        "oldId": "TF-13.4",
+        "newId": "lo-ssd-semiseparability-and-chunking",
+        "ownerSlug": "selective-state-spaces",
+        "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+        "newPath": "src/content/transformers/18-selective-state-spaces.mdx"
+      },
+      {
+        "oldId": "TF-14.1",
+        "newId": "lo-modern-recurrent-linear-attention",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx"
+      },
+      {
+        "oldId": "TF-14.2",
+        "newId": "lo-delta-rule-descent",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx"
+      },
+      {
+        "oldId": "TF-14.3",
+        "newId": "lo-fixed-state-recall-bound",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx"
+      },
+      {
+        "oldId": "TF-14.4",
+        "newId": "lo-hybrid-stack-memory",
+        "ownerSlug": "hybrid-architectures",
+        "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+        "newPath": "src/content/transformers/19-hybrid-architectures.mdx"
+      },
+      {
+        "oldId": "TF-15.1",
+        "newId": "lo-connector-embedding-interface",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx"
+      },
+      {
+        "oldId": "TF-15.2",
+        "newId": "lo-projector-resampler-geometry",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx"
+      },
+      {
+        "oldId": "TF-15.3",
+        "newId": "lo-resampler-compute-and-cache",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx"
+      },
+      {
+        "oldId": "TF-15.4",
+        "newId": "lo-connector-data-processing-bound",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx"
+      },
+      {
+        "oldId": "TF-15.5",
+        "newId": "lo-gated-cross-attention-identity",
+        "ownerSlug": "connectors-resamplers",
+        "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+        "newPath": "src/content/transformers/20-connectors-resamplers.mdx"
+      },
+      {
+        "oldId": "TF-16.1",
+        "newId": "lo-vector-quantization-geometry",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx"
+      },
+      {
+        "oldId": "TF-16.2",
+        "newId": "lo-straight-through-estimator",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx"
+      },
+      {
+        "oldId": "TF-16.3",
+        "newId": "lo-vector-quantization-loss",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx"
+      },
+      {
+        "oldId": "TF-16.4",
+        "newId": "lo-codebook-kmeans",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx"
+      },
+      {
+        "oldId": "TF-16.5",
+        "newId": "lo-visual-token-language-modeling",
+        "ownerSlug": "discrete-visual-tokenization",
+        "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+        "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx"
+      },
+      {
+        "oldId": "TF-17.1",
+        "newId": "lo-interleaved-multimodal-interfaces",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx"
+      },
+      {
+        "oldId": "TF-17.2",
+        "newId": "lo-any-to-any-factorization",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx"
+      },
+      {
+        "oldId": "TF-17.3",
+        "newId": "lo-merged-vocabulary-reduction",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx"
+      },
+      {
+        "oldId": "TF-17.4",
+        "newId": "lo-finite-discrete-generation-head",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx"
+      },
+      {
+        "oldId": "TF-17.5",
+        "newId": "lo-mixed-block-causal-mask",
+        "ownerSlug": "unified-multimodal-models",
+        "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+        "newPath": "src/content/transformers/22-unified-multimodal-models.mdx"
+      },
+      {
+        "oldId": "TF-18.1",
+        "newId": "lo-multimodal-retrieval-metrics",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx"
+      },
+      {
+        "oldId": "TF-18.2",
+        "newId": "lo-perplexity-proper-scoring",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx"
+      },
+      {
+        "oldId": "TF-18.3",
+        "newId": "lo-zero-shot-classification",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx"
+      },
+      {
+        "oldId": "TF-18.4",
+        "newId": "lo-multimodal-metric-reductions",
+        "ownerSlug": "multimodal-evaluation",
+        "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+        "newPath": "src/content/transformers/23-multimodal-evaluation.mdx"
+      },
+      {
+        "oldId": "TF-2.1",
+        "newId": "lo-recurrent-unrolling",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx"
+      },
+      {
+        "oldId": "TF-2.2",
+        "newId": "lo-backpropagation-through-time",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx"
+      },
+      {
+        "oldId": "TF-2.3",
+        "newId": "lo-recurrent-gradient-regimes",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx"
+      },
+      {
+        "oldId": "TF-2.4",
+        "newId": "lo-seq2seq-bottleneck-and-attention",
+        "ownerSlug": "recurrent-networks",
+        "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+        "newPath": "src/content/transformers/02-recurrent-networks.mdx"
+      },
+      {
+        "oldId": "TF-3.1",
+        "newId": "lo-ssm-zoh-discretization",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx"
+      },
+      {
+        "oldId": "TF-3.2",
+        "newId": "lo-ssm-three-evaluation-forms",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx"
+      },
+      {
+        "oldId": "TF-3.3",
+        "newId": "lo-ssm-gradient-timescales",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx"
+      },
+      {
+        "oldId": "TF-3.4",
+        "newId": "lo-hippo-legs-dynamics",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx"
+      },
+      {
+        "oldId": "TF-3.5",
+        "newId": "lo-lti-selective-copy-obstruction",
+        "ownerSlug": "state-space-models",
+        "oldPath": "src/content/transformers/03-state-space-models.mdx",
+        "newPath": "src/content/transformers/03-state-space-models.mdx"
+      },
+      {
+        "oldId": "TF-4.1",
+        "newId": "lo-scaled-dot-product-attention",
+        "ownerSlug": "attention",
+        "oldPath": "src/content/transformers/04-attention.mdx",
+        "newPath": "src/content/transformers/04-attention.mdx"
+      },
+      {
+        "oldId": "TF-4.3",
+        "newId": "lo-attention-logit-variance",
+        "ownerSlug": "attention",
+        "oldPath": "src/content/transformers/04-attention.mdx",
+        "newPath": "src/content/transformers/04-attention.mdx"
+      },
+      {
+        "oldId": "TF-5.1",
+        "newId": "lo-multi-head-construction",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx"
+      },
+      {
+        "oldId": "TF-5.2",
+        "newId": "lo-attention-head-rank",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx"
+      },
+      {
+        "oldId": "TF-5.3",
+        "newId": "lo-kv-sharing-cache-width",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx"
+      },
+      {
+        "oldId": "TF-5.4",
+        "newId": "lo-multi-head-shapes-and-parameters",
+        "ownerSlug": "multi-head-attention",
+        "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+        "newPath": "src/content/transformers/05-multi-head-attention.mdx"
+      },
+      {
+        "oldId": "TF-6.1",
+        "newId": "lo-transformer-block-components",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx"
+      },
+      {
+        "oldId": "TF-6.2",
+        "newId": "lo-residual-gradient-highway",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx"
+      },
+      {
+        "oldId": "TF-6.3",
+        "newId": "lo-prenorm-postnorm-comparison",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx"
+      },
+      {
+        "oldId": "TF-6.4",
+        "newId": "lo-transformer-block-shapes",
+        "ownerSlug": "transformer-block",
+        "oldPath": "src/content/transformers/06-transformer-block.mdx",
+        "newPath": "src/content/transformers/06-transformer-block.mdx"
+      },
+      {
+        "oldId": "TF-7.1",
+        "newId": "lo-transformer-architecture-families",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx"
+      },
+      {
+        "oldId": "TF-7.2",
+        "newId": "lo-transformer-universal-approximation",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx"
+      },
+      {
+        "oldId": "TF-7.3",
+        "newId": "lo-transformer-layer-complexity",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx"
+      },
+      {
+        "oldId": "TF-7.4",
+        "newId": "lo-transformer-parameter-scaling",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx"
+      },
+      {
+        "oldId": "TF-7.5",
+        "newId": "lo-multimodal-transformer-composition",
+        "ownerSlug": "architecture-composition",
+        "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+        "newPath": "src/content/transformers/07-architecture-composition.mdx"
+      },
+      {
+        "oldId": "TF-8.1",
+        "newId": "lo-mixer-causality",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx"
+      },
+      {
+        "oldId": "TF-8.2",
+        "newId": "lo-architecture-pattern-instantiations",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx"
+      },
+      {
+        "oldId": "TF-8.3",
+        "newId": "lo-causal-one-pass-depth",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx"
+      },
+      {
+        "oldId": "TF-8.4",
+        "newId": "lo-bidirectional-and-prefix-objectives",
+        "ownerSlug": "encoder-decoder-families",
+        "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+        "newPath": "src/content/transformers/09-encoder-decoder-families.mdx"
+      },
+      {
+        "oldId": "TF-9.1",
+        "newId": "lo-language-model-cross-entropy-kl",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx"
+      },
+      {
+        "oldId": "TF-9.2",
+        "newId": "lo-label-smoothing-decomposition",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx"
+      },
+      {
+        "oldId": "TF-9.3",
+        "newId": "lo-warmup-rationale",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx"
+      },
+      {
+        "oldId": "TF-9.4",
+        "newId": "lo-language-model-loss-computation",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx"
+      },
+      {
+        "oldId": "TF-9.5",
+        "newId": "lo-captioning-as-conditional-language-modeling",
+        "ownerSlug": "training",
+        "oldPath": "src/content/transformers/09-training.mdx",
+        "newPath": "src/content/transformers/10-training.mdx"
+      }
+    ],
+    "retired": []
+  },
+  "exercises": [
+    {
+      "ownerSlug": "notation",
+      "oldPath": "src/content/transformers/00-notation.mdx",
+      "newPath": "src/content/transformers/00-notation.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 0.1",
+      "newLabel": "Exercise 0.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "notation",
+      "oldPath": "src/content/transformers/00-notation.mdx",
+      "newPath": "src/content/transformers/00-notation.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 0.2",
+      "newLabel": "Exercise 0.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "notation",
+      "oldPath": "src/content/transformers/00-notation.mdx",
+      "newPath": "src/content/transformers/00-notation.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 0.3",
+      "newLabel": "Exercise 0.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "notation",
+      "oldPath": "src/content/transformers/00-notation.mdx",
+      "newPath": "src/content/transformers/00-notation.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 0.4",
+      "newLabel": "Exercise 0.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "input-representations",
+      "oldPath": "src/content/transformers/01-input-representations.mdx",
+      "newPath": "src/content/transformers/01-input-representations.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 1.1",
+      "newLabel": "Exercise 1.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "input-representations",
+      "oldPath": "src/content/transformers/01-input-representations.mdx",
+      "newPath": "src/content/transformers/01-input-representations.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 1.2",
+      "newLabel": "Exercise 1.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "input-representations",
+      "oldPath": "src/content/transformers/01-input-representations.mdx",
+      "newPath": "src/content/transformers/01-input-representations.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 1.3",
+      "newLabel": "Exercise 1.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "input-representations",
+      "oldPath": "src/content/transformers/01-input-representations.mdx",
+      "newPath": "src/content/transformers/01-input-representations.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 1.4",
+      "newLabel": "Exercise 1.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "input-representations",
+      "oldPath": "src/content/transformers/01-input-representations.mdx",
+      "newPath": "src/content/transformers/01-input-representations.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 1.5",
+      "newLabel": "Exercise 1.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "input-representations",
+      "oldPath": "src/content/transformers/01-input-representations.mdx",
+      "newPath": "src/content/transformers/01-input-representations.mdx",
+      "ordinal": 6,
+      "oldLabel": "Exercise 1.6",
+      "newLabel": "Exercise 1.6",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "input-representations",
+      "oldPath": "src/content/transformers/01-input-representations.mdx",
+      "newPath": "src/content/transformers/01-input-representations.mdx",
+      "ordinal": 7,
+      "oldLabel": "Exercise 1.7",
+      "newLabel": "Exercise 1.7",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "input-representations",
+      "oldPath": "src/content/transformers/01-input-representations.mdx",
+      "newPath": "src/content/transformers/01-input-representations.mdx",
+      "ordinal": 8,
+      "oldLabel": "Exercise 1.8",
+      "newLabel": "Exercise 1.8",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "recurrent-networks",
+      "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 2.1",
+      "newLabel": "Exercise 2.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "recurrent-networks",
+      "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 2.2",
+      "newLabel": "Exercise 2.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "recurrent-networks",
+      "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 2.3",
+      "newLabel": "Exercise 2.3",
+      "occurrences": 2
+    },
+    {
+      "ownerSlug": "recurrent-networks",
+      "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 2.4",
+      "newLabel": "Exercise 2.4",
+      "occurrences": 2
+    },
+    {
+      "ownerSlug": "recurrent-networks",
+      "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 2.5",
+      "newLabel": "Exercise 2.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "recurrent-networks",
+      "oldPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "newPath": "src/content/transformers/02-recurrent-networks.mdx",
+      "ordinal": 6,
+      "oldLabel": "Exercise 2.6",
+      "newLabel": "Exercise 2.6",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "state-space-models",
+      "oldPath": "src/content/transformers/03-state-space-models.mdx",
+      "newPath": "src/content/transformers/03-state-space-models.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 3.1",
+      "newLabel": "Exercise 3.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "state-space-models",
+      "oldPath": "src/content/transformers/03-state-space-models.mdx",
+      "newPath": "src/content/transformers/03-state-space-models.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 3.2",
+      "newLabel": "Exercise 3.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "state-space-models",
+      "oldPath": "src/content/transformers/03-state-space-models.mdx",
+      "newPath": "src/content/transformers/03-state-space-models.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 3.3",
+      "newLabel": "Exercise 3.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "state-space-models",
+      "oldPath": "src/content/transformers/03-state-space-models.mdx",
+      "newPath": "src/content/transformers/03-state-space-models.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 3.4",
+      "newLabel": "Exercise 3.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "state-space-models",
+      "oldPath": "src/content/transformers/03-state-space-models.mdx",
+      "newPath": "src/content/transformers/03-state-space-models.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 3.5",
+      "newLabel": "Exercise 3.5",
+      "occurrences": 2
+    },
+    {
+      "ownerSlug": "state-space-models",
+      "oldPath": "src/content/transformers/03-state-space-models.mdx",
+      "newPath": "src/content/transformers/03-state-space-models.mdx",
+      "ordinal": 6,
+      "oldLabel": "Exercise 3.6",
+      "newLabel": "Exercise 3.6",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "attention",
+      "oldPath": "src/content/transformers/04-attention.mdx",
+      "newPath": "src/content/transformers/04-attention.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 4.1",
+      "newLabel": "Exercise 4.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "attention",
+      "oldPath": "src/content/transformers/04-attention.mdx",
+      "newPath": "src/content/transformers/04-attention.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 4.2",
+      "newLabel": "Exercise 4.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "attention",
+      "oldPath": "src/content/transformers/04-attention.mdx",
+      "newPath": "src/content/transformers/04-attention.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 4.3",
+      "newLabel": "Exercise 4.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "multi-head-attention",
+      "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 5.1",
+      "newLabel": "Exercise 5.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "multi-head-attention",
+      "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 5.2",
+      "newLabel": "Exercise 5.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "multi-head-attention",
+      "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 5.3",
+      "newLabel": "Exercise 5.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "multi-head-attention",
+      "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 5.4",
+      "newLabel": "Exercise 5.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "multi-head-attention",
+      "oldPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "newPath": "src/content/transformers/05-multi-head-attention.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 5.5",
+      "newLabel": "Exercise 5.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "transformer-block",
+      "oldPath": "src/content/transformers/06-transformer-block.mdx",
+      "newPath": "src/content/transformers/06-transformer-block.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 6.1",
+      "newLabel": "Exercise 6.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "transformer-block",
+      "oldPath": "src/content/transformers/06-transformer-block.mdx",
+      "newPath": "src/content/transformers/06-transformer-block.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 6.2",
+      "newLabel": "Exercise 6.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "transformer-block",
+      "oldPath": "src/content/transformers/06-transformer-block.mdx",
+      "newPath": "src/content/transformers/06-transformer-block.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 6.3",
+      "newLabel": "Exercise 6.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "transformer-block",
+      "oldPath": "src/content/transformers/06-transformer-block.mdx",
+      "newPath": "src/content/transformers/06-transformer-block.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 6.4",
+      "newLabel": "Exercise 6.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "transformer-block",
+      "oldPath": "src/content/transformers/06-transformer-block.mdx",
+      "newPath": "src/content/transformers/06-transformer-block.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 6.5",
+      "newLabel": "Exercise 6.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "architecture-composition",
+      "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+      "newPath": "src/content/transformers/07-architecture-composition.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 7.1",
+      "newLabel": "Exercise 7.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "architecture-composition",
+      "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+      "newPath": "src/content/transformers/07-architecture-composition.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 7.2",
+      "newLabel": "Exercise 7.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "architecture-composition",
+      "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+      "newPath": "src/content/transformers/07-architecture-composition.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 7.3",
+      "newLabel": "Exercise 7.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "architecture-composition",
+      "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+      "newPath": "src/content/transformers/07-architecture-composition.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 7.4",
+      "newLabel": "Exercise 7.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "architecture-composition",
+      "oldPath": "src/content/transformers/07-architecture-composition.mdx",
+      "newPath": "src/content/transformers/07-architecture-composition.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 7.5",
+      "newLabel": "Exercise 7.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "encoder-decoder-families",
+      "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+      "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 8.1",
+      "newLabel": "Exercise 9.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "encoder-decoder-families",
+      "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+      "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 8.2",
+      "newLabel": "Exercise 9.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "encoder-decoder-families",
+      "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+      "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 8.3",
+      "newLabel": "Exercise 9.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "encoder-decoder-families",
+      "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+      "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 8.4",
+      "newLabel": "Exercise 9.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "encoder-decoder-families",
+      "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+      "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 8.5",
+      "newLabel": "Exercise 9.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "encoder-decoder-families",
+      "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+      "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+      "ordinal": 6,
+      "oldLabel": "Exercise 8.6",
+      "newLabel": "Exercise 9.6",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "encoder-decoder-families",
+      "oldPath": "src/content/transformers/08-encoder-decoder-families.mdx",
+      "newPath": "src/content/transformers/09-encoder-decoder-families.mdx",
+      "ordinal": 7,
+      "oldLabel": "Exercise 8.7",
+      "newLabel": "Exercise 9.7",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "training",
+      "oldPath": "src/content/transformers/09-training.mdx",
+      "newPath": "src/content/transformers/10-training.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 9.1",
+      "newLabel": "Exercise 10.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "training",
+      "oldPath": "src/content/transformers/09-training.mdx",
+      "newPath": "src/content/transformers/10-training.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 9.2",
+      "newLabel": "Exercise 10.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "training",
+      "oldPath": "src/content/transformers/09-training.mdx",
+      "newPath": "src/content/transformers/10-training.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 9.3",
+      "newLabel": "Exercise 10.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "training",
+      "oldPath": "src/content/transformers/09-training.mdx",
+      "newPath": "src/content/transformers/10-training.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 9.4",
+      "newLabel": "Exercise 10.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "training",
+      "oldPath": "src/content/transformers/09-training.mdx",
+      "newPath": "src/content/transformers/10-training.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 9.5",
+      "newLabel": "Exercise 10.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "detection-encoders",
+      "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+      "newPath": "src/content/transformers/12-detection-encoders.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 10.1",
+      "newLabel": "Exercise 12.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "detection-encoders",
+      "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+      "newPath": "src/content/transformers/12-detection-encoders.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 10.2",
+      "newLabel": "Exercise 12.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "detection-encoders",
+      "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+      "newPath": "src/content/transformers/12-detection-encoders.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 10.3",
+      "newLabel": "Exercise 12.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "detection-encoders",
+      "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+      "newPath": "src/content/transformers/12-detection-encoders.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 10.4",
+      "newLabel": "Exercise 12.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "detection-encoders",
+      "oldPath": "src/content/transformers/10-detection-encoders.mdx",
+      "newPath": "src/content/transformers/12-detection-encoders.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 10.5",
+      "newLabel": "Exercise 12.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "training-optimizations",
+      "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+      "newPath": "src/content/transformers/14-training-optimizations.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 11.1",
+      "newLabel": "Exercise 14.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "training-optimizations",
+      "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+      "newPath": "src/content/transformers/14-training-optimizations.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 11.2",
+      "newLabel": "Exercise 14.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "training-optimizations",
+      "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+      "newPath": "src/content/transformers/14-training-optimizations.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 11.3",
+      "newLabel": "Exercise 14.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "training-optimizations",
+      "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+      "newPath": "src/content/transformers/14-training-optimizations.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 11.4",
+      "newLabel": "Exercise 14.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "training-optimizations",
+      "oldPath": "src/content/transformers/11-training-optimizations.mdx",
+      "newPath": "src/content/transformers/14-training-optimizations.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 11.5",
+      "newLabel": "Exercise 14.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "inference-optimizations",
+      "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+      "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 12.1",
+      "newLabel": "Exercise 15.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "inference-optimizations",
+      "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+      "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 12.2",
+      "newLabel": "Exercise 15.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "inference-optimizations",
+      "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+      "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 12.3",
+      "newLabel": "Exercise 15.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "inference-optimizations",
+      "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+      "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 12.4",
+      "newLabel": "Exercise 15.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "inference-optimizations",
+      "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+      "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 12.5",
+      "newLabel": "Exercise 15.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "inference-optimizations",
+      "oldPath": "src/content/transformers/12-inference-optimizations.mdx",
+      "newPath": "src/content/transformers/15-inference-optimizations.mdx",
+      "ordinal": 6,
+      "oldLabel": "Exercise 12.6",
+      "newLabel": "Exercise 15.6",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "selective-state-spaces",
+      "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+      "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 13.1",
+      "newLabel": "Exercise 18.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "selective-state-spaces",
+      "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+      "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 13.2",
+      "newLabel": "Exercise 18.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "selective-state-spaces",
+      "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+      "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 13.3",
+      "newLabel": "Exercise 18.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "selective-state-spaces",
+      "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+      "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 13.4",
+      "newLabel": "Exercise 18.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "selective-state-spaces",
+      "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+      "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 13.5",
+      "newLabel": "Exercise 18.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "selective-state-spaces",
+      "oldPath": "src/content/transformers/13-selective-state-spaces.mdx",
+      "newPath": "src/content/transformers/18-selective-state-spaces.mdx",
+      "ordinal": 6,
+      "oldLabel": "Exercise 13.6",
+      "newLabel": "Exercise 18.6",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "hybrid-architectures",
+      "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+      "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 14.1",
+      "newLabel": "Exercise 19.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "hybrid-architectures",
+      "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+      "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 14.2",
+      "newLabel": "Exercise 19.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "hybrid-architectures",
+      "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+      "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 14.3",
+      "newLabel": "Exercise 19.3",
+      "occurrences": 2
+    },
+    {
+      "ownerSlug": "hybrid-architectures",
+      "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+      "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 14.4",
+      "newLabel": "Exercise 19.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "hybrid-architectures",
+      "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+      "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 14.5",
+      "newLabel": "Exercise 19.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "hybrid-architectures",
+      "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+      "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+      "ordinal": 6,
+      "oldLabel": "Exercise 14.6",
+      "newLabel": "Exercise 19.6",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "connectors-resamplers",
+      "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+      "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 15.1",
+      "newLabel": "Exercise 20.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "connectors-resamplers",
+      "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+      "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 15.2",
+      "newLabel": "Exercise 20.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "connectors-resamplers",
+      "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+      "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 15.3",
+      "newLabel": "Exercise 20.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "connectors-resamplers",
+      "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+      "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 15.4",
+      "newLabel": "Exercise 20.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "connectors-resamplers",
+      "oldPath": "src/content/transformers/15-connectors-resamplers.mdx",
+      "newPath": "src/content/transformers/20-connectors-resamplers.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 15.5",
+      "newLabel": "Exercise 20.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "discrete-visual-tokenization",
+      "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+      "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 16.1",
+      "newLabel": "Exercise 21.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "discrete-visual-tokenization",
+      "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+      "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 16.2",
+      "newLabel": "Exercise 21.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "discrete-visual-tokenization",
+      "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+      "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 16.3",
+      "newLabel": "Exercise 21.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "discrete-visual-tokenization",
+      "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+      "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 16.4",
+      "newLabel": "Exercise 21.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "discrete-visual-tokenization",
+      "oldPath": "src/content/transformers/16-discrete-visual-tokenization.mdx",
+      "newPath": "src/content/transformers/21-discrete-visual-tokenization.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 16.5",
+      "newLabel": "Exercise 21.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "unified-multimodal-models",
+      "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+      "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 17.1",
+      "newLabel": "Exercise 22.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "unified-multimodal-models",
+      "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+      "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 17.2",
+      "newLabel": "Exercise 22.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "unified-multimodal-models",
+      "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+      "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 17.3",
+      "newLabel": "Exercise 22.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "unified-multimodal-models",
+      "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+      "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 17.4",
+      "newLabel": "Exercise 22.4",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "unified-multimodal-models",
+      "oldPath": "src/content/transformers/17-unified-multimodal-models.mdx",
+      "newPath": "src/content/transformers/22-unified-multimodal-models.mdx",
+      "ordinal": 5,
+      "oldLabel": "Exercise 17.5",
+      "newLabel": "Exercise 22.5",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "multimodal-evaluation",
+      "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+      "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+      "ordinal": 1,
+      "oldLabel": "Exercise 18.1",
+      "newLabel": "Exercise 23.1",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "multimodal-evaluation",
+      "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+      "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+      "ordinal": 2,
+      "oldLabel": "Exercise 18.2",
+      "newLabel": "Exercise 23.2",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "multimodal-evaluation",
+      "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+      "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+      "ordinal": 3,
+      "oldLabel": "Exercise 18.3",
+      "newLabel": "Exercise 23.3",
+      "occurrences": 1
+    },
+    {
+      "ownerSlug": "multimodal-evaluation",
+      "oldPath": "src/content/transformers/18-multimodal-evaluation.mdx",
+      "newPath": "src/content/transformers/23-multimodal-evaluation.mdx",
+      "ordinal": 4,
+      "oldLabel": "Exercise 18.4",
+      "newLabel": "Exercise 23.4",
+      "occurrences": 1
+    }
+  ],
+  "unanchoredComponents": [
+    {
+      "kind": "Figure",
+      "ownerSlug": "hybrid-architectures",
+      "oldPath": "src/content/transformers/14-hybrid-architectures.mdx",
+      "newPath": "src/content/transformers/19-hybrid-architectures.mdx",
+      "src": "/figures/hybrid-interleave.svg",
+      "decision": "preserved-unlabeled",
+      "reason": "A3 remains mechanical and preserves the existing theorem ordinals."
+    }
+  ],
+  "checksums": {
+    "chapterMapSha256": "392ad5eac41b9948291f6865c5c850b191c855c37c44286c76e5faf1640da73c",
+    "anchorMapSha256": "35b336666e259f30173b96d7221680a7b9af69acb40ab2ac6a084fb36f0431df",
+    "learningObjectiveMapSha256": "4d9a6932817e759695a572dc2f392c0df43cdfd3461916b5af5837c7037f6436",
+    "exerciseMapSha256": "eb6aaed6d68838de40a0e4409a871bea954ecf2a3c69bc961f1a0a19a5b983dd"
+  }
+}
