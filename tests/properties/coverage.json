@@ -67,6 +67,56 @@
       "statementSha256": "acac55d28be17828f051f27ec01fd8961848592197c3d0948e553ebd729bc511"
     },
     {
+      "id": "def-sparse-attention",
+      "test": "tests/properties/test_sparse_attention.py",
+      "statementSha256": "1345e689fa1eda319ce951056d2bd709c873baa868b537c7441021c26bf925a0"
+    },
+    {
+      "id": "prop-sparse-edge-complexity",
+      "test": "tests/properties/test_sparse_attention.py",
+      "statementSha256": "309c1db61a3043b95352987ba039c0debfd178ba41890c05f6e067814a04ef92"
+    },
+    {
+      "id": "def-swa",
+      "test": "tests/properties/test_sparse_attention.py",
+      "statementSha256": "f6f9cbdbbaf87ca2f0990f102696ed6f7d0c965822d263ea12f4953cde57b8b8"
+    },
+    {
+      "id": "prop-swa-edge-cache",
+      "test": "tests/properties/test_sparse_attention.py",
+      "statementSha256": "533208bd757958fbd79f025ab50efe5438916fb62bba5d25b85ca3425f03cebf"
+    },
+    {
+      "id": "prop-swa-receptive-field",
+      "test": "tests/properties/test_sparse_attention.py",
+      "statementSha256": "41b5bec70b9336c5e807d24f5801b10509724cd215f68ccf8d4a7b1c69224ae6"
+    },
+    {
+      "id": "prop-static-sparse-counts",
+      "test": "tests/properties/test_sparse_attention.py",
+      "statementSha256": "dd63fd56a81af107a861d1e3ce89b03444e3c27a3a58fdb365cb169024e8e6f4"
+    },
+    {
+      "id": "def-sparsemax",
+      "test": "tests/properties/test_sparse_attention.py",
+      "statementSha256": "77501f401bcaea0f140f2e0a3ec55d209daeaf5b4f5a2a3602f8f7ea621484c9"
+    },
+    {
+      "id": "prop-sparsemax-support",
+      "test": "tests/properties/test_sparse_attention.py",
+      "statementSha256": "306de1f83f72f8f4067b0312ddfca207ce85d43bf72b84bfffc557489a2f5233"
+    },
+    {
+      "id": "def-nsa-branches",
+      "test": "tests/properties/test_sparse_attention.py",
+      "statementSha256": "8274316a4b4067d31fdafb791ce85e376088fbf2d16da5134892ea80cbaaad12"
+    },
+    {
+      "id": "prop-nsa-work",
+      "test": "tests/properties/test_sparse_attention.py",
+      "statementSha256": "3198ff9c84ad60d1c0943dbfab76b963ca18972a5a31119e58c34ef85b62d1d5"
+    },
+    {
       "id": "prop-chunked",
       "test": "tests/properties/test_ssd_chunking.py",
       "statementSha256": "738adfb305e7228c18fed2f8a97950084a1e7ee2d5a5b90a68e7e35e571980cf"

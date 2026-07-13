@@ -4,11 +4,11 @@ slug: hybrid-architectures
 chapter: 19
 part: 5
 description: "Modern recurrent models as matrix-state machines and the hybrid synthesis: RWKV's WKV recurrence and xLSTM's mLSTM cell proven to be decayed and gated linear attention, the delta rule proven to be exact online gradient descent on a key-value reconstruction loss, a pigeonhole lower bound showing any fixed-size decode state must fail exact recall beyond a capacity floor, and the sliding-window hybrid stack with its decode-state accounting M = N[f·2wd + (1-f)·d_s·d]·b priced against the production design space."
-last_verified: 2026-07-09
+last_verified: 2026-07-13
 rigor_level: rigorous
-prerequisites: [notation, recurrent-networks, state-space-models, attention, architecture-composition, encoder-decoder-families, inference-optimizations, selective-state-spaces]
-notation_introduced: ['\operatorname{wkv}_t', '\boldsymbol\gamma, \boldsymbol\mu (RWKV decay and bonus)', '\mathbf s_t, \mathbf z_t (WKV state pair)', '\mathbf C_t (mLSTM cell state)', 'i_t, f_t (mLSTM gates)', '\beta_t (write strength)', 'w (attention window)', 'f (attention layer fraction)', 'M (decode-state bytes)']
-theorems: ['def-rwkv', 'prop-rwkv-linattn', 'def-mlstm', 'prop-mlstm-gated-state', 'def-delta', 'thm-delta-descent', 'cor-gated-deltanet', 'prop-state-recall', 'def-swa', 'def-hybrid-stack', 'prop-decode-state', 'rem-design-space']
+prerequisites: [notation, recurrent-networks, state-space-models, attention, architecture-composition, encoder-decoder-families, inference-optimizations, sparse-attention, selective-state-spaces]
+notation_introduced: ['\operatorname{wkv}_t', '\boldsymbol\gamma, \boldsymbol\mu (RWKV decay and bonus)', '\mathbf s_t, \mathbf z_t (WKV state pair)', '\mathbf C_t (mLSTM cell state)', 'i_t, f_t (mLSTM gates)', '\beta_t (write strength)', 'f (attention layer fraction)', 'M (decode-state bytes)']
+theorems: ['def-rwkv', 'prop-rwkv-linattn', 'def-mlstm', 'prop-mlstm-gated-state', 'def-delta', 'thm-delta-descent', 'cor-gated-deltanet', 'prop-state-recall', 'def-hybrid-stack', 'prop-decode-state', 'rem-design-space']
 los:
   - id: lo-modern-recurrent-linear-attention
     statement: "Define the RWKV and mLSTM recurrences and prove that each is a decayed or gated instance of the matrix-state recurrence of causal linear attention."
@@ -17,7 +17,7 @@ los:
   - id: lo-fixed-state-recall-bound
     statement: "Derive the pigeonhole lower bound K log2|V| on the decode-state bits required for exact K-pair associative recall, and compare fixed-state models against the KV-cache."
   - id: lo-hybrid-stack-memory
-    statement: "Define sliding-window attention and the hybrid stack, derive the decode-state accounting M = N[f·2wd + (1-f)·d_s·d]·b, and compare production hybrid designs."
+    statement: "Use sliding-window attention to define the hybrid stack, derive the decode-state accounting M = N[f·2wd + (1-f)·d_s·d]·b, and compare production hybrid designs."
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
@@ -226,25 +226,9 @@ $$
 
 Now instantiate both sides of the arc. A fixed-state layer decodes from $d_s d$ numbers (<XRef id="def-selective-ssm" />; the matrix states of this chapter, with $h$ heads of width $d_k = d_v = d/h$, hold $h\cdot d_k d_v = d\,d_k$ — the same form with $d_s = d_k$), so a stack of $N$ such layers at $b$ bytes per element retains $m = 8\,N b\,d_s d$ bits *no matter how long the sequence is*: beyond $K^* = m/\log_2\lvert\mathcal V\rvert$ pairs, exact recall is impossible for any parameters and any training. The KV-cache, by contrast, holds $2Nndb$ bytes (<XRef id="prop-kv-memory" />) — memory that *grows* with the sequence, a lossless prefix at linear cost — and attention over it solves recall by content addressing at any $K\le n$; the separation is not hypothetical, since attention provably solves copying and recall tasks at lengths where every fixed-state model must fail.<Sidenote>The formal attention-versus-recurrence separation on copying is <Cite key="jelassi2024copying" />; the empirical recall-versus-throughput frontier across this design space is mapped by <Cite key="arora2024based" />.</Sidenote> This is the fixed-vector bottleneck of <XRef id="prop-seq2seq-fixed-vector-bottleneck" /> returning with its scope enlarged: what pigeonhole did to the seq2seq encoder's single vector, it does verbatim to every gated, decayed, or delta-corrected state in this chapter. Gates choose *what* to forget; they cannot repeal *that* something must be forgotten.
 
-## Sliding windows and hybrid stacks
+## Hybrid stacks
 
-If a fixed state cannot afford exact recall and a full cache grows without bound, the remaining design freedom is *composition*: spend the cache where content addressing pays, and the fixed state everywhere else. Two definitions make the composition precise. The first caps the cache of an attention layer by restricting how far back it may look.
-
-<Theorem kind="definition" name="Sliding-window attention" id="def-swa">
-For a **window size** $w\ge 1$, **sliding-window attention** is masked attention in which the mask $\mathbf M^{(w)}\in\{0,-\infty\}^{n\times n}$, added to the logits exactly as the causal mask of <XRef id="def-causal-mask" />, keeps only the most recent $w$ positions:
-$$
-M^{(w)}_{ij} \defeq
-\begin{cases}
-0 & 0 \le i - j < w,\\[2pt]
--\infty & \text{otherwise.}
-\end{cases}
-$$
-Row $i$ attends to positions $\{\max(1,\, i-w+1),\dots,i\}$. At $w\ge n$ this is the causal mask; at $w = 1$ each position attends only to itself.
-</Theorem>
-
-<MarginNote variant="formula" label="Cache cap">Positions $j\le i-w$ are never read again, so the decode cache holds the last $w$ keys and values: $2wd$ elements per layer, constant in $n$.</MarginNote>
-
-Two properties follow directly. *Causality:* row $i$ of the output depends only on rows $j\le i$ of the input, so sliding-window attention is prefix-consistent in the sense of <XRef id="def-causal" />. *Reach:* one layer sees back $w-1$ positions, and information can travel at most $w-1$ positions per layer, so a depth-$N$ stack has receptive field $1 + N(w-1)$ — the window is a per-layer horizon, not a per-model one, and long-range influence survives only by hopping layer to layer. Sliding windows are the standard attention form inside recurrent hybrids <Cite key="de2024griffin" /><Cite key="ren2024samba" />.
+If a fixed state cannot afford exact recall and a full cache grows without bound, the remaining design freedom is *composition*: spend the cache where content addressing pays, and the fixed state everywhere else. The sparse-attention chapter earlier in Part 5 defined causal sliding-window attention, proved its finite-depth reach, and showed that its cache is capped at the most recent $w$ positions (<XRef id="def-swa" />, <XRef id="prop-swa-edge-cache" />, <XRef id="prop-swa-receptive-field" />). Sliding windows are the standard attention form inside recurrent hybrids <Cite key="de2024griffin" /><Cite key="ren2024samba" />.
 
 A hybrid stack literalizes the split at the layer level: a few attention layers, stationed where content addressing pays, interleaved among many fixed-state recurrent layers.
 
@@ -267,7 +251,7 @@ independent of the context length $n$. A full-attention stack at context $n$ hol
 </Theorem>
 
 <Theorem kind="proof">
-**Step 1 (Attention layers).** Each of the $fN$ attention layers stores its windowed KV-cache. By <XRef id="def-swa" />, a decode step reads only the last $w$ positions, so the cache holds $\mathbf K,\mathbf V\in\R^{w\times d}$ — $2wd$ elements, in the conventions of <XRef id="prop-kv-memory" /> with $n$ replaced by $w$.
+**Step 1 (Attention layers).** Each of the $fN$ attention layers stores its windowed KV-cache. By <XRef id="prop-swa-edge-cache" />, a decode step retains only the last $w$ positions, so the cache holds $\mathbf K,\mathbf V\in\R^{w\times d}$ — $2wd$ elements, in the conventions of <XRef id="prop-kv-memory" /> with $n$ replaced by $w$.
 
 **Step 2 (Recurrent layers).** Each of the $(1-f)N$ recurrent layers stores its fixed state: $d_s$ numbers per channel across $d$ channels for a selective SSM, and $d\,d_k$ numbers ($d_s = d_k$) for a matrix-state layer, plus a lower-order normalizer that we absorb — $d_s d$ elements either way, constant in $n$.
 

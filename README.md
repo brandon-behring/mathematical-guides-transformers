@@ -12,11 +12,11 @@ order follows the arc.
 Authoring follows the family's dossier-grounded
 [formal style guide](https://github.com/brandon-behring/mathematical-guides/blob/main/docs/style-guide-formal-v0.3.md).
 
-## Structure: 20 chapters, 6 parts
+## Structure: 21 chapters, 6 parts
 
 Published chapter numbers deliberately reserve **08** (in-context learning), **11** (RLHF/DPO),
-**13** (scaling laws), and **17** (sparse attention). The current 20-chapter corpus therefore
-occupies **00–07, 09–10, 12, 14–16, and 18–23**. Source filenames carry
+and **13** (scaling laws). The current 21-chapter corpus therefore occupies
+**00–07, 09–10, 12, and 14–23**. Source filenames carry
 those final display numbers, while frontmatter `slug` values are number-free, so filling a reserved
 slot does not change an existing chapter URL.
 
@@ -33,9 +33,10 @@ slot does not change an existing chapter URL.
 - **Part 4 — Efficient & Conditional Computation.** Training optimizations; inference optimizations
   (the KV-cache, quantization, FlashAttention, and speculative decoding); mixture-of-experts
   (routing gradients, load balance, expert capacity, cost accounting, and expert parallelism).
-- **Part 5 — Sub-Quadratic & Selective Sequence Models.** Selective state spaces and state space
-  duality (Mamba, linear-attention/SSM duality, the chunked algorithm); modern recurrent models and
-  hybrid architectures (RWKV, xLSTM, DeltaNet, sliding-window hybrids).
+- **Part 5 — Sub-Quadratic & Selective Sequence Models.** Sparse and sub-quadratic attention
+  (static and content-routed patterns, sparse expressiveness, NSA); selective state spaces and state
+  space duality (Mamba, linear-attention/SSM duality, the chunked algorithm); modern recurrent
+  models and hybrid architectures (RWKV, xLSTM, DeltaNet, sliding-window hybrids).
 - **Part 6 — Multimodal Models.** Connectors and resamplers; discrete visual tokenization; unified
   multimodal models; multimodal evaluation.
 

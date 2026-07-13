@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "generatedBy": "scripts/corpus-manifest.mjs",
   "totals": {
-    "chapters": 20,
-    "labels": 260,
-    "learningObjectives": 90,
-    "proofMarkers": 189,
-    "printedNumberHits": 123
+    "chapters": 21,
+    "labels": 271,
+    "learningObjectives": 95,
+    "proofMarkers": 201,
+    "printedNumberHits": 129
   },
   "chapters": [
     {
@@ -1111,6 +1111,84 @@
       ]
     },
     {
+      "path": "src/content/transformers/17-sparse-attention.mdx",
+      "slug": "sparse-attention",
+      "title": "Sparse & Sub-Quadratic Attention",
+      "chapter": 17,
+      "part": 5,
+      "labelIds": [
+        "def-nsa-branches",
+        "def-sparse-attention",
+        "def-sparsemax",
+        "def-swa",
+        "prop-nsa-work",
+        "prop-sparse-edge-complexity",
+        "prop-sparsemax-support",
+        "prop-static-sparse-counts",
+        "prop-swa-edge-cache",
+        "prop-swa-receptive-field",
+        "rem-bigbird-universality",
+        "rem-trainable-sparse-frontier"
+      ],
+      "objectiveIds": [
+        "lo-content-and-distributional-sparsity",
+        "lo-native-sparse-attention",
+        "lo-sparse-edge-accounting",
+        "lo-sparse-expressiveness",
+        "lo-static-sparse-patterns"
+      ],
+      "xrefs": [
+        "def-causal-mask",
+        "def-cost-eq",
+        "def-moe",
+        "def-nsa-branches",
+        "def-selective-ssm",
+        "def-sparse-attention",
+        "prop-complexity",
+        "prop-decode-state",
+        "prop-kv-cache",
+        "prop-nsa-work",
+        "prop-sparse-edge-complexity",
+        "rem-bigbird-universality",
+        "thm-linattn-rnn",
+        "thm-online-softmax-exact",
+        "thm-universal-approx"
+      ],
+      "kindCounts": {
+        "definition": 4,
+        "proof": 6,
+        "proposition": 6,
+        "remark": 2
+      },
+      "proofMarkers": 12,
+      "printedNumberHits": [
+        {
+          "line": 358,
+          "text": "Exercise 17.1"
+        },
+        {
+          "line": 366,
+          "text": "Exercise 17.2"
+        },
+        {
+          "line": 374,
+          "text": "Exercise 17.3"
+        },
+        {
+          "line": 386,
+          "text": "Exercise 17.4"
+        },
+        {
+          "line": 394,
+          "text": "Exercise 17.5"
+        },
+        {
+          "line": 402,
+          "text": "Exercise 17.6"
+        }
+      ]
+    },
+    {
       "path": "src/content/transformers/18-selective-state-spaces.mdx",
       "slug": "selective-state-spaces",
       "title": "Selective State Spaces and State Space Duality",
@@ -1226,7 +1304,6 @@
         "def-hybrid-stack",
         "def-mlstm",
         "def-rwkv",
-        "def-swa",
         "prop-decode-state",
         "prop-mlstm-gated-state",
         "prop-rwkv-linattn",
@@ -1242,8 +1319,6 @@
       ],
       "xrefs": [
         "def-bidirectional-scan",
-        "def-causal",
-        "def-causal-mask",
         "def-delta",
         "def-hybrid-stack",
         "def-mlstm",
@@ -1263,6 +1338,8 @@
         "prop-rwkv-linattn",
         "prop-seq2seq-fixed-vector-bottleneck",
         "prop-state-recall",
+        "prop-swa-edge-cache",
+        "prop-swa-receptive-field",
         "rem-design-space",
         "thm-delta-descent",
         "thm-linattn-rnn",
@@ -1271,7 +1348,7 @@
       ],
       "kindCounts": {
         "corollary": 1,
-        "definition": 5,
+        "definition": 4,
         "proof": 6,
         "proposition": 4,
         "remark": 1,
@@ -1288,31 +1365,31 @@
           "text": "Exercise 19.3"
         },
         {
-          "line": 312,
+          "line": 296,
           "text": "chapter 2"
         },
         {
-          "line": 318,
+          "line": 302,
           "text": "Exercise 19.1"
         },
         {
-          "line": 326,
+          "line": 310,
           "text": "Exercise 19.2"
         },
         {
-          "line": 334,
+          "line": 318,
           "text": "Exercise 19.3"
         },
         {
-          "line": 342,
+          "line": 326,
           "text": "Exercise 19.4"
         },
         {
-          "line": 350,
+          "line": 334,
           "text": "Exercise 19.5"
         },
         {
-          "line": 358,
+          "line": 342,
           "text": "Exercise 19.6"
         }
       ]
