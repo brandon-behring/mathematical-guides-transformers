@@ -1,0 +1,405 @@
+---
+title: "Mixture-of-Experts"
+slug: mixture-of-experts
+chapter: 16
+part: 4
+description: "Conditional computation in the Transformer feed-forward layer: top-k routing and its local gradient, load balancing and expert capacity, token-choice versus expert-choice routing, and the separation of resident parameters, activated FLOPs, and active-expert traffic."
+last_verified: 2026-07-13
+rigor_level: rigorous
+prerequisites: [notation, transformer-block, training, training-optimizations, inference-optimizations]
+notation_introduced: ['E', 'k', '\mathbf s_t', '\mathbf p_t', '\mathcal S_t', '\mathcal A_B', 'A_B', 'C', 'D', '\mu_{\text{FFN}}', '\Phi_{\text{FFN}}']
+theorems: ['def-moe', 'prop-moe-router-gradient', 'def-moe-routing-objective', 'def-moe-capacity', 'prop-moe-capacity', 'def-expert-choice', 'prop-moe-flops']
+los:
+  - id: lo-moe-routing-and-gradient
+    statement: "Define top-k token-choice routing in the row-vector convention and derive its ordinary local gradient away from routing ties, distinguishing full-softmax masking from selected-softmax renormalization."
+  - id: lo-moe-routing-objective
+    statement: "Construct the Switch-style load-balancing objective and the router z-loss, identifying which quantities provide differentiable paths to the router."
+  - id: lo-moe-capacity-and-routing
+    statement: "Derive expert-capacity and overflow accounting, then compare token-choice and expert-choice routing by their row- and column-load constraints."
+  - id: lo-moe-cost-accounting
+    statement: "Define top-k mixture-of-experts routing and derive the distinct resident-capacity, activated-compute, and active-expert traffic terms, including their limiting cases."
+  - id: lo-moe-systems
+    statement: "Explain how expert parallelism redistributes per-device residency and traffic while adding routed-activation all-to-all communication."
+---
+
+import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
+import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
+import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import SolutionBox from '../../components/SolutionBox.astro';
+
+# Mixture-of-Experts
+
+**Where we are.** The transformer block applies one position-wise feed-forward network to every token (<XRef id="def-ffn" />). That dense FFN couples two resources: adding parameters also adds arithmetic to every token. A **mixture-of-experts** (MoE) layer breaks the coupling by storing many FFNs and evaluating only a routed subset for each token <Cite key="shazeer2017moe" />. This chapter makes the bargain precise. We define the router in the guide's row-vector convention, derive the gradient that trains it without a straight-through estimator, add the auxiliary objectives and capacity rule that keep expert loads usable, compare token-choice with expert-choice routing, and finally separate the three systems quantities that are too often conflated: resident parameters, activated arithmetic, and active-expert traffic. The task loss remains the cross-entropy of <XRef id="def-ce-loss" />; the new terms decide *which* FFN parameters receive each token and how that conditional work maps onto the memory and roofline models of <XRef id="def-train-memory" /> and <XRef id="def-cost-eq" />.
+
+## Conditional feed-forward networks
+
+Let $E$ be the number of experts and $k$ the number selected per token. Capacity grows with $E$; expert arithmetic per token grows with $k$. The router is a small linear map followed by softmax and a top-$k$ mask. Keeping those two operations separate matters: softmax supplies an ordinary derivative, while top-$k$ decides the sparse execution pattern.
+
+<Theorem kind="definition" name="Top-k mixture-of-experts layer" id="def-moe">
+A **top-$k$ mixture-of-experts layer** has $E$ parameter-distinct expert networks $\{\operatorname{FFN}_1,\dots,\operatorname{FFN}_E\}$ of identical input and output shape, a router $\mathbf W_r\in\R^{d\times E}$, and $1\le k\le E$. For token row $\mathbf x_t\in\R^d$, define
+$$
+\mathbf s_t\defeq\mathbf x_t\mathbf W_r\in\R^E,
+\qquad
+\mathbf p_t\defeq\softmax(\mathbf s_t),
+$$
+and let $\mathcal S_t$ be the indices of the $k$ largest scores, with a fixed deterministic rule for ties. Write $m_{t,i}\defeq\mathbf 1\{i\in\mathcal S_t\}$. Under the **full-softmax-then-mask** convention, the routed output is
+$$
+\operatorname{MoE}(\mathbf x_t)
+\defeq
+\sum_{i=1}^{E}m_{t,i}p_{t,i}\,\operatorname{FFN}_i(\mathbf x_t).
+\tag{1}
+$$
+A second top-$k$ convention renormalizes only the selected gates, replacing $m_{t,i}p_{t,i}$ by
+$$
+\bar p_{t,i}
+\defeq
+\frac{m_{t,i}e^{s_{t,i}}}{\sum_{j\in\mathcal S_t}e^{s_{t,j}}}.
+\tag{2}
+$$
+Both conventions evaluate exactly the $k$ experts in $\mathcal S_t$; they differ only in gate scale and router gradient.
+
+For a served batch of $T\ge1$ token positions, the **active-expert union** is
+$$
+\mathcal A_B\defeq\bigcup_{t=1}^{T}\mathcal S_t,
+\qquad
+A_B\defeq|\mathcal A_B|,
+\qquad
+k\le A_B\le\min(E,Tk).
+$$
+Experts outside $\mathcal S_t$ are not evaluated for token $t$; experts outside $\mathcal A_B$ are not evaluated anywhere in the batch.
+</Theorem>
+
+<MarginNote variant="formula" label="Two independent dials">$E$ counts stored expert FFNs; $k$ counts expert calls per token. Increasing $E$ at fixed $k$ adds conditional capacity without proportionally increasing expert FLOPs.</MarginNote>
+
+The full-softmax convention is intentional: it includes every logit in the softmax denominator, then masks expert execution. In particular, for $k=1$ the selected gate is not identically one, so the task loss can still change the router through that gate, as in Switch routing <Cite key="fedus2021switch" />. Under selected-only renormalization, $k=1$ gives $\bar p=1$ and the task-loss gradient through the gate is zero; auxiliary routing objectives still provide a gradient. The next proposition states both derivatives so that the convention can never be changed silently.
+
+<Theorem kind="proposition" name="The top-k router has an ordinary local gradient" id="prop-moe-router-gradient">
+Fix one token and abbreviate $\mathbf u_i\defeq\operatorname{FFN}_i(\mathbf x)$. Suppose either $k=E$, or the $k$-th largest router score is strictly greater than the $(k+1)$-st. Then the selected set $\mathcal S$ is constant in a neighborhood of $\mathbf s$.
+
+For the full-softmax-then-mask output $\mathbf y=\sum_i m_i p_i\mathbf u_i$ of (1), every logit has derivative
+$$
+\frac{\partial\mathbf y}{\partial s_j}
+=p_j\bigl(m_j\mathbf u_j-\mathbf y\bigr).
+\tag{3}
+$$
+For the selected-softmax output $\bar{\mathbf y}=\sum_{i\in\mathcal S}\bar p_i\mathbf u_i$ of (2),
+$$
+\frac{\partial\bar{\mathbf y}}{\partial s_j}
+=
+\begin{cases}
+\bar p_j(\mathbf u_j-\bar{\mathbf y}), & j\in\mathcal S,\\
+\mathbf 0, & j\notin\mathcal S.
+\end{cases}
+\tag{4}
+$$
+For either convention and a scalar loss $\mathcal L$, treat gradient vectors as columns. The row-vector score map $\mathbf s=\mathbf x\mathbf W_r$ then gives
+$$
+\nabla_{\mathbf W_r}\mathcal L
+=\mathbf x^\top\bigl(\nabla_{\mathbf s}\mathcal L\bigr)^\top.
+\tag{5}
+$$
+Thus ordinary backpropagation trains the router away from score ties; no straight-through estimator is required. The routing map is generally nondifferentiable on the tie boundaries where $\mathcal S$ changes.
+</Theorem>
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: freeze the selected set and apply the softmax Jacobian. In full-softmax masking, where can an unselected logit still enter the calculation? What changes when the denominator contains only selected logits?</MarginNote>
+
+<Theorem kind="proof">
+**Step 1 (freeze membership).** The strict score gap persists under a sufficiently small perturbation, so every $m_i$ is locally constant.
+
+**Step 2 (full softmax).** <XRef id="prop-softmax-jacobian" /> gives $\partial p_i/\partial s_j=p_i(\delta_{ij}-p_j)$. Therefore
+$$
+\frac{\partial\mathbf y}{\partial s_j}
+=\sum_i m_i\mathbf u_i\frac{\partial p_i}{\partial s_j}
+=m_jp_j\mathbf u_j-p_j\sum_i m_ip_i\mathbf u_i
+=p_j(m_j\mathbf u_j-\mathbf y),
+$$
+which is (3). Notice that an unselected logit has $m_j=0$ but may still have derivative $-p_j\mathbf y$ through the full-softmax denominator; the *unselected expert parameters* receive no gradient because their $\mathbf u_j$ was never evaluated.
+
+**Step 3 (selected softmax).** For (4), hold $\mathcal S$ fixed and recognize $(\bar p_i)_{i\in\mathcal S}$ as a softmax restricted to the selected logits. The same Jacobian calculation over $i\in\mathcal S$ gives $\bar p_j(\mathbf u_j-\bar{\mathbf y})$ for a selected $j$, while an unselected score does not occur in either the numerator or denominator and has derivative zero.
+
+**Step 4 (router matrix).** Finally $s_j=\sum_a x_aW_{r,aj}$, so $\partial\mathcal L/\partial W_{r,aj}=x_a\,\partial\mathcal L/\partial s_j$, which is the outer product (5) after transposing the column score gradient into a row. A straight-through estimator instead assigns a heuristic derivative to a hard or stochastic gate <Cite key="bengio2013estimating" />; nothing in this local calculation does so. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="pattern" label="Differentiate locally">Top-$k$ membership is piecewise constant. Differentiate the gate values inside one strict-order region; do not pretend that the discrete membership jump has a derivative at a tie.</MarginNote>
+
+## Routing objectives: balance and logit scale
+
+The task loss can train gate values, but it does not force different tokens to use different experts. A router may collapse onto a small subset, overloading those devices and starving the remaining expert parameters of updates. Token-choice MoEs therefore add a balance term. A second term controls the otherwise-free common shift of the router logits.
+
+<Theorem kind="definition" name="Switch-style routing objective and router z-loss" id="def-moe-routing-objective">
+For a top-$1$ router over a batch of $T$ tokens and $E$ experts, let $p_{t,i}=\softmax(\mathbf s_t)_i$ and $a_t=\arg\max_i p_{t,i}$. Define the hard dispatch fraction and mean router probability
+$$
+f_i\defeq\frac1T\sum_{t=1}^{T}\mathbf 1\{a_t=i\},
+\qquad
+P_i\defeq\frac1T\sum_{t=1}^{T}p_{t,i}.
+$$
+The **Switch-style load-balancing loss** <Cite key="fedus2021switch" /> is
+$$
+\mathcal L_{\mathrm{bal}}
+\defeq E\sum_{i=1}^{E}\operatorname{sg}(f_i)P_i,
+\tag{6}
+$$
+where $\operatorname{sg}$ means that the discrete dispatch fractions are treated as constants during backpropagation. The **router z-loss** of ST-MoE <Cite key="zoph2022stmoe" /> is
+$$
+\mathcal L_z
+\defeq\frac1T\sum_{t=1}^{T}
+\left(\log\sum_{i=1}^{E}e^{s_{t,i}}\right)^2.
+\tag{7}
+$$
+With task loss $\mathcal L_{\mathrm{task}}$ (for language modeling, <XRef id="def-ce-loss" />), a routed model may optimize
+$$
+\mathcal L_{\mathrm{total}}
+\defeq
+\mathcal L_{\mathrm{task}}
++\lambda_{\mathrm{bal}}\mathcal L_{\mathrm{bal}}
++\lambda_z\mathcal L_z,
+\qquad
+\lambda_{\mathrm{bal}},\lambda_z\ge0.
+\tag{8}
+$$
+</Theorem>
+
+Both $\mathbf f$ and $\mathbf P$ sum to one. At the ideal uniform endpoint $f_i=P_i=1/E$, (6) equals $1$; at a fully confident one-expert collapse $\mathbf f=\mathbf P=\mathbf e_j$, it equals $E$. These are reference endpoints, not a lower-bound or optimum theorem: even valid coupled top-$1$ batches can have a value below $1$. In the actual computation graph, $\mathbf f$ supplies the hard load measurement and $\mathbf P$ supplies the differentiable path.
+
+The z-loss also exposes a degree of freedom that routing probabilities cannot identify. Softmax is invariant to adding the same constant to every score (<XRef id="prop-softmax-translation-inv" />), whereas the log-partition $z_t\defeq\log\sum_i e^{s_{t,i}}$ increases by that constant. Equation (7) therefore penalizes the otherwise-unregularized common translation. Its actual gradient is
+$$
+\frac{\partial\mathcal L_z}{\partial s_{t,j}}
+=\frac{2}{T}z_t p_{t,j},
+$$
+which is generally not uniform across experts: the z-loss can also alter relative logits and need not preserve the winning expert during optimization. ST-MoE reported improved stability for its studied models; (7) defines the mechanism, not a universal stability theorem. For top-$k$ routing, one direct normalized extension replaces $f_i$ by the assignment share $(Tk)^{-1}\sum_t m_{t,i}$, but the precise balance objective is a design choice rather than a consequence of <XRef id="def-moe" />.
+
+<MarginNote variant="formula" label="Two router corrections">Balance: *where* probability and dispatch go. Z-loss: *how large* the logits become along softmax's shift-invariant direction.</MarginNote>
+
+## Expert capacity and routing direction
+
+Balance is encouraged, not guaranteed. Static-shape implementations such as Switch allocate each expert a finite capacity; dropless block-sparse systems are a separate alternative discussed below. Under fixed capacity, overflow makes local load imbalance operationally visible.
+
+<Theorem kind="definition" name="Expert capacity and overflow" id="def-moe-capacity">
+For a $T$-token top-$k$ batch, let
+$$
+n_i\defeq\sum_{t=1}^{T}m_{t,i}
+$$
+be the number of token-to-expert assignments received by expert $i$. Given capacity factor $c_{\mathrm{cap}}>0$, define the integer **expert capacity** and total **overflow**
+$$
+C\defeq\left\lceil c_{\mathrm{cap}}\frac{Tk}{E}\right\rceil,
+\qquad
+D\defeq\sum_{i=1}^{E}(n_i-C)_+,
+\qquad
+(z)_+\defeq\max(z,0).
+\tag{9}
+$$
+At most $C$ assignments are executed by each expert; the remaining $D$ assignments overflow. A static implementation may pad underfilled experts up to $C$. In Switch's top-$1$ construction, overflow skips that token's expert computation while the residual path carries its representation onward <Cite key="fedus2021switch" />. With $k>1$, $D$ counts dropped expert *assignments*: a token may retain its other selected expert contributions, according to the implementation's combine rule.
+</Theorem>
+
+<Theorem kind="proposition" name="Capacity conserves routed assignments" id="prop-moe-capacity">
+Under <XRef id="def-moe-capacity" />,
+$$
+\sum_{i=1}^{E}\min(n_i,C)=Tk-D.
+\tag{10}
+$$
+Moreover, $D=0$ if and only if every expert load satisfies $n_i\le C$. If the loads differ by at most one and $c_{\mathrm{cap}}\ge1$, then $D=0$. Although $c_{\mathrm{cap}}\ge1$ implies at least $Tk$ total slots across experts, $EC\ge Tk$ alone does not prevent overflow: capacity is a per-expert constraint.
+</Theorem>
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: rewrite $\min(n_i,C)$ using $(n_i-C)_+$. What does summing that identity say about executed and overflowed assignments?</MarginNote>
+
+<Theorem kind="proof">
+**Conservation.** Every token selects exactly $k$ experts, so $\sum_i n_i=Tk$. For each expert,
+$$
+\min(n_i,C)=n_i-(n_i-C)_+.
+$$
+Summing gives $Tk-D$, proving (10).
+
+**Zero overflow.** Each summand in $D$ is nonnegative, hence $D=0$ exactly when every $(n_i-C)_+=0$, equivalently every $n_i\le C$.
+
+**Balanced loads and the aggregate-capacity counterexample.** If integer loads differ by at most one while summing to $Tk$, their maximum is $\lceil Tk/E\rceil$. For $c_{\mathrm{cap}}\ge1$,
+$$
+C=\left\lceil c_{\mathrm{cap}}Tk/E\right\rceil\ge\left\lceil Tk/E\right\rceil,
+$$
+so no expert overflows. Finally, total capacity is not local capacity: take $E=4$, $Tk=16$, and $c_{\mathrm{cap}}=1$. Then $C=4$ and $EC=Tk=16$, yet the collapsed load vector $(16,0,0,0)$ overflows by $16-4=12$ assignments at the first expert. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="pattern" label="Local, not global">$EC\ge Tk$ says the machine has enough slots in aggregate. Routing must still place no more than $C$ assignments in any one expert.</MarginNote>
+
+One can remove that particular imbalance by reversing who chooses whom. Write all router scores as a matrix $\mathbf S\in\R^{T\times E}$: rows are tokens and columns are experts.
+
+<Theorem kind="definition" name="Token-choice and expert-choice routing" id="def-expert-choice">
+In **token-choice top-$k$ routing**, each row of $\mathbf S$ selects its $k$ largest columns. Its assignment matrix $\mathbf M\in\{0,1\}^{T\times E}$ therefore obeys
+$$
+\sum_{i=1}^{E}M_{t,i}=k\quad\text{for every token }t,
+$$
+while the expert loads $\sum_tM_{t,i}$ are variable.
+
+In **expert-choice routing** <Cite key="zhou2022expertchoice" />, fix an integer bucket size $1\le b\le T$ and let each expert column select its $b$ highest-scoring token rows, using the same fixed tie rule. Then
+$$
+\sum_{t=1}^{T}M_{t,i}=b\quad\text{for every expert }i,
+$$
+so expert load is exactly fixed, while a token's number of selected experts $\sum_iM_{t,i}$ is variable and may be zero, one, or greater than one.
+</Theorem>
+
+| Routing direction | Fixed quantity | Variable quantity | Operational consequence |
+|---|---:|---:|---|
+| Token chooses experts | $k$ assignments per token before capacity | tokens per expert | capacity and overflow may skip some assigned expert calls |
+| Expert chooses tokens | $b$ tokens per expert | experts per token | exact expert load; some tokens may receive no expert or several |
+
+During training, BASE Layers formulate token-to-expert routing as a linear assignment with equal tokens per expert, obtaining balanced compute without a separate balancing loss <Cite key="lewis2021base" />. At test time, BASE assigns each token greedily to its best expert, so exact balance is no longer guaranteed. It is another answer to the same matrix-constraint question: token-choice fixes row sums, expert-choice fixes column sums, and a global assignment can constrain both through an optimization problem.
+
+## A compact MoE lineage
+
+The routing and systems choices above appeared in a sequence of models. The table records only the design fact needed here; the empirical scale or comparison remains scoped to the cited paper.
+
+<Theorem kind="remark" name="Landmarks in sparse Transformer experts" id="rem-moe-landmarks">
+| Landmark | Routed design or result |
+|---|---|
+| **GShard** | Top-$2$ Transformer experts plus automatic sharding, demonstrated beyond $600$B parameters for multilingual translation <Cite key="lepikhin2020gshard" />. |
+| **Switch Transformer** | Top-$1$ routing, an explicit expert-capacity factor with overflow, and the differentiable balance objective (6) <Cite key="fedus2021switch" />. |
+| **GLaM** | A sparsely activated language model that used conditional experts to increase capacity at lower training cost than its dense comparisons <Cite key="du2021glam" />. |
+| **ST-MoE** | The router z-loss (7) and a $269$B sparse model whose reported compute was comparable to a $32$B dense encoder-decoder <Cite key="zoph2022stmoe" />. |
+| **BASE Layers** | Training-time linear-assignment routing with equal tokens per expert and no extra load-balancing loss; test-time routing is greedy and need not be exactly balanced <Cite key="lewis2021base" />. |
+| **Mixtral** | Eight routed experts with two selected per token; the paper distinguishes $47$B parameters available from $13$B active per token <Cite key="jiang2024mixtral" />. |
+| **DeepSeekMoE** | Fine-grained routed experts plus always-on shared experts intended to isolate common knowledge from routed specialization <Cite key="dai2024deepseekmoe" />. |
+| **OLMoE** | A fully open MoE recipe with $7$B total parameters and $1$B active per input token <Cite key="muennighoff2024olmoe" />. |
+</Theorem>
+
+The active-versus-total examples motivate the capacity/compute split, but they do **not** establish a memory-traffic equation. Traffic depends on which experts a whole served batch activates and whether their weights can be reused. We now derive that third quantity from routing and the roofline model rather than presenting it as an empirical fact.
+
+## Resident capacity, activated compute, and traffic
+
+Three counts answer three different questions. **Resident capacity** asks what must fit somewhere. **Activated compute** asks how many expert calls run. **Traffic** asks which weight sets the current batch actually streams. The first is a placement constraint; the latter two enter time.
+
+<MarginNote variant="formula" label="Three quantities">Resident: $E\mu_{\text{FFN}}$. No-drop activated: $Tk\Phi_{\text{FFN}}$. Ideal batch traffic: $A_B\mu_{\text{FFN}}$. Only the last two enter the basic roofline time.</MarginNote>
+
+<Theorem kind="proposition" name="MoE resident capacity, activated compute, and traffic" id="prop-moe-flops">
+Let one expert's parameters occupy $\mu_{\text{FFN}}$ bytes and one expert call cost $\Phi_{\text{FFN}}$ FLOPs. For the $T$-token batch of <XRef id="def-moe" />, suppose every selected assignment executes (equivalently, capacity causes no drop, or a dropless kernel is used). Restricting this model to expert arithmetic and expert-weight traffic, and omitting router, activation, and inter-device communication traffic:
+1. **resident capacity** for the unsharded layer is $E\mu_{\text{FFN}}$ bytes;
+2. **activated compute** is $Tk\Phi_{\text{FFN}}$ FLOPs;
+3. if every active expert's weights are streamed once and reused across all routed tokens, the ideal expert-weight **traffic** is $A_B\mu_{\text{FFN}}$ bytes. Re-reads can only increase this term.
+
+The corresponding expert-kernel roofline bound and ideal arithmetic intensity are
+$$
+T_{\text{MoE}}\ge
+\max\!\left(\frac{Tk\Phi_{\text{FFN}}}{F},
+\frac{A_B\mu_{\text{FFN}}}{\mathcal B}\right),
+\qquad
+I_{\text{MoE}}=\frac{Tk\Phi_{\text{FFN}}}{A_B\mu_{\text{FFN}}}.
+$$
+Relative to one dense expert applied to the same $T$ tokens with one weight read, $I_{\text{MoE}}/I_{\text{dense}}=k/A_B$. The familiar $k/E$ ratio is only the limiting case $A_B=E$.
+</Theorem>
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: map $E$, $Tk$, and $A_B$ to three different questions—what must reside, how many expert calls execute, and how many distinct expert weight sets the batch touches. Which of those counts can reuse change?</MarginNote>
+
+<Theorem kind="proof">
+**Resident capacity.** There are $E$ parameter-disjoint experts of $\mu_{\text{FFN}}$ bytes each, so holding the unsharded layer requires $E\mu_{\text{FFN}}$ bytes whether or not a particular batch visits all of them.
+
+**Activated compute.** Under the no-drop premise, every one of the $T$ tokens calls exactly $k$ experts, producing $Tk$ calls at $\Phi_{\text{FFN}}$ FLOPs each and hence $Tk\Phi_{\text{FFN}}$ FLOPs.
+
+**Traffic.** The batch uses exactly the experts in $\mathcal A_B$. Under the stated once-streamed idealization, each of those $A_B$ weight sets contributes $\mu_{\text{FFN}}$ bytes once, for $A_B\mu_{\text{FFN}}$ bytes. A schedule or cache too small to retain an active expert may fetch it again, so this is the ideal working-set traffic, not a claim that physical traffic can never be larger.
+
+Substitution of the activated FLOPs and ideal traffic into <XRef id="def-cost-eq" /> gives the bound and their quotient gives $I_{\text{MoE}}$. A dense expert applied to $T$ tokens performs $T\Phi_{\text{FFN}}$ FLOPs for one $\mu_{\text{FFN}}$-byte weight stream, so its ideal intensity is $T\Phi_{\text{FFN}}/\mu_{\text{FFN}}$; division leaves $k/A_B$. Setting $A_B=E$ yields $k/E$. For a single token, $T=1$ and $A_B=k$, so the ideal intensity equals the dense expert's: conditional compute reduces the number of expert calls relative to evaluating all $E$, but does not by itself make that one routed token stream all $E$ experts. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="pattern" label="Reuse decides traffic">If all tokens repeat the same $k$ experts, $A_B=k$ and ideal intensity matches dense. If routing covers all experts, $A_B=E$ and the ratio becomes $k/E$. Residency remains $E\mu$ in both cases.</MarginNote>
+
+The proposition assumes $E$ identical routed experts and exactly $k$ executed calls per token. If capacity drops $D>0$ assignments, activated compute becomes $(Tk-D)\Phi_{\text{FFN}}$ and the traffic term must use the union of experts with at least one *executed* assignment; <XRef id="prop-moe-capacity" /> proves the first count. An architecture with always-on shared experts, such as DeepSeekMoE, adds their resident bytes and $T$ calls separately; they are not hidden inside the routed $k$ or $A_B$. Likewise, $A_B\mu_{\text{FFN}}$ is a derived ideal working-set term, not a latency claim borrowed from the active-parameter counts in the landmark table.
+
+## Expert-parallel systems
+
+Conditional execution produces irregular token groups. Systems can either pad those groups to static capacity, drop overflow, or operate directly on the irregular blocks. MegaBlocks uses block-sparse kernels for the last option, retaining dropless expert computation without padding every expert to the largest load <Cite key="gale2022megablocks" />. Distribution adds a second problem: no one device may be able to hold every expert.
+
+<Theorem kind="remark" name="Expert parallelism redistributes bytes and adds all-to-all" id="rem-expert-parallel">
+In expert-parallel systems such as DeepSpeed-MoE, **expert parallelism** partitions the $E$ experts across devices and dispatches tokens to their owners <Cite key="rajbhandari2022deepspeedmoe" />. If device $p$ holds $E_p$ experts and its active subset has size $A_{B,p}$, its resident capacity is $E_p\mu_{\text{FFN}}$ and ideal local weight traffic is $A_{B,p}\mu_{\text{FFN}}$. Across a disjoint partition,
+$$
+\sum_pE_p=E,
+\qquad
+\sum_pA_{B,p}=A_B.
+$$
+Sharding therefore redistributes the resident and active working sets rather than eliminating the global $A_B\mu_{\text{FFN}}$ ideal traffic. The new term is dynamic all-to-all communication: activations travel to the devices owning their selected experts, and expert outputs travel back. Expert parallelism solves per-device capacity and placement in the same broad sense that parameter sharding does in <XRef id="def-zero" />, but its latency benefit depends additionally on routing balance, local expert reuse, and the communication term omitted from the basic expert-kernel roofline bound.
+</Theorem>
+
+This completes Part 4's efficiency arc. Training optimization changed what each worker stores; inference optimization changed how fixed computations stream bytes; MoE changes which parameters run at all. The next part turns from conditional FFNs to sub-quadratic sequence mixing.
+
+## Exercises
+
+Attempt each before expanding its solution.
+
+**Exercise 16.1 (Derive).** Starting from the softmax Jacobian, derive (3) for the full-softmax-then-mask router and (4) for selected-softmax renormalization. What happens to an unselected logit's gradient in each convention, and why does neither calculation differentiate the top-$k$ membership boundary?
+
+<SolutionBox>
+
+With $\mathcal S$ locally fixed, $m_i$ is constant. For $\mathbf y=\sum_i m_ip_i\mathbf u_i$ and $\partial p_i/\partial s_j=p_i(\delta_{ij}-p_j)$,
+$$
+\frac{\partial\mathbf y}{\partial s_j}
+=\sum_i m_i\mathbf u_i p_i(\delta_{ij}-p_j)
+=m_jp_j\mathbf u_j-p_j\mathbf y
+=p_j(m_j\mathbf u_j-\mathbf y).
+$$
+Thus an unselected full-softmax logit has derivative $-p_j\mathbf y$, generally nonzero through the shared denominator. Under selected renormalization, $(\bar p_i)_{i\in\mathcal S}$ is a softmax only over selected scores, so the identical calculation gives $\bar p_j(\mathbf u_j-\bar{\mathbf y})$ for $j\in\mathcal S$; an unselected score appears nowhere and has derivative zero. Both calculations assume a strict gap, which makes membership locally constant. At a tie where membership can change, that premise fails and the routed map is generally nondifferentiable. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 16.2 (Compute).** A top-$1$ router has $E=2$, dispatch fractions $\mathbf f=(3/4,1/4)$, and mean router probabilities $\mathbf P=(0.7,0.3)$. Compute $\mathcal L_{\mathrm{bal}}$. Compare it with the uniform endpoint and with a fully confident one-expert collapse. Which factor carries the ordinary gradient? Separately, for one token with scores $(0,0)$, compute $\mathcal L_z$; then add the common shift $c=-\log2$ to both scores and recompute the routing probabilities and $\mathcal L_z$.
+
+<SolutionBox>
+
+Equation (6) gives
+$$
+\mathcal L_{\mathrm{bal}}
+=2\left(\frac34\cdot0.7+\frac14\cdot0.3\right)
+=2(0.525+0.075)=1.2.
+$$
+Uniform routing has $\mathbf f=\mathbf P=(1/2,1/2)$ and loss $2(1/4+1/4)=1$; fully confident collapse has $\mathbf f=\mathbf P=(1,0)$ and loss $2$. The hard counts $\mathbf f$ are stop-gradient; the mean probabilities $\mathbf P$ carry the ordinary router gradient.
+
+For scores $(0,0)$, the probabilities are $(1/2,1/2)$ and
+$$
+\mathcal L_z=(\log(e^0+e^0))^2=(\log2)^2.
+$$
+After adding $c=-\log2$, translation invariance leaves the probabilities at $(1/2,1/2)$, while the log-partition becomes $\log(2e^{-\log2})=0$ and hence $\mathcal L_z=0$. Thus the z-loss identifies a common shift that the routing distribution cannot. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 16.3 (Compute).** A top-$2$ batch has $T=8$, $E=4$, $c_{\mathrm{cap}}=1$, and expert loads $(8,4,3,1)$. Compute $C$, $D$, and the number of executed assignments. Why does this overflow even though total capacity equals the number of assignments? Compare with loads $(4,4,4,4)$.
+
+<SolutionBox>
+
+There are $Tk=16$ assignments and
+$$
+C=\left\lceil\frac{16}{4}\right\rceil=4.
+$$
+Only the first expert overflows, by $8-4=4$, so $D=4$ and (10) gives $16-4=12$ executed assignments. Total capacity is $EC=16$, but four unused slots are stranded across the underfilled third and fourth experts; capacity is enforced per expert. For loads $(4,4,4,4)$ every $n_i\le C$, so $D=0$ and all $16$ assignments execute. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 16.4 (Compute).** Consider three tokens and two experts with score matrix
+$$
+\mathbf S=
+\begin{bmatrix}
+9&10\\
+8&7\\
+0&6
+\end{bmatrix}.
+$$
+Find the assignment matrix for token-choice with $k=1$, then for expert-choice with bucket size $b=1$. Verify the fixed row sums and fixed column sums, respectively, and report the number of experts received by each token under expert-choice.
+
+<SolutionBox>
+
+Token-choice takes the largest entry in each row, so tokens select experts $(2,1,2)$ and
+$$
+\mathbf M_{\mathrm{token}}=
+\begin{bmatrix}0&1\\1&0\\0&1\end{bmatrix}.
+$$
+Every row sums to $k=1$, while the column loads are $(1,2)$. Expert-choice takes the largest entry in each column. Both columns attain their maxima in row $1$, so
+$$
+\mathbf M_{\mathrm{expert}}=
+\begin{bmatrix}1&1\\0&0\\0&0\end{bmatrix}.
+$$
+Every column sums to $b=1$, while token expert-counts are $(2,0,0)$. This is exact expert balance with variable compute per token. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 16.5 (Derive).** A top-$2$ MoE has $E=64$ experts. Assume every selected assignment executes and each active expert's weights are streamed once per batch. For a batch of $T=32$ token positions, compute resident capacity, activated FLOPs, ideal weight traffic, and the intensity ratio to a dense expert in two cases: (a) every token selects the same two experts; (b) the active union covers all $64$ experts. Write the answers in terms of $\mu_{\text{FFN}}$ and $\Phi_{\text{FFN}}$, then state what expert parallelism changes.
+
+<SolutionBox>
+
+In both cases resident capacity is $E\mu_{\text{FFN}}=64\mu_{\text{FFN}}$ and activated compute is $Tk\Phi_{\text{FFN}}=64\Phi_{\text{FFN}}$. **(a)** Repeated routing gives $A_B=2$, so ideal traffic is $2\mu_{\text{FFN}}$ and $I_{\text{MoE}}/I_{\text{dense}}=k/A_B=1$. **(b)** Full coverage gives $A_B=64$, so ideal traffic is $64\mu_{\text{FFN}}$ and the intensity ratio is $2/64=1/32$. Expert parallelism partitions the $64\mu_{\text{FFN}}$ resident capacity and the active working set across devices; it leaves the global $64\Phi_{\text{FFN}}$ activated compute and, under the same once-read idealization, the global $A_B\mu_{\text{FFN}}$ expert-weight traffic unchanged, while adding routed-activation all-to-all communication. $\qquad\blacksquare$
+
+</SolutionBox>

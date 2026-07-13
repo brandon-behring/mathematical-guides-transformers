@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "generatedBy": "scripts/corpus-manifest.mjs",
   "totals": {
-    "chapters": 19,
-    "labels": 254,
-    "learningObjectives": 86,
-    "proofMarkers": 183,
-    "printedNumberHits": 119
+    "chapters": 20,
+    "labels": 260,
+    "learningObjectives": 90,
+    "proofMarkers": 189,
+    "printedNumberHits": 123
   },
   "chapters": [
     {
@@ -970,17 +970,14 @@
         "def-affine-quant",
         "def-cost-eq",
         "def-kv-cache",
-        "def-moe",
         "def-online-softmax",
         "def-spec-decode",
         "prop-decode-cost",
         "prop-kv-memory",
         "prop-memory-bound",
-        "prop-moe-flops",
         "prop-quant-error",
         "prop-spec-speedup",
         "rem-activation-quant",
-        "rem-expert-parallel",
         "rem-flash-versions",
         "rem-kv-bytes",
         "rem-kv-selection-exactness",
@@ -992,7 +989,6 @@
         "lo-affine-quantization-error",
         "lo-inference-roofline",
         "lo-kv-cache-memory-and-compute",
-        "lo-moe-cost-accounting",
         "lo-online-softmax-and-flash-attention",
         "lo-speculative-decoding-speedup"
       ],
@@ -1009,6 +1005,7 @@
         "prop-kv-cache",
         "prop-kv-memory",
         "prop-memory-bound",
+        "prop-moe-flops",
         "prop-prefix-reuse",
         "prop-quant-error",
         "prop-softmax-translation-inv",
@@ -1017,37 +1014,99 @@
         "thm-online-softmax-exact"
       ],
       "kindCounts": {
-        "definition": 6,
-        "proof": 7,
-        "proposition": 6,
-        "remark": 7,
+        "definition": 5,
+        "proof": 6,
+        "proposition": 5,
+        "remark": 6,
         "theorem": 1
       },
-      "proofMarkers": 13,
+      "proofMarkers": 11,
       "printedNumberHits": [
         {
-          "line": 341,
+          "line": 286,
           "text": "Exercise 15.1"
         },
         {
-          "line": 349,
+          "line": 294,
           "text": "Exercise 15.2"
         },
         {
-          "line": 357,
+          "line": 302,
           "text": "Exercise 15.3"
         },
         {
-          "line": 371,
+          "line": 316,
           "text": "Exercise 15.4"
         },
         {
-          "line": 379,
+          "line": 324,
           "text": "Exercise 15.5"
+        }
+      ]
+    },
+    {
+      "path": "src/content/transformers/16-mixture-of-experts.mdx",
+      "slug": "mixture-of-experts",
+      "title": "Mixture-of-Experts",
+      "chapter": 16,
+      "part": 4,
+      "labelIds": [
+        "def-expert-choice",
+        "def-moe",
+        "def-moe-capacity",
+        "def-moe-routing-objective",
+        "prop-moe-capacity",
+        "prop-moe-flops",
+        "prop-moe-router-gradient",
+        "rem-expert-parallel",
+        "rem-moe-landmarks"
+      ],
+      "objectiveIds": [
+        "lo-moe-capacity-and-routing",
+        "lo-moe-cost-accounting",
+        "lo-moe-routing-and-gradient",
+        "lo-moe-routing-objective",
+        "lo-moe-systems"
+      ],
+      "xrefs": [
+        "def-ce-loss",
+        "def-cost-eq",
+        "def-ffn",
+        "def-moe",
+        "def-moe-capacity",
+        "def-train-memory",
+        "def-zero",
+        "prop-moe-capacity",
+        "prop-softmax-jacobian",
+        "prop-softmax-translation-inv"
+      ],
+      "kindCounts": {
+        "definition": 4,
+        "proof": 3,
+        "proposition": 3,
+        "remark": 2
+      },
+      "proofMarkers": 8,
+      "printedNumberHits": [
+        {
+          "line": 325,
+          "text": "Exercise 16.1"
         },
         {
-          "line": 387,
-          "text": "Exercise 15.6"
+          "line": 340,
+          "text": "Exercise 16.2"
+        },
+        {
+          "line": 360,
+          "text": "Exercise 16.3"
+        },
+        {
+          "line": 372,
+          "text": "Exercise 16.4"
+        },
+        {
+          "line": 399,
+          "text": "Exercise 16.5"
         }
       ]
     },

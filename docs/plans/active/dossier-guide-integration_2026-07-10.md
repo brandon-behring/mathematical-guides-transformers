@@ -1,6 +1,6 @@
 # Dossier→guide integration (Track A) — 6-part restructure, review-hardened
 
-**Status:** execution in progress; A0–A3 complete, A4 existing-chapter enrichment next. Supersedes
+**Status:** execution in progress; A0–A5 complete, A6 sparse-attention authoring next. Supersedes
 `docs/notes/sparse-attention-chapter-ideas_2026-07-09.md`. Companion: `topic-gap-expansion_2026-07-10.md` (Track B).
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
@@ -28,8 +28,8 @@ numbers", with the dossier as the verbatim-anchored provenance layer.
 
 Part titles live only as prose in `README.md` (frontmatter carries the numeric `part:`). **IDs are semantic /
 chapter-free** (precedent: ch00 `def-softmax`, all `fig-*` — they pass `validate`), so this and future restructures do
-not renumber IDs. Final display numbers deliberately reserve 08/11/13 for Track B and 16/17 for Track A; current
-chapters keep number-free slugs while those gaps are unfilled.
+not renumber IDs. Final display numbers deliberately reserve 08/11/13 for Track B and 17 for Track A; A5 filled 16
+without changing any existing number-free slug.
 
 - **P1 Foundations:** 00 Notation, 01 Input Representations (+ BPE section — see Track B)
 - **P2 Recurrence & Linear State:** 02 Recurrent Networks, 03 Linear Recurrences & SSM
@@ -37,7 +37,7 @@ chapters keep number-free slugs while those gaps are unfilled.
   **08 reserved — In-Context Learning**, 09 Encoder-Decoder Families, 10 Training, **11 reserved — RLHF/DPO**,
   **12 Encoder Readouts, Contrastive Alignment, and Detection** (moved from old P4; coda).
 - **P4 Efficient & Conditional Computation:** **13 reserved — Scaling Laws**, 14 Training Optimizations,
-  15 Inference Optimizations, **16 reserved — Mixture-of-Experts**
+  15 Inference Optimizations, **16 Mixture-of-Experts**
 - **P5 Sub-Quadratic & Selective Sequence Models:** **17 reserved — Sparse & Sub-Quadratic Attention**,
   18 Selective State Spaces (formerly ch13), 19 Modern Recurrent & Hybrid (formerly ch14)
 - **P6 Multimodal Models:** 20 Connectors, 21 Discrete Visual Tokenization (+ VQ-VAE on-ramp),
@@ -57,9 +57,14 @@ enc-dec taxonomy. **Gaps to resolve before/while authoring:**
    DERIVE the three-quantity model from the ch15 roofline (`def-cost-eq`) + routing, citing the anchored param/FLOP
    facts as grounding** (a derivation needs no primary). Add a MoE-serving primary top-up only if citing empirical
    traffic/latency numbers. It must NOT ship as a bare cited fact.
-2. **[HIGH] MLA decoupled-RoPE** unanchored → targeted DeepSeek-V2 (2405.04434) top-up, or drop the mechanism.
-3. **[MED] Load-balancing aux-loss / capacity-factor** anchored only *negatively* → pull a positive excerpt from
-   Switch (2101.03961) / ST-MoE (2202.08906).
+2. **[HIGH] MLA decoupled-RoPE** unanchored → **resolved in A4 by omission**. The landed MLA definition is scoped
+   to content compression and does not claim the decoupled-RoPE mechanism.
+3. **[MED] Load-balancing aux-loss / capacity-factor** anchored only *negatively* → **resolved by explicit A5
+   primary-source top-ups**: Switch §2.1–2.2, Equations 1–6 (top-1 gate differentiation, expert capacity, overflow,
+   and the positive auxiliary balance loss) and ST-MoE §3.3, Equations 5–6 (router z-loss and total objective).
+   DeepSpeed-MoE §5.2–5.3 supplies the expert-partition/all-to-all mechanism, and BASE §3.2/§3.2.2 scopes exact
+   linear-assignment balancing to training versus greedy, potentially unbalanced inference. These are tagged `top-up`;
+   they are not mislabeled with the dossier's abstract-only evidence IDs.
 4. **[LOW] Synthesis-only** (NSA sliding-window branch + GQA-alignment, entmax "still $O(n^2)$" caveat, $\Theta(Lw)$
    receptive field): frame as derivations/standard results, not footnoted claims.
 
@@ -147,9 +152,10 @@ known correctness, and existing-chapter enrichment:
 3. **A2 mechanical re-part ONLY (complete)** — frontmatter `part:` moves plus matching README/CLAUDE metadata, no ID/content edit.
 4. **A3 semantic-ID + final-number migration (complete)** — allocate final 00–23 numbering once with planned gaps; generate the
    old→new/retired manifest; update every anchor class and printed number; pass the invariants below.
-5. **A4 existing-chapter enrichment (next)** — MLA, approximate KV selection/eviction, and ch02/ch09 citations.
-6. **A5 MoE chapter** — author AND extract from Inference Optimizations atomically.
-7. **A6 Sparse & Sub-Quadratic Attention chapter** — relocate sliding-window material atomically.
+5. **A4 existing-chapter enrichment (complete)** — MLA, approximate KV selection/eviction, and ch02/ch09 citations.
+6. **A5 MoE chapter (complete)** — authored and extracted from Inference Optimizations atomically; primary-paper
+   top-ups close the capacity/balance/z-loss/all-to-all evidence gate.
+7. **A6 Sparse & Sub-Quadratic Attention chapter (next)** — relocate sliding-window material atomically.
 8. **A7 apparatus + completeness + narrative repairs** — native glossary, local notation overrides, web+print quick
    reference/glossary, decoding, RMSNorm, VQ-VAE onramp, narrative sweep, and plan closeout.
 Each independently reviewable/mergeable. **Per-PR gate:** `npm run validate` + `npm run build` + 0 KaTeX errors + 0
