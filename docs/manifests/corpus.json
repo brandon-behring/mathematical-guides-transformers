@@ -3,7 +3,7 @@
   "generatedBy": "scripts/corpus-manifest.mjs",
   "totals": {
     "chapters": 19,
-    "labels": 252,
+    "labels": 254,
     "learningObjectives": 86,
     "proofMarkers": 183,
     "printedNumberHits": 119
@@ -220,35 +220,35 @@
       "proofMarkers": 10,
       "printedNumberHits": [
         {
-          "line": 164,
+          "line": 166,
           "text": "Exercise 2.3"
         },
         {
-          "line": 269,
+          "line": 273,
           "text": "Exercise 2.4"
         },
         {
-          "line": 346,
+          "line": 354,
           "text": "Exercise 2.1"
         },
         {
-          "line": 363,
+          "line": 371,
           "text": "Exercise 2.2"
         },
         {
-          "line": 376,
+          "line": 384,
           "text": "Exercise 2.3"
         },
         {
-          "line": 388,
+          "line": 396,
           "text": "Exercise 2.4"
         },
         {
-          "line": 396,
+          "line": 404,
           "text": "Exercise 2.5"
         },
         {
-          "line": 404,
+          "line": 412,
           "text": "Exercise 2.6"
         }
       ]
@@ -406,6 +406,7 @@
         "def-attention-head",
         "def-gqa",
         "def-mha",
+        "def-mla",
         "def-mqa",
         "fig-kv-sharing",
         "fig-mha-split-concat",
@@ -422,14 +423,16 @@
       ],
       "xrefs": [
         "def-attention",
+        "def-mla",
         "prop-decode-state",
         "prop-kv-cache",
+        "prop-kv-memory",
         "prop-mha-params",
         "thm-linattn-rnn",
         "thm-low-rank"
       ],
       "kindCounts": {
-        "definition": 4,
+        "definition": 5,
         "proof": 3,
         "proposition": 2,
         "remark": 1,
@@ -438,23 +441,23 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 203,
+          "line": 231,
           "text": "Exercise 5.1"
         },
         {
-          "line": 211,
+          "line": 239,
           "text": "Exercise 5.2"
         },
         {
-          "line": 219,
+          "line": 247,
           "text": "Exercise 5.3"
         },
         {
-          "line": 227,
+          "line": 255,
           "text": "Exercise 5.4"
         },
         {
-          "line": 235,
+          "line": 263,
           "text": "Exercise 5.5"
         }
       ]
@@ -679,11 +682,12 @@
         "prop-complexity",
         "prop-decode-cost",
         "prop-instantiations",
-        "prop-kv-memory",
+        "prop-kv-cache",
         "prop-prefix-reuse",
         "prop-scan",
         "prop-seq2seq-fixed-vector-bottleneck",
         "prop-sequential-depth",
+        "rem-kv-selection-exactness",
         "rem-three-archs",
         "thm-one-pass",
         "thm-zoh"
@@ -699,31 +703,31 @@
       "proofMarkers": 13,
       "printedNumberHits": [
         {
-          "line": 324,
+          "line": 328,
           "text": "Exercise 9.1"
         },
         {
-          "line": 332,
+          "line": 336,
           "text": "Exercise 9.2"
         },
         {
-          "line": 340,
+          "line": 344,
           "text": "Exercise 9.3"
         },
         {
-          "line": 348,
+          "line": 352,
           "text": "Exercise 9.4"
         },
         {
-          "line": 360,
+          "line": 364,
           "text": "Exercise 9.5"
         },
         {
-          "line": 368,
+          "line": 372,
           "text": "Exercise 9.6"
         },
         {
-          "line": 376,
+          "line": 380,
           "text": "Exercise 9.7"
         }
       ]
@@ -979,6 +983,7 @@
         "rem-expert-parallel",
         "rem-flash-versions",
         "rem-kv-bytes",
+        "rem-kv-selection-exactness",
         "rem-prefill-decode",
         "rem-spec-regime",
         "thm-online-softmax-exact"
@@ -995,6 +1000,7 @@
         "def-affine-quant",
         "def-cost-eq",
         "def-kv-cache",
+        "def-mla",
         "def-moe",
         "def-online-softmax",
         "def-softmax",
@@ -1014,33 +1020,33 @@
         "definition": 6,
         "proof": 7,
         "proposition": 6,
-        "remark": 6,
+        "remark": 7,
         "theorem": 1
       },
       "proofMarkers": 13,
       "printedNumberHits": [
         {
-          "line": 335,
+          "line": 341,
           "text": "Exercise 15.1"
         },
         {
-          "line": 343,
+          "line": 349,
           "text": "Exercise 15.2"
         },
         {
-          "line": 351,
+          "line": 357,
           "text": "Exercise 15.3"
         },
         {
-          "line": 365,
+          "line": 371,
           "text": "Exercise 15.4"
         },
         {
-          "line": 373,
+          "line": 379,
           "text": "Exercise 15.5"
         },
         {
-          "line": 381,
+          "line": 387,
           "text": "Exercise 15.6"
         }
       ]

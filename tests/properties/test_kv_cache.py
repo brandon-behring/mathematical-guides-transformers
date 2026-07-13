@@ -1,9 +1,12 @@
 """KV-cache accounting guards prop-kv-cache and prop-kv-memory.
 
 The tests deliberately keep key and value head counts and widths separate.
-That general form must survive every specialization to MHA, GQA, and MQA.
+That general form must survive every specialization to MHA, GQA, and MQA,
+while the MLA case keeps its distinct latent-width axis. A small attention
+counterexample also guards rem-kv-selection-exactness.
 """
 
+import math
 import unittest
 
 
@@ -15,6 +18,27 @@ def cache_width(h_k: int, d_k: int, h_v: int, d_v: int) -> int:
 def cache_entries(n: int, h_k: int, d_k: int, h_v: int, d_v: int) -> int:
     """Count scalar entries stored by one layer for a length-n request."""
     return n * cache_width(h_k, d_k, h_v, d_v)
+
+
+def latent_content_width(d_c: int) -> int:
+    """Return the persisted content width for the latent-only MLA case."""
+    return d_c
+
+
+def latent_content_entries(n: int, d_c: int) -> int:
+    """Count scalar entries in a length-n latent-only content cache."""
+    return n * latent_content_width(d_c)
+
+
+def selected_attention(
+    scores: list[float], values: list[float], retained: list[int]
+) -> float:
+    """Renormalize softmax over exactly the retained cache entries."""
+    weights = [math.exp(scores[index]) for index in retained]
+    normalizer = sum(weights)
+    return sum(
+        weight * values[index] for weight, index in zip(weights, retained)
+    ) / normalizer
 
 
 def cache_bytes(
@@ -38,6 +62,28 @@ def heterogeneous_cache_bytes(
 
 
 class KVCacheTests(unittest.TestCase):
+    def test_latent_width_is_independent_of_materialized_head_multiplicity(self):
+        """MLA's d_c is a separate axis, not a fractional GQA group count."""
+        d_c = 512
+        self.assertEqual(latent_content_width(d_c), 512)
+        self.assertEqual(latent_content_entries(4_096, d_c), 4_096 * 512)
+        head_counts = [32, 8, 1]
+        materialized = [cache_width(g, 128, g, 128) for g in head_counts]
+        latent = [latent_content_width(d_c) for _ in head_counts]
+        self.assertEqual(materialized, [8_192, 2_048, 256])
+        self.assertEqual(latent, [512, 512, 512])
+
+    def test_strict_selection_need_not_preserve_dense_attention(self):
+        """Reusing retained rows exactly does not make omitted rows irrelevant."""
+        scores = [0.0, 0.0]
+        values = [0.0, 2.0]
+        dense = selected_attention(scores, values, [0, 1])
+        strict_subset = selected_attention(scores, values, [0])
+        self.assertEqual(dense, 1.0)
+        self.assertEqual(strict_subset, 0.0)
+        self.assertNotEqual(strict_subset, dense)
+        self.assertEqual(selected_attention(scores, values, [0, 1]), dense)
+
     def test_heterogeneous_layers_sum_their_cache_widths(self):
         """The general model formula sums widths instead of multiplying by N."""
         widths = [1_024, 512, 256]

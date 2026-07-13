@@ -6,10 +6,11 @@ and asserts the closed forms, limiting cases, and cross-chapter consistencies th
 prose claims. A failing test means the prose and the math have drifted apart.
 
 **Current scope:** four quantitative families: the roofline cost-per-token
-equation, KV-cache width and memory (including unequal key/value widths), the
-three-quantity MoE accounting of residency/activated compute/ideal traffic, and
-SSD chunk-cost balance. The proof audit later extends this suite; it does not
-recreate it.
+equation; KV-cache width and memory (including unequal key/value widths, latent
+cached-state accounting, and a dense-exactness counterexample for strict cache
+selection); the three-quantity MoE accounting of residency/activated
+compute/ideal traffic; and SSD chunk-cost balance. The proof audit later extends
+this suite; it does not recreate it.
 
 **Design.** Tests are self-contained executable assurance specifications, not a
 parser for MDX mathematics. `tests/properties/coverage.json` maps each guarded

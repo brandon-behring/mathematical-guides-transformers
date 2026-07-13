@@ -4,7 +4,7 @@ slug: recurrent-networks
 chapter: 2
 part: 2
 description: "The sequence model before attention: the recurrent state and its unrolled computation graph, the backpropagation-through-time gradient as a sum over time of chain-rule products, the geometric vanishing/exploding gradient bound, the LSTM/GRU gated additive remedy and the constant error carousel, the seq2seq encoder-decoder with its fixed-vector bottleneck, and Bahdanau's additive attention as the birth of content addressing."
-last_verified: 2026-07-09
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, input-representations]
 notation_introduced: ['\mathbf h_t', 'd_s', '\mathbf a_t', '\varphi', '\gamma', '\mathbf W_h', '\mathbf W_x', '\mathbf f_t', '\mathbf i_t', '\mathbf o_t', '\mathbf c_t', '\mathbf z_t', '\mathbf r_t', '\mathbf s_t', '\alpha_{tj}']
@@ -62,6 +62,8 @@ in which every layer shares the same parameters $(\mathbf W_h, \mathbf W_x, \mat
 />
 
 Two structural facts follow from the definition and shape everything below. First, the state is a *sufficient statistic by fiat*: the distribution of everything the network computes after step $t$ depends on $\mathbf x_1,\dots,\mathbf x_t$ only through $\mathbf h_t\in\R^{d_s}$, a vector whose size is fixed before the data arrive. Second, the unrolled graph is a *chain*: the only path from an early input to a late state passes through every intermediate state, so every long-range dependency must survive $T - t$ applications of the same map. The first fact becomes the seq2seq bottleneck; the second becomes the vanishing gradient. We take them in gradient order.
+
+These states are learned memories, not merely an analogy. Graves used LSTMs to generate both discrete text and real-valued online handwriting one point at a time <Cite key="graves2013generating" />. In a later character-level language model, individual cells were observed tracking quantities such as line length, quotation state, and bracket state <Cite key="karpathy2015visualizing" />. Those visualizations are examples from one trained system, not a guarantee that every coordinate has a human-readable role.
 
 <MarginNote variant="tip" label="Vision">The recurrence never asks whether a row is token, patch, or code (<XRef id="rem-modality-blind" />); it only demands a total order — a patch grid must be raster-scanned first.</MarginNote>
 
@@ -176,7 +178,7 @@ using $\norm{\mathbf W_h^\top}_2 = \sigma_{\max}(\mathbf W_h)$. Multiplying $T -
 
 <MarginNote variant="warning" label="One-sided">The first inequality is data-dependent (through the visited $\mathbf a_s$); the second is worst-case. The bound *proves* vanishing when $\gamma\sigma_{\max} < 1$; it only *permits* explosion otherwise.</MarginNote>
 
-The two regimes are not symmetric in practice. Explosion is loud — the loss spikes — and is suppressed by clipping the gradient norm; vanishing is silent: training proceeds, the recent past is learned, and the long range is simply never credited. The worked trace below makes the silence audible on the smallest possible instance.
+The two regimes are not symmetric in practice. Explosion is loud — the loss spikes — and is commonly controlled by clipping the gradient norm <Cite key="pascanu2013difficulty" />; vanishing is silent: training proceeds, the recent past is learned, and the long range is simply never credited. The worked trace below makes the silence audible on the smallest possible instance.
 
 <Theorem kind="example" name="A two-step scalar gradient trace" id="ex-scalar-trace">
 Take $d_s = d = 1$, $\varphi = \tanh$, $w_h = 0.5$, $w_x = 1$, $b = 0$, $h_0 = 0$, and inputs $x_1 = x_2 = 1$.
@@ -248,6 +250,8 @@ whose $i$-th diagonal entry is $\prod_{s=t+1}^{T} [\mathbf f_s]_i \in (0,1)$. Th
 
 The proposition is honest about its scope: the *total* Jacobian $\partial\mathbf c_T/\partial\mathbf c_t$ adds further paths that pass through hidden states into the gates, and those paths do carry weight-matrix products. What the LSTM guarantees is the *existence* of one additive highway whose gain the network controls pointwise — enough to transport error across long gaps, and the architectural ancestor of the residual stream that will play the same role in the depth direction of the transformer.
 
+That mechanism should not be turned into a claim that one exact gate inventory is uniquely optimal. In an eight-variant comparison across three sequence tasks, no tested variant significantly outperformed the standard LSTM; within that study, the forget gate and the output activation function were the most critical components <Cite key="greff2015odyssey" />.
+
 The GRU compresses the same remedy into a single state vector: one **update gate** divides each coordinate between keeping the old state and writing a candidate, and a **reset gate** controls how much of the past the candidate may read.
 
 <Theorem kind="definition" name="Gated recurrent unit (GRU)" id="def-gru">
@@ -267,6 +271,8 @@ $$
 </Theorem>
 
 The GRU update is an *entrywise convex combination*: each coordinate of $\mathbf h_t$ lies between the corresponding coordinates of $\mathbf h_{t-1}$ and $\tilde{\mathbf h}_t$ — the convex-combination tool of the notation chapter (<XRef id="prop-row-stochastic-convex" />) reappearing with weights $(z, 1 - z)$ per coordinate. Its carousel is Exercise 2.4: along the direct path the one-step gain is $\operatorname{diag}(\mathbf z_t)$, so $\mathbf z_t \approx \mathbf 1$ holds the state — and the gradient — almost unchanged. This convex-interpolation form is worth remembering; it returns near the end of the arc as the exact scalar reduction of a selective state space update.
+
+In Chung et al.'s sequence-modeling experiments, the gated GRU and LSTM both outperformed a tanh recurrent unit, and the GRU performed comparably to the LSTM <Cite key="chung2014empirical" />. That is a scoped empirical comparison, not an equivalence theorem between the cells.
 
 ## Sequence-to-sequence and the bottleneck
 
@@ -313,7 +319,7 @@ then there exist two distinct inputs $\mathbf x \ne \mathbf x'$ with $\mathbf c(
 
 <MarginNote variant="formula" label="An instance">$d_s = 1000$, fp32 ($b = 32$), $\lvert\mathcal V\rvert = 2^{15}$: collisions are forced once $n > 32000/15 \approx 2133$, i.e. at $n = 2134$ tokens.</MarginNote>
 
-The proposition is a worst-case identity statement — it exhibits two inputs the decoder *cannot* treat differently, however it is trained — and in practice the degradation arrives far earlier: empirically, fixed-vector translation quality falls off well before the counting threshold, on sentences of a few dozen words.<Sidenote>The length degradation and its remedy are the motivating observations of <Cite key="bahdanau2015attention" />.</Sidenote> The same counting argument returns at the end of the arc, sharpened into a recall bound that prices *any* fixed-size decode state against the growing cache it replaces. Here, its 2015 resolution created the object this guide is about.
+The proposition is a worst-case identity statement — it exhibits two inputs the decoder *cannot* treat differently, however it is trained — while the historical empirical picture depended on the setup. Sutskever et al. reported that their system did not have difficulty on long sentences <Cite key="sutskever2014seq2seq" />; Cho et al. found rapid performance degradation as both sentence length and the number of unknown words increased <Cite key="cho2014properties" />. Neither result proves the finite-precision collision above. Bahdanau et al. instead argued that the fixed-length context vector was a bottleneck and replaced it with a learned soft search over source positions <Cite key="bahdanau2015attention" />. The same counting argument returns at the end of the arc, sharpened into a recall bound that prices *any* fixed-size decode state against the growing cache it replaces. Here, that architectural response created the object this guide is about.
 
 ## Additive attention
 
@@ -332,6 +338,8 @@ and the decoder update consumes its own context, $\mathbf s_t \defeq \varphi\big
 </Theorem>
 
 Each weight vector $\alpha_t$ is a probability distribution over input positions (<XRef id="def-softmax" />), so $\mathbf c_t$ is a convex combination of the encoder states (<XRef id="prop-row-stochastic-convex" />) — stacking the $\alpha_t$ as rows gives a row-stochastic matrix, our third tool returning in its natural habitat. The bottleneck of <XRef id="prop-seq2seq-fixed-vector-bottleneck" /> is dissolved, not merely widened: the decoder's interface to the input now *grows with the input*, one $d_s$-vector per position, and the pigeonhole count no longer applies because no fixed-dimensional summary sits between encoder and decoder.
+
+Luong et al. later separated **global** attention over all source positions from **local** attention over a selected window; in their translation experiment, the local mechanism improved by five BLEU points over the non-attentional systems <Cite key="luong2015effective" />. This is an experimental result for those systems, not a general performance bound on local attention.
 
 <MarginNote variant="pattern" label="What addressing needs">The scoring–normalizing–averaging machinery consumes one query vector and $n$ key vectors. Nothing in it requires that those vectors come from a recurrence.</MarginNote>
 

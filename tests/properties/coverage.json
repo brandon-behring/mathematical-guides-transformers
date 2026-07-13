@@ -19,12 +19,17 @@
     {
       "id": "prop-kv-cache",
       "test": "tests/properties/test_kv_cache.py",
-      "statementSha256": "ed7897acaf42bbca9159255340f6085ae49a5ae7a1faf671b4362fb3d40507a6"
+      "statementSha256": "3afad84b69cbb8f355f1375d0459d21a2034dddf92025805ff007a03084e70e8"
     },
     {
       "id": "prop-kv-memory",
       "test": "tests/properties/test_kv_cache.py",
-      "statementSha256": "368605d1be4b08f8e130d24f1ef44bde1425600e3771b4762ab846edfc79a58a"
+      "statementSha256": "3d0c5708511227256c3f106cec40e1b877218364450b533bfa8389ed9c4a408c"
+    },
+    {
+      "id": "rem-kv-selection-exactness",
+      "test": "tests/properties/test_kv_cache.py",
+      "statementSha256": "6b218743cee3a39e594fd8e8f97c857c97b2b043044d9c834cda6db894ca2d7e"
     },
     {
       "id": "def-moe",
