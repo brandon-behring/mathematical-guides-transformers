@@ -34,12 +34,37 @@
     {
       "id": "def-moe",
       "test": "tests/properties/test_moe_cost.py",
-      "statementSha256": "6a8e59f6f706906ac8eea3ea2d63615c718dd3886476a6d818dcaf6d48ff5eab"
+      "statementSha256": "9b2fcd3c5711dad298a3ef55bce661a3d5a39ab32a918dd30008a7a0c52612c0"
+    },
+    {
+      "id": "prop-moe-router-gradient",
+      "test": "tests/properties/test_moe_cost.py",
+      "statementSha256": "62b9803ed54f6bf3e4cef0e91a39f4588b6b4d9f9dae9a979fd2b21e3c71089d"
+    },
+    {
+      "id": "def-moe-routing-objective",
+      "test": "tests/properties/test_moe_cost.py",
+      "statementSha256": "40f27c2592d43b7d88ba66c9160e43fc227e4caf2c78d6212a670d44bd62bf6d"
+    },
+    {
+      "id": "def-moe-capacity",
+      "test": "tests/properties/test_moe_cost.py",
+      "statementSha256": "34db57ae41734631e64ab1e4c2944805738c5f1406c18594f98e48b7f7776b05"
+    },
+    {
+      "id": "prop-moe-capacity",
+      "test": "tests/properties/test_moe_cost.py",
+      "statementSha256": "7bf300fa8cf43e981b2d67cc14f85aa3f161fce9e33ad86b5ca64390bc8603b3"
+    },
+    {
+      "id": "def-expert-choice",
+      "test": "tests/properties/test_moe_cost.py",
+      "statementSha256": "fc22e0df623c9ad96015119d54bc5ac62125059fccb98ebf4377ff456cf83542"
     },
     {
       "id": "prop-moe-flops",
       "test": "tests/properties/test_moe_cost.py",
-      "statementSha256": "8983ce4e5e03fc24928a20ba3f9ed6715c4cb9b9894b142c140975874c888861"
+      "statementSha256": "acac55d28be17828f051f27ec01fd8961848592197c3d0948e553ebd729bc511"
     },
     {
       "id": "prop-chunked",

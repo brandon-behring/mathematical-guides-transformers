@@ -3,12 +3,12 @@ title: "Inference Optimizations"
 slug: inference-optimizations
 chapter: 15
 part: 4
-description: "The mathematics behind production inference: the roofline cost-per-token equation and its memory-bound regime, generalized KV-cache width, exact reuse versus approximate cache selection, the materialized-cache O(n^2) → O(n) per-step argument, affine quantization, FlashAttention, speculative decoding, and top-k mixture-of-experts costs."
+description: "The mathematics behind production inference: the roofline cost-per-token equation and its memory-bound regime, generalized KV-cache width, exact reuse versus approximate cache selection, the materialized-cache O(n^2) → O(n) per-step argument, affine quantization, FlashAttention, and speculative decoding."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention, multi-head-attention]
-notation_introduced: ['T_{\text{token}}', 'I^*', '\alpha', 'K', 'E', '\mathcal A_B', 'A_B', 'M_{\text{KV}}']
-theorems: ['def-cost-eq', 'prop-memory-bound', 'def-kv-cache', 'prop-kv-memory', 'prop-decode-cost', 'def-affine-quant', 'prop-quant-error', 'def-online-softmax', 'thm-online-softmax-exact', 'def-spec-decode', 'prop-spec-speedup', 'def-moe', 'prop-moe-flops']
+notation_introduced: ['T_{\text{token}}', 'I^*', '\alpha', 'K', 'M_{\text{KV}}']
+theorems: ['def-cost-eq', 'prop-memory-bound', 'def-kv-cache', 'prop-kv-memory', 'prop-decode-cost', 'def-affine-quant', 'prop-quant-error', 'def-online-softmax', 'thm-online-softmax-exact', 'def-spec-decode', 'prop-spec-speedup']
 los:
   - id: lo-inference-roofline
     statement: "Derive the inference cost-per-token equation T = max(FLOPs/F, bytes/B) and characterize the memory-bound regime via the roofline ridge point."
@@ -20,8 +20,6 @@ los:
     statement: "State the online-softmax recurrence and prove FlashAttention computes exact attention without materializing the n×n matrix."
   - id: lo-speculative-decoding-speedup
     statement: "Derive the expected accepted-token count and expected speedup of speculative decoding from the acceptance probability."
-  - id: lo-moe-cost-accounting
-    statement: "Define top-k mixture-of-experts routing and derive the distinct resident-capacity, activated-compute, and active-expert traffic terms, including their limiting cases."
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
@@ -33,7 +31,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Inference Optimizations
 
-**Where we are.** Training optimized a loss; inference optimizes a different quantity — the time to emit one token on fixed hardware. This chapter extracts the algebraic core common to every production serving technique: each one moves a single term in one cost equation. We fix that equation first (the roofline model and its memory-bound regime), then derive the mathematics behind five techniques in turn — the **KV-cache** (why autoregressive decoding would otherwise recompute, how actual persisted width determines memory, and where approximate selection departs from exact prefix reuse), **quantization** (the affine map from floats to integers and its round-off bound), **FlashAttention** (the online-softmax recurrence that computes attention *exactly* without ever materializing the $n\times n$ score matrix), **speculative decoding** (the draft-then-verify acceptance law and its expected speedup), and **mixture-of-experts** (top-$k$ routing and the conditional-compute FLOP argument). Throughout, $\softmax$, scaled dot-product attention, and the standing dimensions $n,d,d_k$ are as fixed in earlier chapters. We give definitions and inline proofs for the quantitative claims and reserve remarks for the qualitative engineering facts.
+**Where we are.** Training optimized a loss; inference optimizes a different quantity — the time to emit one token on fixed hardware. This chapter extracts the algebraic core common to every production serving technique: each one moves a single term in one cost equation. We fix that equation first (the roofline model and its memory-bound regime), then derive the mathematics behind four techniques in turn — the **KV-cache** (why autoregressive decoding would otherwise recompute, how actual persisted width determines memory, and where approximate selection departs from exact prefix reuse), **quantization** (the affine map from floats to integers and its round-off bound), **FlashAttention** (the online-softmax recurrence that computes attention *exactly* without ever materializing the $n\times n$ score matrix), and **speculative decoding** (the draft-then-verify acceptance law and its expected speedup). Throughout, $\softmax$, scaled dot-product attention, and the standing dimensions $n,d,d_k$ are as fixed in earlier chapters. We give definitions and inline proofs for the quantitative claims and reserve remarks for the qualitative engineering facts.
 
 ## The cost-per-token equation
 
@@ -279,60 +277,7 @@ the last step the finite geometric series.
 The speedup exceeds one when $\E[T_K] > 1 + Kc$, which for a cheap draft ($c\to 0$) holds for any $\alpha>0$ since $\E[T_K]\ge 1+\alpha$. The hidden premise is that one target pass over $K{+}1$ candidates costs about the same as one target pass over a single token. That is exactly the memory-bound regime of <XRef id="prop-memory-bound" />: the target reads its full weight set once per pass regardless of how many positions it scores, so the verification of many candidates is amortized into a single weight read. In a compute-bound regime (large batches, prefill) the verification pass costs proportionally more arithmetic and the free-lunch argument fails.
 </Theorem>
 
-## Mixture-of-experts
-
-A dense feed-forward layer applies the same parameters to every token. A mixture-of-experts layer <Cite key="shazeer2017moe" /> holds many expert sub-networks but routes each token to only a few. Three quantities must not be collapsed: the bytes needed to keep all experts **resident**, the arithmetic of the expert calls actually **activated**, and the weight **traffic** generated by the union of experts used by one served batch. The roofline equation prices compute and traffic; residency is a capacity constraint.
-
-<Theorem kind="definition" name="Top-k mixture-of-experts layer" id="def-moe">
-A **top-$k$ mixture-of-experts** layer has $E$ expert networks $\{\mathrm{FFN}_1,\dots,\mathrm{FFN}_E\}$ of identical shape and a router $\mathbf W_r\in\R^{d\times E}$. For token $\mathbf x_t\in\R^{d}$ the router scores $\mathbf s_t = \mathbf W_r^\top\mathbf x_t$, selects the index set $\mathcal S_t$ of the $k$ largest scores, and outputs
-$$
-\mathrm{MoE}(\mathbf x_t) = \sum_{i\in\mathcal S_t} \softmax(\mathbf s_t)_i\,\mathrm{FFN}_i(\mathbf x_t).
-$$
-For a served batch of $T$ token positions, define the **active-expert union**
-$$
-\mathcal A_B\defeq\bigcup_{t=1}^{T}\mathcal S_t,
-\qquad
-A_B\defeq|\mathcal A_B|,
-\qquad
-k\le A_B\le\min(E,Tk).
-$$
-Experts outside $\mathcal S_t$ are not evaluated for token $t$; experts outside $\mathcal A_B$ are not used anywhere in that batch.
-</Theorem>
-
-<MarginNote variant="formula" label="Three quantities">Resident: $E\mu$. Activated: $Tk\Phi$. Ideal batch traffic: $A_B\mu$. Only the last two enter the basic roofline time.</MarginNote>
-
-<Theorem kind="proposition" name="MoE resident capacity, activated compute, and traffic" id="prop-moe-flops">
-Let one expert's parameters occupy $\mu_{\text{FFN}}$ bytes and one expert call cost $\Phi_{\text{FFN}}$ FLOPs. For the $T$-token batch of <XRef id="def-moe" />, ignoring the lower-order router and activation traffic:
-1. **resident capacity** for the unsharded layer is $E\mu_{\text{FFN}}$ bytes;
-2. **activated compute** is $Tk\Phi_{\text{FFN}}$ FLOPs;
-3. if every active expert's weights are streamed once and reused across all routed tokens, the ideal expert-weight **traffic** is $A_B\mu_{\text{FFN}}$ bytes. Re-reads can only increase this term.
-
-The corresponding expert-kernel roofline bound and ideal arithmetic intensity are
-$$
-T_{\text{MoE}}\ge
-\max\!\left(\frac{Tk\Phi_{\text{FFN}}}{F},
-\frac{A_B\mu_{\text{FFN}}}{\mathcal B}\right),
-\qquad
-I_{\text{MoE}}=\frac{Tk\Phi_{\text{FFN}}}{A_B\mu_{\text{FFN}}}.
-$$
-Relative to one dense expert applied to the same $T$ tokens with one weight read, $I_{\text{MoE}}/I_{\text{dense}}=k/A_B$. The familiar $k/E$ ratio is only the limiting case $A_B=E$.
-</Theorem>
-
-<Theorem kind="proof">
-**Resident capacity.** There are $E$ parameter-disjoint experts of $\mu_{\text{FFN}}$ bytes each, so holding the unsharded layer requires $E\mu_{\text{FFN}}$ bytes whether or not a particular batch visits all of them.
-
-**Activated compute.** Every one of the $T$ tokens calls exactly $k$ experts, producing $Tk$ calls at $\Phi_{\text{FFN}}$ FLOPs each and hence $Tk\Phi_{\text{FFN}}$ FLOPs.
-
-**Traffic.** The batch uses exactly the experts in $\mathcal A_B$. Under the stated once-streamed idealization, each of those $A_B$ weight sets contributes $\mu_{\text{FFN}}$ bytes once, for $A_B\mu_{\text{FFN}}$ bytes. A schedule or cache too small to retain an active expert may fetch it again, so this is the ideal working-set traffic, not a claim that physical traffic can never be larger.
-
-Substitution of the activated FLOPs and ideal traffic into <XRef id="def-cost-eq" /> gives the bound and their quotient gives $I_{\text{MoE}}$. A dense expert applied to $T$ tokens performs $T\Phi_{\text{FFN}}$ FLOPs for one $\mu_{\text{FFN}}$-byte weight stream, so its ideal intensity is $T\Phi_{\text{FFN}}/\mu_{\text{FFN}}$; division leaves $k/A_B$. Setting $A_B=E$ yields $k/E$. For a single token, $T=1$ and $A_B=k$, so the ideal intensity equals the dense expert's: conditional compute reduces the number of expert calls relative to evaluating all $E$, but does not by itself make that one routed token stream all $E$ experts. $\qquad\blacksquare$
-</Theorem>
-
-<MarginNote variant="pattern" label="Reuse decides traffic">If all tokens repeat the same $k$ experts, $A_B=k$ and ideal intensity matches dense. If routing covers all experts, $A_B=E$ and the ratio becomes $k/E$. Residency remains $E\mu$ in both cases.</MarginNote>
-
-<Theorem kind="remark" name="Expert parallelism shards the byte term" id="rem-expert-parallel">
-Production *expert parallelism* partitions the $E$ experts across devices and dispatches tokens to their owners. If device $p$ holds $E_p$ experts and its active subset has size $A_{B,p}$, its resident capacity is $E_p\mu_{\text{FFN}}$ and ideal local weight traffic is $A_{B,p}\mu_{\text{FFN}}$. Across a disjoint partition, $\sum_pE_p=E$ and $\sum_pA_{B,p}=A_B$: sharding redistributes the resident and active working sets rather than turning total $A_B\mu_{\text{FFN}}$ traffic into $E\mu_{\text{FFN}}$ or eliminating it. The new cost is dynamic all-to-all communication of routed activations and outputs. Thus expert parallelism primarily solves per-device capacity and placement; its latency benefit depends on routing balance, local reuse, and communication.
-</Theorem>
+The next chapter replaces one dense FFN with a routed expert bank (<XRef id="def-moe" />) and applies this chapter's roofline equation to separate its resident capacity, activated compute, and active-expert traffic (<XRef id="prop-moe-flops" />).
 
 ## Exercises
 
@@ -381,13 +326,5 @@ Induct on $j$. Base: $m_1 = s_1$, $\ell_1 = e^{s_1 - m_1} = 1$. Step: with $m_j 
 <SolutionBox>
 
 With $c=0.1$, $K=4$, the denominator is $1 + Kc = 1.4$. At $\alpha=0.8$: $\E[T_K] = (1 - 0.8^5)/0.2 \approx 3.36$, speedup $\approx 2.40$. At $\alpha=0.4$: $\E[T_K] = (1 - 0.4^5)/0.6 \approx 1.65$, speedup $\approx 1.18$. As $K\to\infty$ with $\alpha=0.8$, $\E[T_K]\to 1/(1-\alpha) = 5$ while draft cost $Kc$ keeps growing, so an interior $K$ is optimal. $\qquad\blacksquare$
-
-</SolutionBox>
-
-**Exercise 15.6 (Derive).** A top-$2$ MoE has $E=64$ experts. For a batch of $T=32$ token positions, compute resident capacity, activated FLOPs, ideal weight traffic, and the intensity ratio to a dense expert in two cases: (a) every token selects the same two experts; (b) the active union covers all $64$ experts. Write the answers in terms of $\mu_{\text{FFN}}$ and $\Phi_{\text{FFN}}$, then state what expert parallelism changes.
-
-<SolutionBox>
-
-In both cases resident capacity is $E\mu_{\text{FFN}}=64\mu_{\text{FFN}}$ and activated compute is $Tk\Phi_{\text{FFN}}=64\Phi_{\text{FFN}}$. **(a)** Repeated routing gives $A_B=2$, so ideal traffic is $2\mu_{\text{FFN}}$ and $I_{\text{MoE}}/I_{\text{dense}}=k/A_B=1$. **(b)** Full coverage gives $A_B=64$, so ideal traffic is $64\mu_{\text{FFN}}$ and the intensity ratio is $2/64=1/32$. Expert parallelism partitions the $64\mu_{\text{FFN}}$ resident capacity and the active working set across devices; it leaves the global $64\Phi_{\text{FFN}}$ activated compute and, under the same once-read idealization, the global $A_B\mu_{\text{FFN}}$ expert-weight traffic unchanged, while adding routed-activation all-to-all communication. $\qquad\blacksquare$
 
 </SolutionBox>

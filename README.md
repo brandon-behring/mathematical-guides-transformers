@@ -12,11 +12,11 @@ order follows the arc.
 Authoring follows the family's dossier-grounded
 [formal style guide](https://github.com/brandon-behring/mathematical-guides/blob/main/docs/style-guide-formal-v0.3.md).
 
-## Structure: 19 chapters, 6 parts
+## Structure: 20 chapters, 6 parts
 
 Published chapter numbers deliberately reserve **08** (in-context learning), **11** (RLHF/DPO),
-**13** (scaling laws), **16** (mixture of experts), and **17** (sparse attention). The current
-19-chapter corpus therefore occupies **00–07, 09–10, 12, 14–15, and 18–23**. Source filenames carry
+**13** (scaling laws), and **17** (sparse attention). The current 20-chapter corpus therefore
+occupies **00–07, 09–10, 12, 14–16, and 18–23**. Source filenames carry
 those final display numbers, while frontmatter `slug` values are number-free, so filling a reserved
 slot does not change an existing chapter URL.
 
@@ -31,7 +31,8 @@ slot does not change an existing chapter URL.
   architecture families (causality as prefix-consistency, abstracted over any sequence mixer);
   training; encoder readouts, contrastive alignment, and detection.
 - **Part 4 — Efficient & Conditional Computation.** Training optimizations; inference optimizations
-  (the KV-cache, quantization, speculative decoding, and conditional expert computation).
+  (the KV-cache, quantization, FlashAttention, and speculative decoding); mixture-of-experts
+  (routing gradients, load balance, expert capacity, cost accounting, and expert parallelism).
 - **Part 5 — Sub-Quadratic & Selective Sequence Models.** Selective state spaces and state space
   duality (Mamba, linear-attention/SSM duality, the chunked algorithm); modern recurrent models and
   hybrid architectures (RWKV, xLSTM, DeltaNet, sliding-window hybrids).
