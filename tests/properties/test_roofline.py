@@ -1,5 +1,5 @@
-"""Roofline cost-per-token equation — guards ``def-tf12-cost-eq`` and
-``prop-tf12-memory-bound`` (ch12, Inference Optimizations).
+"""Roofline cost-per-token equation — guards ``def-cost-eq`` and
+``prop-memory-bound`` (ch15, Inference Optimizations).
 
 The device finishes a decode step no faster than the slower of its two clocks:
 arithmetic (``Phi/F``) and memory (``beta/B``). Below the ridge point the FLOP
@@ -11,7 +11,7 @@ import unittest
 
 
 def t_token(phi: float, beta: float, F: float, B: float) -> float:
-    """Cost-per-token lower bound ``max(Phi/F, beta/B)`` (def-tf12-cost-eq)."""
+    """Cost-per-token lower bound ``max(Phi/F, beta/B)`` (def-cost-eq)."""
     return max(phi / F, beta / B)
 
 
@@ -36,7 +36,7 @@ class RooflineTests(unittest.TestCase):
         self.assertTrue(math.isclose(intensity(phi, beta), I_star, rel_tol=1e-12))
 
     def test_memory_bound_throughput_is_independent_of_F(self):
-        """prop-tf12-memory-bound: below the ridge, more FLOPs do not help."""
+        """prop-memory-bound: below the ridge, more FLOPs do not help."""
         B = 1.5e12
         beta = 2e9
         phi = 2e6
@@ -57,7 +57,7 @@ class RooflineTests(unittest.TestCase):
         self.assertTrue(math.isclose(phi / t_token(phi, beta, F, B), F, rel_tol=1e-12))
 
     def test_decode_intensity_collapses_to_order_one(self):
-        """rem-tf12-prefill-decode: single-query matvec intensity is O(1)."""
+        """rem-prefill-decode: single-query matvec intensity is O(1)."""
         d = 8192
         phi = 2 * d * d
         beta = 2 * d * d

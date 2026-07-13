@@ -3,9 +3,9 @@ name: content-validate
 on:
   push:
     branches: [main]
-    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', 'package-lock.json', 'scripts/**', 'tests/**', 'docs/manifests/**', '.github/workflows/content-validate.yml']
+    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', 'package-lock.json', 'scripts/**', 'tests/**', 'figures/**', 'docs/manifests/**', 'docs/plans/active/**', '.claude/skills/**', '.gitleaks.toml', '.github/workflows/content-validate.yml']
   pull_request:
-    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', 'package-lock.json', 'scripts/**', 'tests/**', 'docs/manifests/**', '.github/workflows/content-validate.yml']
+    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', 'package-lock.json', 'scripts/**', 'tests/**', 'figures/**', 'docs/manifests/**', 'docs/plans/active/**', '.claude/skills/**', '.gitleaks.toml', '.github/workflows/content-validate.yml']
 
 jobs:
   validate:
@@ -25,6 +25,8 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
       - run: npm run validate
       - run: npm run check:corpus
+      - run: npm run test:id-migration
+      - run: npm run check:id-migration
       - run: npm run check:properties
 
   properties:

@@ -99,7 +99,7 @@ For an author-time design *disagreement* you can't resolve, escalate with the co
 ## Example
 
 > "Add a figure of the FFN expansion to ch06."
-> 1. Spec: source `def-tf6-ffn`; show `d_model → d_ff → d_model` with `W₁,W₂` shapes; device = width-proportional
+> 1. Spec: source `def-ffn`; show `d_model → d_ff → d_model` with `W₁,W₂` shapes; device = width-proportional
 >    boxes; must show `d_ff > d_model` visually. 2. Author with edge dims + a white-knockout op-label on the arrow.
 > 3. Build. 4. `check_figure_collisions.py` → zero. 5. Self-review. 6. Done.
 

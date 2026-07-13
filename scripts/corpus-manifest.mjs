@@ -29,7 +29,7 @@ const chapters = readdirSync(chapterDir)
       .filter(Boolean);
     const objectiveIds = [...source.matchAll(/^\s*- id:\s*([^\s]+)\s*$/gm)].map((match) => match[1]);
     const xrefs = [...source.matchAll(/<XRef\b[^>]*\bid=["']([^"']+)["'][^>]*\/?\s*>/g)].map((match) => match[1]);
-    const numberPattern = /\b(?:Chapter|Ch\.|ch\.)\s*\d+\b|\bExercise\s+\d+\.\d+\b|\bTF-\d+\.\d+\b/g;
+    const numberPattern = /\b(?:[Cc]hapters?|Ch\.?|ch\.)\s*\d+(?:\s*[–-]\s*\d+)?\b|\bExercise\s+\d+\.\d+\b|\bTF-\d+\.\d+\b/g;
     const printedNumberHits = [...source.matchAll(numberPattern)].map((match) => ({
       line: lineOf(source, match.index),
       text: match[0],

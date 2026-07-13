@@ -1,4 +1,4 @@
-"""SSD chunk-cost arithmetic guards prop-tf13-chunked.
+"""SSD chunk-cost arithmetic guards prop-chunked.
 
 The exact proxy used in the proof separates dense intra-chunk work, two
 state-summary/broadcast passes, and the cross-chunk scan.
@@ -20,7 +20,7 @@ class ChunkCosts(NamedTuple):
 
 
 def chunk_costs(n: int, d: int, d_s: int, c: int) -> ChunkCosts:
-    """Count the three multiplication terms in prop-tf13-chunked."""
+    """Count the three multiplication terms in prop-chunked."""
     if c < 1 or n % c:
         raise ValueError("chunk size must be a positive divisor of n")
     return ChunkCosts(
@@ -89,7 +89,7 @@ class SSDChunkingTests(unittest.TestCase):
                 self.assertGreaterEqual(total, 2 * baseline)
                 self.assertLessEqual(total, 4 * baseline)
 
-    def test_exercise_13_6_exact_totals_and_masked_matmul_comparison(self):
+    def test_exercise_18_6_exact_totals_and_masked_matmul_comparison(self):
         """Reproduce the c=4,16,256 totals and the c=n comparison."""
         n, d, d_s = 8_192, 1_024, 16
         expected = {

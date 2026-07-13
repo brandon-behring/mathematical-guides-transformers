@@ -8,15 +8,15 @@ last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention]
 notation_introduced: ['\operatorname{MHA}', '\operatorname{Concat}', 'h', 'h_k', 'h_v', 'd_k', 'd_v', 'W^O', 'd_{\text{cache}}', 'KV cache']
-theorems: ['def-tf5-attention-head', 'def-tf5-mha', 'prop-tf5-mha-params', 'thm-tf5-low-rank', 'def-tf5-mqa', 'def-tf5-gqa', 'prop-tf5-kv-cache']
+theorems: ['def-attention-head', 'def-mha', 'prop-mha-params', 'thm-low-rank', 'def-mqa', 'def-gqa', 'prop-kv-cache']
 los:
-  - id: TF-5.1
+  - id: lo-multi-head-construction
     statement: "Define multi-head attention as parallel projections with concatenated output."
-  - id: TF-5.2
+  - id: lo-attention-head-rank
     statement: "Prove the low-rank factorization theorem: each head's logit matrix has rank at most d_k."
-  - id: TF-5.3
+  - id: lo-kv-sharing-cache-width
     statement: "Define the per-token cache width d_cache and compare MHA, MQA, and GQA in terms of parameter sharing and KV-cache memory."
-  - id: TF-5.4
+  - id: lo-multi-head-shapes-and-parameters
     statement: "Trace tensor dimensions through a multi-head attention layer and verify the parameter count."
 ---
 
@@ -30,25 +30,25 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Multi-Head Attention
 
-**Where we are.** The Attention chapter built a single scaled dot-product head: one triple of projections — $\mathbf W^Q, \mathbf W^K$ mapping $\R^{d}\to\R^{d_k}$ and $\mathbf W^V$ mapping $\R^{d}\to\R^{d_v}$ — producing one $n\times n$ weight matrix. One head can express only one pattern of token-to-token relationships at a time. Multi-head attention runs $h$ heads in parallel, each in its own $d_k$-dimensional subspace, then concatenates and remixes their outputs. This chapter fixes the construction (the attention head, then multi-head attention), proves the parameter count is independent of $h$ (<XRef id="prop-tf5-mha-params" />), establishes the per-head rank bound that makes a single head limited and many heads complementary (<XRef id="thm-tf5-low-rank" />), and derives the cache savings of the MQA and GQA variants (<XRef id="prop-tf5-kv-cache" />).
+**Where we are.** The Attention chapter built a single scaled dot-product head: one triple of projections — $\mathbf W^Q, \mathbf W^K$ mapping $\R^{d}\to\R^{d_k}$ and $\mathbf W^V$ mapping $\R^{d}\to\R^{d_v}$ — producing one $n\times n$ weight matrix. One head can express only one pattern of token-to-token relationships at a time. Multi-head attention runs $h$ heads in parallel, each in its own $d_k$-dimensional subspace, then concatenates and remixes their outputs. This chapter fixes the construction (the attention head, then multi-head attention), proves the parameter count is independent of $h$ (<XRef id="prop-mha-params" />), establishes the per-head rank bound that makes a single head limited and many heads complementary (<XRef id="thm-low-rank" />), and derives the cache savings of the MQA and GQA variants (<XRef id="prop-kv-cache" />).
 
 ## The multi-head construction
 
 A head is just the single-head attention of the previous chapter, but reading the input through its own narrow projection: instead of attending in the full $d$-dimensional space, head $i$ first compresses each token to a $d_k$-dimensional view, then runs scaled dot-product attention there.
 
-<Theorem kind="definition" name="Attention head" id="def-tf5-attention-head">
+<Theorem kind="definition" name="Attention head" id="def-attention-head">
 The $i$-th **attention head** ($i = 1,\dots,h$) carries its own learned projections $\mathbf W_i^Q, \mathbf W_i^K \in \R^{d\times d_k}$ and $\mathbf W_i^V \in \R^{d\times d_v}$. Given input $\mathbf X\in\R^{n\times d}$,
 $$
 \operatorname{head}_i \defeq \operatorname{Attn}(\mathbf X\mathbf W_i^Q,\ \mathbf X\mathbf W_i^K,\ \mathbf X\mathbf W_i^V) \in \R^{n\times d_v},
 $$
-where $\operatorname{Attn}$ is scaled dot-product attention (<XRef id="def-tf4-attention" />).
+where $\operatorname{Attn}$ is scaled dot-product attention (<XRef id="def-attention" />).
 </Theorem>
 
 <MarginNote variant="formula" label="Head splitting">Each head sees $\mathbf X$ through a rank-$\le d_k$ projection, so it attends in a $d_k$-dimensional subspace.</MarginNote>
 
 Multi-head attention is then the concatenation of all heads' outputs followed by one shared linear map back to model width. The concatenation lays the $h$ output blocks side by side within each row; the output projection lets the layer mix across heads, so the heads are not forced to occupy disjoint output coordinates.
 
-<Theorem kind="definition" name="Multi-head attention" id="def-tf5-mha">
+<Theorem kind="definition" name="Multi-head attention" id="def-mha">
 **Multi-head attention** concatenates the $h$ heads row-wise and applies a final linear projection:<Sidenote>The split–concatenate–project construction, with $d_k=d_v=d/h$, is the original design of <Cite key="vaswani2017attention" />.</Sidenote>
 $$
 \operatorname{MHA}(\mathbf X) \defeq \operatorname{Concat}(\operatorname{head}_1,\dots,\operatorname{head}_h)\,\mathbf W^O \in \R^{n\times d},
@@ -64,7 +64,7 @@ Schematically: the input $\mathbf X$ fans out to $h$ heads; each head runs atten
   src="/figures/mha-split-concat.svg"
   alt="Multi-head attention: input X fans out to h heads, each returning an n×d_v block; the blocks concatenate and a projection W^O maps back to n×d."
   desc="The input X (n×d) splits at a junction into h parallel heads (shown for h=3); each head applies its own learned Q/K/V projections and returns an n×d_v block. The blocks concatenate into an n×h·d_v matrix, and the output projection W^O maps that back to n×d to give Y. Example d=6, h=3, d_k=d_v=2 (a schematic instance; the chapter's dimension trace below uses h=2)."
-  caption="Multi-head attention as split → per-head attend → concat → project (def-tf5-mha). X fans out to h heads, each attending in its own learned d_k-subspace — not a slice of X — and W^O remixes the concatenated outputs across heads back to n×d. The parameter count is independent of h (prop-tf5-mha-params)."
+  caption="Multi-head attention as split → per-head attend → concat → project (def-mha). X fans out to h heads, each attending in its own learned d_k-subspace — not a slice of X — and W^O remixes the concatenated outputs across heads back to n×d. The parameter count is independent of h (prop-mha-params)."
   id="fig-mha-split-concat"
   width="80%"
 />
@@ -73,7 +73,7 @@ Schematically: the input $\mathbf X$ fans out to $h$ heads; each head runs atten
 
 The standard choice $d_k = d_v = d/h$ is not arbitrary: it is exactly the width that holds the layer's parameter count fixed as $h$ varies, so adding heads buys more independent patterns at no extra cost.
 
-<Theorem kind="proposition" name="MHA parameter count" id="prop-tf5-mha-params">
+<Theorem kind="proposition" name="MHA parameter count" id="prop-mha-params">
 With $d_k = d_v = d/h$, the multi-head attention layer has $4d^2$ learnable parameters (excluding biases), independent of $h$.
 </Theorem>
 
@@ -93,7 +93,7 @@ Count the four matrix families, each step naming what it sums.
 
 We now translate each head's pre-softmax logits into a single linear-algebra object — a product of two thin matrices — whose rank is bounded by their shared inner dimension $d_k$. The correspondence is exact: *head's logit matrix* ↦ *a rank-$\le d_k$ Gram-style product*, and the bound follows from the standard rank-of-a-product inequality. Where the analogy breaks: a true Gram matrix $\mathbf W\mathbf W^\top$ is symmetric positive semidefinite, while $\mathbf W_i^Q(\mathbf W_i^K)^\top$ has two distinct learned factors and is in general neither.
 
-<Theorem kind="theorem" name="Low-rank factorization" id="thm-tf5-low-rank">
+<Theorem kind="theorem" name="Low-rank factorization" id="thm-low-rank">
 The $n\times n$ logit matrix of head $i$ factors through the $d_k$-dimensional subspace, so its rank is at most $\min(d_k, n)$. Explicitly,
 $$
 \mathbf X\mathbf W_i^Q(\mathbf W_i^K)^\top\mathbf X^\top
@@ -117,22 +117,22 @@ $$
 
 The bound is a statement about *one head's logits before softmax*, and it explains both why a single head is limited and why several heads are complementary. A single wide head ($d_k = d$) can realize logit matrices of rank up to $\min(d, n)$ — any logit matrix only when $n \le d$ — and in any case only one pattern; whereas $h$ heads of rank $\le d_k$ give $h$ *independently parameterized* low-rank patterns — one head may track syntactic adjacency, another semantic similarity — which $\mathbf W^O$ then mixes.
 
-<Theorem kind="remark" name="What the rank bound does not say" id="rem-tf5-low-rank">
-<XRef id="thm-tf5-low-rank" /> bounds each head's logit rank by $d_k$; it does **not** assert that the full module has logit rank $h\,d_k$. The heads are concatenated *after* their separate softmax nonlinearities and then mixed by $\mathbf W^O$, so there is no single $n\times n$ logit matrix for the module to take the rank of. The "effective rank $h\,d_k$" reading is an expressiveness heuristic, not a corollary of the displayed factorization.
+<Theorem kind="remark" name="What the rank bound does not say" id="rem-low-rank">
+<XRef id="thm-low-rank" /> bounds each head's logit rank by $d_k$; it does **not** assert that the full module has logit rank $h\,d_k$. The heads are concatenated *after* their separate softmax nonlinearities and then mixed by $\mathbf W^O$, so there is no single $n\times n$ logit matrix for the module to take the rank of. The "effective rank $h\,d_k$" reading is an expressiveness heuristic, not a corollary of the displayed factorization.
 </Theorem>
 
 ## Efficient variants: MQA and GQA
 
 During autoregressive decoding the keys and values of every past token are retained in a **key/value cache** so they are not recomputed at each step. In standard multi-head attention each head keeps its own cache, so cache memory grows linearly in $h$ — and at long context lengths it can exceed the model weights themselves. Multi-Query and Grouped-Query Attention cut this cost by sharing the key and value projections across heads while keeping a separate query projection per head.
 
-<Theorem kind="definition" name="Multi-Query Attention (MQA)" id="def-tf5-mqa">
+<Theorem kind="definition" name="Multi-Query Attention (MQA)" id="def-mqa">
 In **MQA** all $h$ heads share a single key projection $\mathbf W^K\in\R^{d\times d_k}$ and a single value projection $\mathbf W^V\in\R^{d\times d_v}$; only the query projections $\mathbf W_i^Q$ differ per head:<Sidenote>Introduced as a decoding-bandwidth optimization in <Cite key="shazeer2019mqa" />.</Sidenote>
 $$
 \operatorname{head}_i^{\text{MQA}} \defeq \operatorname{Attn}(\mathbf X\mathbf W_i^Q,\ \mathbf X\mathbf W^K,\ \mathbf X\mathbf W^V).
 $$
 </Theorem>
 
-<Theorem kind="definition" name="Grouped-Query Attention (GQA)" id="def-tf5-gqa">
+<Theorem kind="definition" name="Grouped-Query Attention (GQA)" id="def-gqa">
 **GQA** partitions the $h$ heads into $g$ groups ($1\le g\le h$); heads within a group share one key projection and one value projection.<Sidenote>The interpolating family between MHA and MQA <Cite key="ainslie2023gqa" />.</Sidenote> MHA is the case $g = h$ (no sharing) and MQA is the case $g = 1$ (full sharing).
 </Theorem>
 
@@ -140,7 +140,7 @@ $$
 
 The cache cost follows immediately from counting distinct key/value matrices: sharing replaces "$h$ copies" by "$g$ copies," and everything else in the cache is unchanged.
 
-<Theorem kind="proposition" name="KV-cache width and memory" id="prop-tf5-kv-cache">
+<Theorem kind="proposition" name="KV-cache width and memory" id="prop-kv-cache">
 Let a layer have $h_k$ distinct key heads of width $d_k$ and $h_v$ distinct value heads of width $d_v$. Define its **per-token cache width**
 $$
 d_{\text{cache}} \defeq h_kd_k+h_vd_v.
@@ -162,7 +162,7 @@ Each position contributes $d_k$ scalars to every distinct key head and $d_v$ to 
 
 <MarginNote variant="formula" label="Cache savings">$d_{\text{cache}}=h_kd_k+h_vd_v$. For equal K/V head counts, $h=32$ to $g=8$ keeps $1/4$ of the MHA cache; MQA keeps $1/32$.</MarginNote>
 
-<MarginNote variant="pattern" label="What sharing cannot fix">MQA/GQA shrink the cache by $g/h$, but it still grows with $n$. Removing the $n$-dependence itself needs a state that does not grow — the recurrent route (<XRef id="thm-tf13-linattn-rnn" />; priced for hybrids in <XRef id="prop-tf14-decode-state" />).</MarginNote>
+<MarginNote variant="pattern" label="What sharing cannot fix">MQA/GQA shrink the cache by $g/h$, but it still grows with $n$. Removing the $n$-dependence itself needs a state that does not grow — the recurrent route (<XRef id="thm-linattn-rnn" />; priced for hybrids in <XRef id="prop-decode-state" />).</MarginNote>
 
 Two points sharpen the trade-off. First, the savings are about *bandwidth*, not chiefly parameters. Under the standard projection widths $hd_k=hd_v=d$, the query and output projections are untouched, so the projection-parameter count moves only from $4d^2$ (MHA) to $2d^2 + 2(g/h)\,d^2$, a modest change; the real win is that fewer distinct K/V heads mean fewer cache reads and writes per generated token. Second, this is why GQA is the common middle ground — it retains most of that bandwidth gain while recovering much of MHA's quality, by reading K/V groups rather than collapsing to a single shared head <Cite key="ainslie2023gqa" />.
 
@@ -170,7 +170,7 @@ Two points sharpen the trade-off. First, the savings are about *bandwidth*, not 
   src="/figures/kv-sharing.svg"
   alt="MHA, GQA, and MQA compared: query heads stay fixed while the row of shared key/value heads shrinks from h to g to 1."
   desc="Three panels — MHA, GQA with g groups, MQA — each with h=4 query heads on top mapping down to a row of distinct key/value heads below: 4 for MHA (one per query head), 2 for GQA (each shared by a group of two), 1 for MQA (shared by all). Only the number of KV heads changes; the queries stay per-head. In the illustrated d_k=d_v case, per-layer cache is 2n·h·d_k / 2n·g·d_k / 2n·d_k — 1 : ½ : ¼ of the MHA cache at h=4, g=2."
-  caption="Sharing key/value heads across MHA, GQA, and MQA (prop-tf5-kv-cache). The query projection stays per-head; only the number of distinct KV heads shrinks (h → g → 1), so $d_{\text{cache}}$ and the KV-cache traffic shrink with it. The printed $2nd_k$ formulas are the $d_k=d_v$ specialization."
+  caption="Sharing key/value heads across MHA, GQA, and MQA (prop-kv-cache). The query projection stays per-head; only the number of distinct KV heads shrinks (h → g → 1), so $d_{\text{cache}}$ and the KV-cache traffic shrink with it. The printed $2nd_k$ formulas are the $d_k=d_v$ specialization."
   id="fig-kv-sharing"
   width="92%"
 />
@@ -183,7 +183,7 @@ The three variants differ only in the number of *distinct* key/value heads; the 
 | GQA | $h$ | $g$ ($g \mid h$) | $ng(d_k+d_v)$ — $g/h$ of MHA | near-MHA <Cite key="ainslie2023gqa" /> |
 | MQA | $h$ | $1$ | $n(d_k+d_v)$ — $1/h$ of MHA | largest drop <Cite key="shazeer2019mqa" /> |
 
-The cache column is exact (<XRef id="prop-tf5-kv-cache" />); the quality column is *empirical* — a measured trade-off, not implied by the cache formula.
+The cache column is exact (<XRef id="prop-kv-cache" />); the quality column is *empirical* — a measured trade-off, not implied by the cache formula.
 
 ## Tracing the dimensions
 
@@ -194,7 +194,7 @@ To see the construction concretely, take $n = 3$ tokens, $d = 4$, $h = 2$, so $d
 - **Concatenate.** $\operatorname{Concat}(\operatorname{head}_1,\operatorname{head}_2)\in\R^{3\times 4}$, each row being $([\operatorname{head}_1]_{i,:},[\operatorname{head}_2]_{i,:})$.
 - **Project out.** $\operatorname{MHA}(\mathbf X) = \operatorname{Concat}(\cdots)\,\mathbf W^O\in\R^{3\times 4}$ with $\mathbf W^O\in\R^{4\times 4}$.
 
-The parameter count checks against <XRef id="prop-tf5-mha-params" />: the two heads contribute $2\times(3\ \text{matrices}\times 4\times 2) = 48$ and $\mathbf W^O$ contributes $4\times 4 = 16$, for $64 = 4d^2 = 4\cdot 16$. Each head attends in its own $2$-dimensional view of $\mathbf X$ — one might learn local adjacency, the other long-range similarity — and $\mathbf W^O$ blends the two perspectives into the $d$-dimensional output.
+The parameter count checks against <XRef id="prop-mha-params" />: the two heads contribute $2\times(3\ \text{matrices}\times 4\times 2) = 48$ and $\mathbf W^O$ contributes $4\times 4 = 16$, for $64 = 4d^2 = 4\cdot 16$. Each head attends in its own $2$-dimensional view of $\mathbf X$ — one might learn local adjacency, the other long-range similarity — and $\mathbf W^O$ blends the two perspectives into the $d$-dimensional output.
 
 ## Exercises
 

@@ -1,4 +1,4 @@
-"""KV-cache accounting guards prop-tf5-kv-cache and prop-tf12-kv-memory.
+"""KV-cache accounting guards prop-kv-cache and prop-kv-memory.
 
 The tests deliberately keep key and value head counts and widths separate.
 That general form must survive every specialization to MHA, GQA, and MQA.
@@ -8,7 +8,7 @@ import unittest
 
 
 def cache_width(h_k: int, d_k: int, h_v: int, d_v: int) -> int:
-    """Return d_cache = h_k*d_k + h_v*d_v (prop-tf5-kv-cache)."""
+    """Return d_cache = h_k*d_k + h_v*d_v (prop-kv-cache)."""
     return h_k * d_k + h_v * d_v
 
 
@@ -26,7 +26,7 @@ def cache_bytes(
     h_v: int,
     d_v: int,
 ) -> int:
-    """Evaluate M_KV = N*n*b*d_cache (prop-tf12-kv-memory)."""
+    """Evaluate M_KV = N*n*b*d_cache (prop-kv-memory)."""
     return layers * bytes_per_element * cache_entries(n, h_k, d_k, h_v, d_v)
 
 
@@ -76,7 +76,7 @@ class KVCacheTests(unittest.TestCase):
         self.assertEqual(gqa * h, mha * g)
         self.assertEqual(mqa * h, mha)
 
-    def test_chapter_12_numeric_example(self):
+    def test_chapter_15_numeric_example(self):
         """The 80-layer, width-8192 FP16 example occupies exactly 20 GiB."""
         layers, n, b = 80, 8_192, 2
         h, d_k, d_v = 32, 256, 256

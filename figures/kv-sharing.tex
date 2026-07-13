@@ -1,7 +1,7 @@
 %! no-theme
-% kv-sharing (ch05, def-tf5-gqa / prop-tf5-kv-cache) — how MHA / GQA / MQA share key/value heads.
+% kv-sharing (ch05, def-gqa / prop-kv-cache) — how MHA / GQA / MQA share key/value heads.
 % Query heads are always h; the number of DISTINCT key/value heads is h (MHA) / g (GQA) / 1 (MQA), and the
-% KV cache is proportional to it: prop-tf5-kv-cache gives 2n·h·d_k / 2n·g·d_k / 2n·d_k. Instance h=4, g=2
+% KV cache is proportional to it: prop-kv-cache gives 2n·h·d_k / 2n·g·d_k / 2n·d_k. Instance h=4, g=2
 % (the chapter's own dimension trace is h=2 — too small for a genuine GQA middle case). /authoring-figures
 % standard: relative positioning + spacing tokens, orthogonal fan-in comb (bus + tfjoin dot + single trunk),
 % grayscale-safe roles (Q solid purple / KV dashed blue, disambiguated by the two row labels), line-free

@@ -10,13 +10,13 @@ prerequisites: []
 notation_introduced: ['\softmax', '\defeq', 'd', 'n', 'd_k', 'row-stochastic', 'H(p,q)', 'D_KL', '\Emb', '\mathcal U', 'u_t', 'p', 'c', 'X^{(s)}']
 theorems: ['prop-softmax-translation-inv', 'prop-softmax-jacobian', 'prop-ce-kl', 'prop-row-stochastic-convex']
 los:
-  - id: TF-0.1
+  - id: lo-softmax-calculus
     statement: "State the softmax definition, prove its translation invariance, and derive its Jacobian."
-  - id: TF-0.2
+  - id: lo-cross-entropy-kl-equivalence
     statement: "Show that minimizing cross-entropy is equivalent to minimizing KL divergence from the data distribution."
-  - id: TF-0.3
+  - id: lo-row-stochastic-convex-combinations
     statement: "Define row-stochastic matrices and prove their product with a value matrix is a convex combination of the values."
-  - id: TF-0.4
+  - id: lo-modality-agnostic-embedding-interface
     statement: "State the modality-agnostic embedding interface and the unit/stream notation that place text and vision on a dual footing."
 ---
 
@@ -62,10 +62,10 @@ Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d
 | $\operatorname{MHA}(\mathbf X)$ | multi-head attention | Multi-Head Attention |
 | $\operatorname{FFN}(\mathbf x)$ | position-wise feed-forward network | The Transformer Block |
 | $\operatorname{LN}(\mathbf x)$ | layer normalization | The Transformer Block |
-| $\mathbf M$ | causal mask matrix | Attention (<XRef id="def-tf4-causal-mask" />) |
-| $(\statemat,\inputmat,\outputmat,\feedmat),\ \Delta$ | continuous state space quintuple and step size | State Space Models (<XRef id="def-tf3-ssm" />) |
-| $(\discA,\discB)$ | zero-order-hold discretized state matrices | State Space Models (<XRef id="thm-tf3-zoh" />) |
-| $\bullet$ | associative scan operator on affine pairs | State Space Models (<XRef id="def-tf3-scan-op" />) |
+| $\mathbf M$ | causal mask matrix | Attention (<XRef id="def-causal-mask" />) |
+| $(\statemat,\inputmat,\outputmat,\feedmat),\ \Delta$ | continuous state space quintuple and step size | State Space Models (<XRef id="def-ssm" />) |
+| $(\discA,\discB)$ | zero-order-hold discretized state matrices | State Space Models (<XRef id="thm-zoh" />) |
+| $\bullet$ | associative scan operator on affine pairs | State Space Models (<XRef id="def-scan-op" />) |
 
 ## Reading the figures
 

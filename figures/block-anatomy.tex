@@ -1,5 +1,5 @@
 %! no-theme
-% block-anatomy (ch06, def-tf6-prenorm / def-tf6-postnorm) — pre-norm vs post-norm, read off ONE question:
+% block-anatomy (ch06, def-prenorm / def-postnorm) — pre-norm vs post-norm, read off ONE question:
 % where does layer-norm sit relative to the residual skip? Pre-norm Y = X + f(LN(X)) leaves the skip NAKED
 % (LN inside the branch); post-norm Y = LN(X + f(X)) wraps the whole sum (LN on the skip sum). We draw the
 % generic residual unit (sublayer f = MHA, then FFN — each wraps identically) so the LN position is the only
