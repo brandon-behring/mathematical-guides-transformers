@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "claims": [
+    {
+      "id": "def-tf12-cost-eq",
+      "test": "tests/properties/test_roofline.py",
+      "statementSha256": "f07275ac57ba0c7e401a1630c2f797b8eb17259f7641282ecd01916ebba4133e"
+    },
+    {
+      "id": "prop-tf12-memory-bound",
+      "test": "tests/properties/test_roofline.py",
+      "statementSha256": "e2c637bcdedfcf9091b7ef2e2ec72c3274186cca6ec3262381d27e34681dd0b9"
+    },
+    {
+      "id": "rem-tf12-prefill-decode",
+      "test": "tests/properties/test_roofline.py",
+      "statementSha256": "5f81bb795a41b20415c429eed2774ed129a373aa73075b06438cbcd0e8170f3f"
+    }
+  ]
+}

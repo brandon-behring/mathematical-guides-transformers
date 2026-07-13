@@ -1,14 +1,14 @@
-# Topic-gap expansion (Track B) — four convergent gaps + three new dossiers
+# Topic-gap expansion (Track B) — four convergent gaps + evidence lock
 
-**Status:** approved design, **not yet executed**. Runs **after** Track A (`dossier-guide-integration_2026-07-10.md`),
-because three of its four additions need a **new** strict-live research dossier built first. Design record:
-`~/.claude/plans/how-much-research-is-elegant-popcorn.md`.
+**Status:** evidence reconciliation in progress. Track B content merges after Track A, while evidence validation and
+drafting run in parallel. Repository inspection found that DPO/RLHF and scaling already have authoritative strict-live
+dossiers; issues #5/#6 must resolve against those owners rather than by creating duplicates.
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
-(`.consult/codex-20260711T195132_033960-roadmap-readiness.md`) flagged two fixes, folded in below: the structure-design
-pass becomes a hard **B0 exit gate** (not an at-execution afterthought), and the three dossiers **build in parallel with
-Track A** (freeze scopes now; only *authoring* waits on Track A + dossier acceptance) — so the critical path is dossier
-readiness, not Track A completion.
+(`docs/audits/roadmap-readiness_2026-07-11.md`) flagged two fixes, folded in below: the structure-design
+pass becomes a hard **B0 exit gate** (not an at-execution afterthought), and evidence reconciliation **runs in parallel
+with Track A** (only authoring waits on A3 + evidence acceptance) — so the critical path is evidence readiness, not
+Track A completion.
 
 ## Context
 
@@ -19,7 +19,8 @@ covered — so several candidates were already closed. Four gaps converged (≥2
 **deferred**; the rest are **out of scope** with rationale below.
 
 Consistent with the hybrid-backing decision: **dossier-back the substantive research areas; author the textbook item
-from primaries.** New dossiers use the same strict-live v3 pipeline as the six merged (`~/Claude/research_toolkit`).
+from primaries.** Any genuinely new dossier or top-up uses the same strict-live v3 pipeline as the six merged
+(`~/Claude/research_toolkit`).
 
 ## The four additions
 
@@ -31,18 +32,17 @@ from primaries.** New dossiers use the same strict-live v3 pipeline as the six m
   express reward through policy → substitute into the Bradley-Terry likelihood → closed-form classification loss (same
   shape as the book's own $q-y$ logit-gradient / label-smoothing proofs). Reward modeling + PPO as the RL baseline DPO
   reduces.
-- **Placement:** chapter in **P3 (Objectives), after ch09-training**. **New dossier `research_preference_optimization`**
-  (RLHF/InstructGPT, reward modeling, Bradley-Terry, PPO, DPO, and the DPO-family: IPO/KTO/ORPO as a frontier remark).
+- **Placement:** chapter in **P3 (Objectives), after Training**. Evidence owners: `research_rlhf` for reward modeling,
+  InstructGPT, and PPO; `research_post_training_preference` for DPO and the IPO/KTO/ORPO frontier.
 
 ### 2. Scaling laws / Chinchilla — the unstated capstone
 - **Why:** the capstone the ch11 training-memory + ch12 roofline accounting visibly builds toward ("why models are the
   size they are" is set up, never answered); the book already silently borrows the scaling-laws notation ($N$-params in
   ch11, $1/T$ in ch09).
-- **Shape:** the empirical power-law fit $L(N,D)$ + a clean **Lagrangian derivation of the compute-optimal frontier**
-  ($N,D\propto C^{1/2}$; Kaplan → Hoffmann/Chinchilla revision) under the $C\approx 6ND$ budget.
-- **Placement:** short chapter, **P3-end or P4-open** (design-pass call). **New dossier `research_scaling_laws`**
-  (Kaplan 2001.08361, Hoffmann/Chinchilla 2203.15556, $C\approx6ND$ accounting, data-constrained + inference-aware
-  scaling as frontier).
+- **Shape:** the empirical power-law fit $L(N,D)$ + a **general Lagrangian derivation** under $C\approx6ND$; claim
+  square-root allocation only when the fitted exponents are equal or approximately equal.
+- **Placement:** short chapter that **opens P4**. Evidence owner: `research_llm_pretraining_scaling`, extended only for
+  genuinely missing inference-aware/over-training frontier evidence.
 
 ### 3. In-context learning / constructive attention capability — closes an asymmetry
 - **Why:** the book proves the *limitations* of alternatives (ch03 LTI obstruction, ch14 fixed-state recall bound) but
@@ -74,25 +74,26 @@ from primaries.** New dossiers use the same strict-live v3 pipeline as the six m
 
 ## Structure-design pass — a hard B0 EXIT GATE (per the Codex readiness review)
 Track B grows the guide to ~24 chapters. Because IDs are semantic/chapter-free (Track A), adding chapters is cheap, but
-**P3 gains ICL + RLHF/DPO (+ maybe scaling)**. Codex flagged "structure pass at execution" as too late; it is now a
+**P3 gains ICL + RLHF/DPO**, while Scaling opens P4. Codex flagged "structure pass at execution" as too late; it is now a
 **gate that must clear before any Track B authoring**, with explicit exit criteria:
-- the **three dossiers are built and accepted** (evidence ledgers usable);
-- **chapter placement is decided** — P3 internal order, and whether scaling opens P4;
-- the **ICL theorem scopes are frozen** (constructive associative-lookup + retrieval-error bound only; induction-heads /
-  ICL-as-GD stay remarks);
+- the authoritative DPO/scaling dossiers and the ICL evidence base are accepted (evidence ledgers usable);
+- **chapter placement is fixed** — ICL after Composition, DPO after Training, Scaling opens P4;
+- the **ICL theorem scope is frozen to the full constructive trio**: associative lookup + retrieval-error bound,
+  explicit copying/induction construction, and one controlled transformer-as-gradient-descent result; empirical
+  induction-head and implicit-GD interpretations remain remarks;
 - the **DPO and scaling claims are pinned** to specific `evidence_ledger` ids in their dossiers.
 Only then does authoring (B1–B4) begin.
 
 ## Delivery — phased
-(B0) build the three new dossiers (`research_preference_optimization`, `research_scaling_laws`,
-`research_incontext_associative_memory`) — strict-live v3, each tracked as a research-dossiers issue (#5/#6/#7).
-**Run B0 in PARALLEL with Track A** — freeze scopes now, build during A; nothing here depends on Track A code.
+(B0-evidence) validate the existing DPO/RLHF and scaling owners, add only missing top-ups, and build/validate the ICL
+evidence base without duplicating another dossier's ownership. **Run this in parallel with Track A.**
 (B0-gate) the structure-design **exit gate** above clears.
 (B1) BPE ch01 section (no dossier). (B2) ICL chapter. (B3) RLHF/DPO chapter. (B4) Scaling-laws chapter — each authored
-only after the gate clears **and** after Track A has landed the semantic-ID / re-part machinery they build on.
+only after the gate clears and A3 has landed. Drafts may run beside A4–A7, but content merges wait for A7 and proceed
+serially. Each B PR updates apparatus/metadata after rebasing; B4 performs the final whole-corpus sweep.
 Then the pre-seeded proof-audit runs over the full ~24-chapter corpus.
 
 ## Verification (at execution)
-Each new chapter: cited claims resolve to its dossier's `evidence_ledger` (BPE from primaries); Codex-5.6 + Sonnet +
+Each new chapter: cited claims resolve to its authoritative dossier evidence ledgers (BPE from primaries); Codex-5.6 + Sonnet +
 Python numeric protocol; DPO/scaling derivations numerically checked; the structure-design pass keeps the parts
 balanced and the dual-footing thesis intact (BPE closes the text-tokenizer asymmetry).

@@ -1,13 +1,12 @@
-# Dedicated proof-correctness sweep — approved design (execute in a fresh session)
+# Dedicated proof-correctness sweep — approved terminal execution design
 
 ## Context
 Follow-up to the merged independent audit (PR #4 / `579a81c`), which excluded
 proof re-derivation by design yet caught two proof-level defects incidentally.
 The unit of verification is an ARGUMENT, not a claim, so the pipeline adds two
 mechanisms the claim-sweeps lacked: machine-checked falsification and blind
-re-derivation. Designed via 8 user decisions over 2 rounds; **execution is
-deferred to a fresh session** (quota headroom) — this session only parks the
-plan in-repo per the Large Task Protocol.
+re-derivation. Designed via 8 user decisions over 2 rounds; execution remains
+deliberately terminal, after Tracks A and B freeze the corpus.
 
 **Corpus (measured 2026-07-03, PRE sequence-models arc):** 52 theorem/proposition
 statements, 51 written proofs (1 ch05 statement lacks an adjacent proof block —
@@ -33,10 +32,9 @@ definitions, in `src/content/transformers/*.mdx`.
 > the `MAP`-style renumber no longer applies to new content. A 3-voice / 3-round review already ran over the current
 > 19 chapters (2026-07-10); its **confirmed defects are pre-seeded below** (Stage-A/C work already done for them).
 
-> **Readiness review (Codex 2026-07-11)** (`.consult/codex-20260711T195132_033960-roadmap-readiness.md`). Three changes:
-> (1) the **load-bearing** pre-seeded defects — **ch10 contrastive over-reach** and the **ch17 missing tag/probability
-> factor** — are **pulled FORWARD to a pre-Track-A fix** (restructuring must not migrate or cite known-invalid material);
-> the rest ride this terminal sweep. (2) This sweep is **not the only proof gate**: each new Track-A/B chapter gets a
+> **Readiness review (Codex 2026-07-11)** (`docs/audits/roadmap-readiness_2026-07-11.md`). Three changes:
+> (1) all six confirmed pre-seeded defect groups are pulled forward to Track A A1; this terminal sweep verifies their
+> non-regression. (2) This sweep is **not the only proof gate**: each new Track-A/B chapter gets a
 > **lightweight per-chapter proof/numeric gate as it lands**; only the exhaustive falsify→derive→compare→verify sweep is
 > terminal. (3) The **`tests/properties/` harness is landed by Track A (PR1), not created here** — this audit *extends*
 > it, so migration and the new chapters already run under regression protection. The sweep inventories **semantic IDs**
@@ -44,13 +42,12 @@ definitions, in `src/content/transformers/*.mdx`.
 
 ## Pre-seeded findings (from the 2026-07-10 three-round review — confirmed by ≥2 independent voices)
 
-Feed these straight into Stage C/D as candidate findings (skip re-discovery; still verify per decision 7). Blocking
-subsets are fixed earlier in Track A (ch12 MoE cost model, ch05↔ch12 `d_cache`, old-ch13 SSD chunk wording) — audit
-only confirms those did not regress. The audit OWNS:
+All items below are owned by Track A A1 and become explicit non-regression targets for Stage A/C/D; the audit does not
+defer known-invalid material. The list is retained so the terminal report can record independent confirmation:
 - **ch10 contrastive minimizer** (`prop-tf10-contrastive-alignment`): the "equivalently, on L2-normalized embeddings"
   step is false (fixed-τ margin ≤ 2/τ cannot diverge); split into unconstrained-logit lemma / constrained spherical-code
   optimum / directional tendency, and fix ch18:33's "correct precisely because" over-claim to match ch18:114's caveat.
-- **ch07 encoder⟺cross-attention contradiction** (**pull FORWARD — pre-Track-A**): line 129's "an encoder exists exactly
+- **ch07 encoder⟺cross-attention contradiction**: line 129's "an encoder exists exactly
   when cross-attention is present" contradicts the encoder-only row + ViT (55) + LLaVA (133) in-chapter; the real switch
   is whether the encoder feeds cross-attention vs. a concat-projector. (Expository.) **Fix the merged `three-architectures`
   figure caption (#10) in the same change** — it renders the same "unused 4th cell" framing (bidirectional self-attention
@@ -71,8 +68,9 @@ each ZOH switch) and ch10 Mahalanobis "singular covariance" (pooled reps live in
 presumes the pre-normalization representation, to forestall the R3-4 confusion.
 
 ## The 8 decisions
-1. **Scope:** all 189 units (statements+proofs, both solution classes,
-   definition well-definedness).
+1. **Scope:** every statement+proof, both solution classes, and every definition's well-definedness in the frozen
+   post-Track-B corpus. Generate the exact denominator from the tracked corpus inventory at launch; do not reuse the
+   historical 189-unit count.
 2. **Pipeline:** full A+B+C+D (falsify → blind-derive → compare → verify).
 3. **Roster:** premium-where-it-counts — B and D-tiebreaks Fable 5/max;
    A, C, D-refuters Sonnet 5/high. **(2026-07-10 substitution: Fable is out of
@@ -103,9 +101,9 @@ presumes the pre-normalization representation, to forestall the R3-4 confusion.
   (hypotheses, quantifiers, conclusion); write AND run a pure-python property
   test (random + adversarial instances: tied maxima, Rademacher, degenerate
   dims). Verdict PASS / FAIL(+concrete instance) / not-instantiable.
-  Definitions batched per chapter (14 batches): existence/uniqueness/side
+  Definitions batched per chapter: existence/uniqueness/side
   conditions (quantizer-tie-break class).
-- **B — Blind re-derivation** *(fable/max; 52 proofs + 30 Prove-solutions)*:
+- **B — Blind re-derivation** *(fable/max; every inventoried proof + Prove-solution)*:
   input = inline spec + inline statements of the unit's citable XRef targets.
   Output: derivation or "cannot prove without extra hypothesis X".
 - **C — Comparison audit** *(sonnet/high)*: guide proof + B output + A
@@ -136,8 +134,8 @@ presumes the pre-normalization representation, to forestall the R3-4 confusion.
   `npm run validate` + `npm run build` + 0 katex-errors + new tests PASS.
 
 ## Verification (executing session)
-- 189/189 units through their assigned stages (journal-verified; failed
-  agents re-run before coverage is claimed).
+- 100% of the frozen inventory through its assigned stages (journal-verified;
+  failed agents re-run before coverage is claimed).
 - Every confirmed finding: quoted evidence + 2 uphold votes + external
   verdicts; every A-FAIL carries a concrete instance.
 - Post-fix: fixed statements' property tests PASS; validate clean; build
@@ -160,11 +158,11 @@ are the citation-grounded evidence base the sweep should draw on when checking p
 - **ch02 RNN/LSTM/GRU/BPTT/seq2seq/Bahdanau** → `research_recurrent_seq2seq` (**MERGED** PR #4).
 - **new Sparse chapter** → `research_{sparse_attention_patterns,trainable_sparse_attention,kv_cache_sparsity}` (**MERGED** PR #4).
 
-New Track-B dossiers (to build; see `topic-gap-expansion_2026-07-10.md`), backing the four topic-gap additions:
-- **new RLHF/DPO chapter (ch09 objectives)** → `research_preference_optimization` (to build).
-- **new Scaling-laws chapter** → `research_scaling_laws` (to build; note the coverage-audit finding that the corrected
+Track-B evidence owners (see `topic-gap-expansion_2026-07-10.md`):
+- **new RLHF/DPO chapter** → `research_rlhf` + `research_post_training_preference`.
+- **new Scaling-laws chapter** → `research_llm_pretraining_scaling` plus its targeted top-up (note the corrected
   MoE *traffic* model must be DERIVED from the roofline, not cited).
-- **new ICL chapter** → `research_incontext_associative_memory` (to build; theorem-shaped scope only).
+- **new ICL chapter** → `research_incontext_associative_memory` (to build; full constructive trio locked in Track B).
 - **ch01 BPE section** → author from primaries (BPE/SentencePiece), no dossier.
 
 When the sweep reaches a chapter, pull anchored excerpts + evidence IDs from its dossier's `evidence_ledger.yml`

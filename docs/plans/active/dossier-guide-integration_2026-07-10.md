@@ -1,10 +1,10 @@
 # Dossier→guide integration (Track A) — 6-part restructure, review-hardened
 
-**Status:** approved design, **not yet executed**. Parked per the Large Task Protocol. Supersedes
+**Status:** execution in progress (A0 verification foundation). Supersedes
 `docs/notes/sparse-attention-chapter-ideas_2026-07-09.md`. Companion: `topic-gap-expansion_2026-07-10.md` (Track B).
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
-(`.consult/codex-20260711T195132_033960-roadmap-readiness.md`) returned NO-GO for the backlog *as phased* (direction
+(`docs/audits/roadmap-readiness_2026-07-11.md`) returned NO-GO for the backlog *as phased* (direction
 A→B→C sound). Its blocking/important fixes are folded in below: the PR sequence is re-split (re-part / ID-migration /
 MoE-author+extract are now separate — extracting MoE before its chapter exists would leave ch12 hollow), an explicit
 **MoE derivation gate** precedes authoring, **ID-migration + bibliography invariants** are named, the **property-test
@@ -16,8 +16,8 @@ authoring.
 The six merged research dossiers (`~/Claude/research-dossiers/`, research-dossiers PR #4) are the guide's backing
 evidence base, but the guide cites none yet. This track (a) **extends** the guide with two new chapters (Mixture-of-
 Experts; Sparse & Sub-Quadratic Attention) and (b) **improves** existing chapters with anchored primaries, inside a
-**6-part restructure** validated by a 3-voice / 3-round review + a dossier-coverage audit. Design decisions and the
-full review record: `~/.claude/plans/how-much-research-is-elegant-popcorn.md`.
+**6-part restructure** validated by a 3-voice / 3-round review + a dossier-coverage audit. This active plan and its
+tracked readiness review are now the authoritative record; the former home-directory design record is stale.
 
 **Cite-provenance principle:** the guide cites **primary papers** (`<Cite key=.../>` + `bibliography.bib` /
 `src/data/references.json`), never dossier slugs. Per claim, pull the anchored excerpt + arXiv id from the dossier's
@@ -105,10 +105,10 @@ hardware-shape choice on the same $\Theta(nd_sd)$ plateau (asymptotics unchanged
 See `proof-audit_2026-07-03.md`'s pre-seeded list. In brief: ch10 contrastive over-reach + ch18:33 propagation; ch07
 encoder⟺cross-attention in-chapter contradiction (**+ the `three-architectures` figure caption from #10 — fix figure
 and prose together**, since the merged figure renders the same "unused 4th cell" framing); ch17 any-to-any tag-factor
-omission; ch17 finite-alphabet wording (prop + Exercise 17.3); ch18 prose N-4/N-5; ch08 definition-before-use. **Per
-the Codex readiness review, the load-bearing defects (ch10 contrastive over-reach, ch17 missing tag/probability factor)
-are pulled FORWARD to a pre-Track-A fix** — restructuring must not migrate or cite known-invalid material; the rest ride
-the terminal sweep. **Reviewed and REFUTED (do not seed):** ch13 dual-discretization (explicitly scoped), ch10
+omission; ch17 finite-alphabet wording (prop + Exercise 17.3); ch18 prose N-4/N-5; ch08 definition-before-use. **All six
+confirmed groups are pulled forward into A1** — restructuring must not migrate known-invalid material; the terminal
+audit verifies non-regression rather than rediscovering them. **Reviewed and REFUTED (do not seed):** ch13
+dual-discretization (explicitly scoped), ch10
 Mahalanobis (pooled reps in ambient $\R^d$; sphere is nonlinear).
 
 ## Migration, glossaries, completeness, repairs
@@ -119,8 +119,9 @@ Mahalanobis (pooled reps in ambient $\R^d$; sphere is nonlinear).
   add $\gamma,\alpha,K,d_{\text{cache}}$; enumerate the column-vector switches) + `<NotationOverride>` chapter boxes +
   a back-matter quick-ref card. Terminology = back-matter A–Z (unit/token/code/patch, state, attention-output pre/post-
   $W^O$, exact-vs-lossless, resident/activated/traffic). A single one-referent table across the corpus is infeasible; a
-  scoped index is. (Scaffold back-matter support = infra check at authoring.)
-- **Completeness:** decoding/sampling section (greedy/temperature/top-k/top-p on the softmax row; ch09 or ch12);
+  scoped index is. The web routes and PDF print override both include the quick reference and glossary.
+- **Completeness:** decoding/sampling section (greedy/temperature/top-k/top-p on the softmax row) in Inference
+  Optimizations, with a forward reference from Training;
   `rem-tf6-rmsnorm` (LN-Jacobian bound carries over); VQ-VAE autoencoder on-ramp in the visual-tokenization chapter.
 - **Narrative repairs:** old-ch14 closing → close the **sub-quadratic-mixer arc** + bridge to multimodality (not "the
   book"); scope ch03:35/438's "remainder of the book is both escapes" to match + add the efficiency-interlude note to
@@ -131,23 +132,24 @@ Mahalanobis (pooled reps in ambient $\R^d$; sphere is nonlinear).
 New chapters + corrected propositions: **Codex 5.6** (adversarial math — substituting for out-of-credits Fable) +
 Sonnet (style) + Python numeric compute-verification (seq-models-arc precedent).
 
-## Delivery — phased shippable PRs (re-split per the Codex readiness review)
+## Delivery — eight phased shippable PRs (execution lock 2026-07-13)
 The old PR2 bundled re-part + ID-migration + MoE-extraction — too many failure modes, and extracting MoE before the MoE
-chapter exists leaves ch12 hollow with dangling forward-refs. Re-split into six:
-1. **Math-fix blockers + $d_{\text{cache}}$ unification** + **PR1 gates**: (a) the **MoE derivation gate** — derive the
-   three-quantity cost model from `def-tf12-cost-eq` and *review it* before any MoE authoring, separating resident
-   $E\mu$ / activated $Tk\Phi$ / traffic $A_B\mu$ with limiting-case checks (one-token decode, $A_B=E$, repeated
-   routing, expert sharding); (b) land the **`tests/properties/` harness + CI step** now (not deferred to the
-   proof-audit) so migration runs under regression protection; (c) **infra-readiness spikes** — scaffold
-   back-matter/glossary support, `<NotationOverride>` rendering, KaTeX for all new notation, numeric/property-test CI
-   trigger paths, figure conventions; (d) generate a **corpus manifest** (chapter order/part/ID/counts/printed-numbers)
-   as the baseline for every later PR and the proof-audit.
-2. **Mechanical re-part ONLY** — frontmatter `part:` moves, no ID or content change; `validate` + build green.
-3. **Semantic-ID migration** — machine-generated old→new manifest; the **ID invariants** (below) all pass; prose-number
-   sweep clean.
-4. **MoE chapter — authored AND extracted from ch12 atomically** (never extract before the destination exists).
-5. **Sparse & Sub-Quadratic Attention chapter.**
-6. **Glossaries + completeness + narrative repairs.**
+chapter exists leaves ch12 hollow with dangling forward-refs. The execution review further separated verification,
+known correctness, and existing-chapter enrichment:
+1. **A0 verification foundation:** stdlib property harness + Python CI; tracked corpus and property-coverage manifests;
+   durable in-repo provenance; scaffold 4.26.2 dependency floor. The suite begins with the already-correct roofline.
+2. **A1 all known correctness + quantitative spine:** fix all six pre-seeded groups; retitle the detection chapter;
+   correct $d_{\text{cache}}$, SSD wording, and the MoE derivation; complete all four property-test families. The
+   **MoE derivation gate** separates resident $E\mu$, activated $Tk\Phi$, and traffic $A_B\mu$, with limiting-case checks
+   for one-token decode, $A_B=E$, repeated routing, and expert sharding.
+3. **A2 mechanical re-part ONLY** — frontmatter `part:` moves plus matching README/CLAUDE metadata, no ID/content edit.
+4. **A3 semantic-ID + final-number migration** — allocate final 00–23 numbering once with planned gaps; generate the
+   old→new/retired manifest; update every anchor class and printed number; pass the invariants below.
+5. **A4 existing-chapter enrichment** — MLA, approximate KV selection/eviction, and ch02/ch08 citations.
+6. **A5 MoE chapter** — author AND extract from Inference Optimizations atomically.
+7. **A6 Sparse & Sub-Quadratic Attention chapter** — relocate sliding-window material atomically.
+8. **A7 apparatus + completeness + narrative repairs** — native glossary, local notation overrides, web+print quick
+   reference/glossary, decoding, RMSNorm, VQ-VAE onramp, narrative sweep, and plan closeout.
 Each independently reviewable/mergeable. **Per-PR gate:** `npm run validate` + `npm run build` + 0 KaTeX errors + 0
 duplicate labels + (content PRs) the **bibliography gate** — every new `<Cite key>` resolves 1:1 through
 `bibliography.bib` → `src/data/references.json`, keys unique.

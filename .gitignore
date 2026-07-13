@@ -16,6 +16,11 @@ public/pagefind/
 .DS_Store
 *.swp
 
+# Python test/cache artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
 # TeX byproducts from figure compilation (only the .tex + .pdf are tracked)
 figures/*.aux
 figures/*.log
