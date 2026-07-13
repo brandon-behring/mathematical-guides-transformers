@@ -17,6 +17,31 @@
       "statementSha256": "9fa934b8e970938ccb78c868b61a496d760485602e21834678fdae7287e7f478"
     },
     {
+      "id": "rem-softmax-temperature",
+      "test": "tests/properties/test_decoding.py",
+      "statementSha256": "36ab5fa2c5b2100130f25a459dfacf33240ae96e89807628960b13c98be6c9ce"
+    },
+    {
+      "id": "def-token-decoding",
+      "test": "tests/properties/test_decoding.py",
+      "statementSha256": "378003766bf48c908654380ffee314817ffdf34f481651f628cce98a65687306"
+    },
+    {
+      "id": "prop-truncated-sampling",
+      "test": "tests/properties/test_decoding.py",
+      "statementSha256": "6336ad37a04278229fcc2ba891eead1912ddca3093b94a1fa3aaa01cee2b2d52"
+    },
+    {
+      "id": "prop-ln-jacobian",
+      "test": "tests/properties/test_normalization.py",
+      "statementSha256": "c219ab1386d3f48b82de455c0b2f8da9817670c4e7088ae8ed2139aa34d49cd4"
+    },
+    {
+      "id": "rem-rmsnorm",
+      "test": "tests/properties/test_normalization.py",
+      "statementSha256": "041cc70d602d52bb53ee0408188658bc2a3f0e8746a6ec99520c78a6a27a9ea2"
+    },
+    {
       "id": "prop-kv-cache",
       "test": "tests/properties/test_kv_cache.py",
       "statementSha256": "3afad84b69cbb8f355f1375d0459d21a2034dddf92025805ff007a03084e70e8"
@@ -29,7 +54,7 @@
     {
       "id": "rem-kv-selection-exactness",
       "test": "tests/properties/test_kv_cache.py",
-      "statementSha256": "6b218743cee3a39e594fd8e8f97c857c97b2b043044d9c834cda6db894ca2d7e"
+      "statementSha256": "e58d5b197c54b55525e2c968052f2e5d60a84ed2943a4ec178e04add17412eee"
     },
     {
       "id": "def-moe",
@@ -39,7 +64,7 @@
     {
       "id": "prop-moe-router-gradient",
       "test": "tests/properties/test_moe_cost.py",
-      "statementSha256": "62b9803ed54f6bf3e4cef0e91a39f4588b6b4d9f9dae9a979fd2b21e3c71089d"
+      "statementSha256": "bae1103abbb8d7bdcef0c1b95e01b249721301902aca4058abb0763475aa3cab"
     },
     {
       "id": "def-moe-routing-objective",

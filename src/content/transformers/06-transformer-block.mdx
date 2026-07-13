@@ -3,15 +3,15 @@ title: "The Transformer Block"
 slug: transformer-block
 chapter: 6
 part: 3
-description: "The transformer block from its parts: the position-wise feed-forward network, layer normalization and its Jacobian bound, residual connections and the gradient-highway identity, and why pre-norm leaves the skip path naked while post-norm does not."
-last_verified: 2026-06-03
+description: "The transformer block from its parts: the position-wise feed-forward network, LayerNorm and RMSNorm with input-magnitude-independent Jacobian bounds, residual connections, and pre-norm versus post-norm gradient paths."
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention, multi-head-attention]
-notation_introduced: ['\operatorname{FFN}', '\operatorname{LN}', 'd_{\text{ff}}', '\gamma', '\beta']
-theorems: ['prop-ln-jacobian', 'thm-gradient-highway']
+notation_introduced: ['\operatorname{FFN}', '\operatorname{LN}', '\operatorname{RMSNorm}', 'd_{\text{ff}}', '\gamma', '\beta']
+theorems: ['prop-ln-jacobian', 'rem-rmsnorm', 'thm-gradient-highway']
 los:
   - id: lo-transformer-block-components
-    statement: "Define the position-wise feed-forward network, layer normalization, and residual connections."
+    statement: "Define the position-wise feed-forward network, LayerNorm, RMSNorm, and residual connections, and compare the two normalization Jacobian bounds."
   - id: lo-residual-gradient-highway
     statement: "Prove the gradient-highway identity for residual networks and identify the all-skip term."
   - id: lo-prenorm-postnorm-comparison
@@ -23,9 +23,10 @@ los:
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
-import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
+import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
 # The Transformer Block
@@ -91,12 +92,16 @@ where $\epsilon>0$ is a stability constant and $\boldsymbol\gamma,\boldsymbol\be
 
 <MarginNote variant="formula" label="Per-token statistics">$\mu_{\mathbf x},\sigma_{\mathbf x}^2$ average over the $d$ features of *one* token — never across the batch or the sequence.</MarginNote>
 
+<NotationOverride scope="LayerNorm and RMSNorm Jacobians">
+The normalization definitions act on token rows. In the Jacobian derivations below, $\mathbf x$, $\hat{\mathbf x}$, $\boldsymbol\gamma$, and $\mathbf 1$ are temporarily **columns**, so $\mathbf x\mathbf x^\top$ and $\hat{\mathbf x}\hat{\mathbf x}^\top$ are outer products and the Jacobian acts by left multiplication.
+</NotationOverride>
+
 The normalization is what keeps activation scales in check, but it inserts a Jacobian onto whatever path it sits on. The next chapters turn on a single fact about that Jacobian: it is bounded independently of the input's magnitude.
 
 <Theorem kind="proposition" name="Layer-norm Jacobian bound" id="prop-ln-jacobian">
 For fixed $\boldsymbol\gamma$ and $\epsilon>0$, the Jacobian of $\operatorname{LN}$ satisfies, for every $\mathbf x\in\R^{d}$,
 $$
-\Big\lVert \frac{\partial\,\operatorname{LN}(\mathbf x)}{\partial\mathbf x}\Big\rVert_2 \;\le\; \frac{2\,\lVert\boldsymbol\gamma\rVert_\infty}{\sqrt{\epsilon}}.
+\Big\lVert \frac{\partial\,\operatorname{LN}(\mathbf x)}{\partial\mathbf x}\Big\rVert_2 \;\le\; \frac{\lVert\boldsymbol\gamma\rVert_\infty}{\sqrt{\epsilon}}.
 $$
 The bound is independent of $\lVert\mathbf x\rVert$ but does depend on the learned scale $\boldsymbol\gamma$ and the constant $\epsilon$.
 </Theorem>
@@ -110,13 +115,40 @@ $$
 $$
 the three terms being the derivative of $\mathbf x$, of the mean subtraction, and of the variance scaling (quotient rule).
 
-**Spectral norm of the inner matrix.** The matrix $\mathbf I - \tfrac1d\mathbf 1\mathbf 1^\top$ is the orthogonal projection off $\operatorname{span}\{\mathbf 1\}$, so its spectral norm is $1$. The correction $\tfrac1d\hat{\mathbf x}\hat{\mathbf x}^\top$ is rank one with spectral norm $\lVert\hat{\mathbf x}\rVert^2/d = \sigma_{\mathbf x}^2/(\sigma_{\mathbf x}^2+\epsilon)\le 1$. By the triangle inequality the inner matrix has spectral norm at most $2$, hence
+**Spectral norm of the inner matrix.** Let $\mathbf P=\mathbf I-\tfrac1d\mathbf 1\mathbf 1^\top$. Because $\hat{\mathbf x}$ is centered, $\mathbf P\hat{\mathbf x}=\hat{\mathbf x}$, so $\mathbf P$ commutes with the rank-one correction. Their shared eigenspaces make the bound exact: the inner matrix is $0$ on $\operatorname{span}\{\mathbf 1\}$, is $\epsilon/s^2$ along the centered input when it is nonzero, and is $1$ on directions orthogonal to both. (At a constant input it is simply $\mathbf P$.) Every eigenvalue therefore lies in $[0,1]$, and
 $$
-\Big\lVert\frac{\partial\hat{\mathbf x}}{\partial\mathbf x}\Big\rVert_2 \le \frac{2}{s} \le \frac{2}{\sqrt{\epsilon}},
+\Big\lVert\frac{\partial\hat{\mathbf x}}{\partial\mathbf x}\Big\rVert_2 \le \frac{1}{s} \le \frac{1}{\sqrt{\epsilon}},
 $$
 using $s\ge\sqrt{\epsilon}$.
 
 **Learned scale.** Pre-multiplying by $\operatorname{diag}(\boldsymbol\gamma)$ scales the operator norm by at most $\lVert\boldsymbol\gamma\rVert_\infty$, which gives the stated bound. $\qquad\blacksquare$
+</Theorem>
+
+<Theorem kind="remark" name="RMSNorm inherits the Jacobian control" id="rem-rmsnorm">
+**RMSNorm** <Cite key="zhang2019rmsnorm" /> removes LayerNorm's mean subtraction and learned shift. With
+$$
+r(\mathbf x)\defeq\sqrt{\norm{\mathbf x}^2/d+\epsilon},
+\qquad
+\operatorname{RMSNorm}(\mathbf x)
+\defeq
+\boldsymbol\gamma\odot\frac{\mathbf x}{r(\mathbf x)},
+$$
+its unscaled Jacobian is
+$$
+\frac{1}{r}\left(\mathbf I-
+\frac{\mathbf x\mathbf x^\top}{d r^2}\right)
+=
+\frac{1}{r}\left(\mathbf I-
+\frac{\widehat{\mathbf x}\widehat{\mathbf x}^\top}{d}\right),
+\qquad \widehat{\mathbf x}=\frac{\mathbf x}{r}.
+$$
+The inner symmetric matrix has eigenvalue $1$ in directions orthogonal to $\mathbf x$ and eigenvalue $\epsilon/r^2\in(0,1]$ along $\mathbf x$. Its spectral norm is therefore at most $1$, and learned featurewise scaling gives
+$$
+\left\lVert\frac{\partial\,\operatorname{RMSNorm}(\mathbf x)}{\partial\mathbf x}\right\rVert_2
+\le \frac{\norm{\boldsymbol\gamma}_\infty}{r}
+\le \frac{\norm{\boldsymbol\gamma}_\infty}{\sqrt\epsilon}.
+$$
+Thus the same constant-$1$ input-magnitude-independent control as <XRef id="prop-ln-jacobian" /> carries over. What does **not** carry over is shift invariance: without recentering, adding $c\mathbf 1$ generally changes RMSNorm.
 </Theorem>
 
 The projection off $\operatorname{span}\{\mathbf 1\}$ is the same null-space phenomenon as the softmax Jacobian's annihilation of $\mathbf 1$ (<XRef id="prop-softmax-jacobian" />): normalization removes the mean direction, so layer normalization is blind to a uniform shift of a token's features, exactly as softmax is blind to a uniform shift of its logits.
@@ -265,5 +297,19 @@ with feature mean $0$ and feature variance $1$, as required. $\qquad\blacksquare
 <SolutionBox>
 
 Take $f(\mathbf x) = \mathbf x\mathbf A$ with $\mathbf A = 9\mathbf I$, at any input — say $\mathbf x = \mathbf 0$; $f$ is linear, so its Jacobian is the same at every input — and the layer Jacobian is $\mathbf I + 9\mathbf I = 10\mathbf I$, spectral norm $10$: the all-skip term is the single $\mathbf I$, but the full bracket has norm $10$, so the skip route is a $10\%$ share, not dominant. Conversely $\mathbf A = -\tfrac{9}{10}\mathbf I$ gives bracket $\tfrac{1}{10}\mathbf I$. Either way, <XRef id="thm-gradient-highway" /> guarantees the identity route exists; it does not bound its relative magnitude. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 6.6 (Derive).** Differentiate $\mathbf x/r(\mathbf x)$ for $r(\mathbf x)=\sqrt{\norm{\mathbf x}^2/d+\epsilon}$, derive the RMSNorm Jacobian in <XRef id="rem-rmsnorm" />, and prove its spectral-norm bound. Compare its eigenspaces with LayerNorm's and identify the invariance that only LayerNorm has.
+
+<SolutionBox>
+
+Since $\nabla r=\mathbf x/(dr)$, the product rule gives
+$$
+\frac{\partial(\mathbf x/r)}{\partial\mathbf x}
+=\frac{1}{r}\mathbf I-\frac{1}{r^2}\mathbf x(\nabla r)^\top
+=\frac1r\left(\mathbf I-\frac{\mathbf x\mathbf x^\top}{dr^2}\right).
+$$
+The rank-one inner correction has eigenvalue $\norm{\mathbf x}^2/(dr^2)=1-\epsilon/r^2$ along $\mathbf x$ and $0$ orthogonally, so the displayed inner matrix has eigenvalues $\epsilon/r^2$ and $1$; its norm is at most $1$. Multiplication by $\operatorname{diag}(\boldsymbol\gamma)$ and $r\ge\sqrt\epsilon$ yield $\norm{J}_2\le\norm{\boldsymbol\gamma}_\infty/\sqrt\epsilon$. LayerNorm has the same constant-$1$ bound because its centering projection commutes with its rank-one correction: it has eigenvalue $0$ along $\mathbf 1$, $\epsilon/s^2$ along the centered input, and $1$ on the remaining centered directions. RMSNorm instead has eigenvalue $\epsilon/r^2>0$ along $\mathbf x$ and no uniform-shift null direction; accordingly only LayerNorm is invariant under $\mathbf x\mapsto\mathbf x+c\mathbf 1$. $\qquad\blacksquare$
 
 </SolutionBox>

@@ -1,0 +1,8 @@
+---
+term: "State"
+aliases: ["model state", "recurrent state", "decode state"]
+see: [lossless-prefix-memory]
+tags: [recurrence, inference]
+---
+
+Information carried from one step to the next so future outputs can depend on the past. The concrete object is local: an RNN hidden vector, an SSM state, a matrix-valued linear-attention state, or a growing KV cache. “State” therefore names a role, not one universal tensor or one guarantee of losslessness.

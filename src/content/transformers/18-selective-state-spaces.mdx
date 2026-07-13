@@ -23,9 +23,10 @@ los:
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
-import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
+import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
 # Selective State Spaces and State Space Duality
@@ -34,7 +35,13 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 ## Notation
 
-The standing symbols $n$, $d$, $d_s$, the state quintuple $(\statemat,\inputmat,\outputmat,\feedmat)$ with discretization $(\discA,\discB)$, the scan operator $\bullet$, and the scalar SSM input $u_t$ — one channel's coordinate of the token $\mathbf x_t\in\R^{d}$, as in <XRef id="def-ssm" />, not the raw unit of the notation chapter — are inherited. As in ch. 3, the state $\statevec_t\in\R^{d_s}$ and the vectors $\inputmat_t,\outputmat_t\in\R^{d_s}$ are treated as **columns** (a stated departure from the row convention), and time-ordered products are $\prod_{s=j+1}^{i}\discA_s \defeq \discA_i\discA_{i-1}\cdots\discA_{j+1}$, the empty product ($j=i$) being $\mathbf I$. Two symbols are **chapter-local**: $\mathbf T$, the transfer matrix, and $\mathbf L$, the decay mask (the additive attention mask keeps its standing name $\mathbf M$, <XRef id="def-causal-mask" />). The chunk size is $c$ (its standing image-channel meaning is unused here); $\gamma$ is a scalar decay; $\phi:\R^{d_k}\to\R^{D}$ and $D$ are as in <XRef id="rem-linear-attention" />.
+The standing symbols $n$, $d$, $d_s$, the state quadruple $(\statemat,\inputmat,\outputmat,\feedmat)$ with discretization $(\discA,\discB)$, and the scan operator $\bullet$ are inherited.
+
+<NotationOverride scope="Selective State Spaces">
+The state $\statevec_t$ and the write/read vectors $\inputmat_t,\outputmat_t$ are **columns**; the linear-attention subsection likewise treats feature and value vectors as columns. The scalar $u_t$ is one channel of token row $\mathbf x_t$, not a raw unit. Chapter-local $\mathbf T$ is the transfer matrix, $\mathbf L$ the decay mask, and $c$ the chunk size (not image-channel count); $\gamma$ is a scalar decay. Time-ordered products read $\prod_{s=j+1}^{i}\discA_s=\discA_i\cdots\discA_{j+1}$, with empty product $\mathbf I$.
+</NotationOverride>
+
+The feature map $\phi:\R^{d_k}\to\R^{D}$ and $D$ are as in <XRef id="rem-linear-attention" />; the additive attention mask keeps its standing name $\mathbf M$ (<XRef id="def-causal-mask" />).
 
 ## The selective state space model
 

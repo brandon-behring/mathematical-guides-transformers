@@ -27,11 +27,16 @@ import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/Margin
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
 # Practical Training Optimizations
 
-**Where we are.** Every production training tool one hears named — mixed precision, gradient checkpointing, LoRA, ZeRO/FSDP — is, mathematically, an algebraic transformation of one specific term in a single equation: the memory a stochastic optimizer needs to train a model. We state that equation first, fixing the bytes-per-quantity that each term carries; then we walk each tool through it. Mixed precision shrinks the bytes per parameter and gradient by a dynamic-range argument; gradient checkpointing shrinks the activation count by trading memory for recomputation, and we prove the $\Theta(\sqrt{L})$ optimum exactly; LoRA collapses the trainable-parameter count to a low-rank adapter, with a parameter saving we state as a proposition; and ZeRO/FSDP partitions every term across $P$ workers, with per-worker memory and communication we compute term by term. Throughout **this chapter** — a stated departure from the standing table, where $N$ counts blocks — $N$ is the model's *parameter count* (the literature's "$N$-parameter model") and $L$ is its depth in transformer blocks.
+**Where we are.** Every production training tool one hears named — mixed precision, gradient checkpointing, LoRA, ZeRO/FSDP — is, mathematically, an algebraic transformation of one specific term in a single equation: the memory a stochastic optimizer needs to train a model. We state that equation first, fixing the bytes-per-quantity that each term carries; then we walk each tool through it. Mixed precision shrinks the bytes per parameter and gradient by a dynamic-range argument; gradient checkpointing shrinks the activation count by trading memory for recomputation, and we prove the $\Theta(\sqrt{L})$ optimum exactly; LoRA collapses the trainable-parameter count to a low-rank adapter, with a parameter saving we state as a proposition; and ZeRO/FSDP partitions every term across $P$ workers, with per-worker memory and communication we compute term by term.
+
+<NotationOverride scope="Practical Training Optimizations">
+$N$ is the model's **parameter count** (the literature's “$N$-parameter model”), overriding the standing block-count meaning. Here $L$ is depth in transformer blocks.
+</NotationOverride>
 
 ## The training-memory equation
 

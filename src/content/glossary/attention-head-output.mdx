@@ -1,0 +1,8 @@
+---
+term: "Attention output (pre-projection)"
+aliases: ["pre-W^O attention output", "head context", "concatenated head output"]
+see: [multi-head-attention-output]
+tags: [attention, shapes]
+---
+
+The context produced before the learned multi-head output projection $\mathbf W^O$. One head returns $\operatorname{head}_r\in\R^{n\times d_v}$; concatenating $h$ heads gives $\operatorname{Concat}(\operatorname{head}_1,\dots,\operatorname{head}_h)\in\R^{n\times hd_v}$. This object is not yet the multi-head sublayer's $d$-wide output.

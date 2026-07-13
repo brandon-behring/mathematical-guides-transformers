@@ -4,7 +4,7 @@ slug: training
 chapter: 10
 part: 3
 description: "The training objective from first principles: the cross-entropy / negative-log-likelihood loss as KL divergence to the data, the softmax-plus-cross-entropy logit gradient q - y, image captioning as the same loss with an enlarged conditioning set, teacher forcing and exposure bias, label smoothing as a uniform-KL penalty, and the warmup / inverse-square-root learning-rate schedule."
-last_verified: 2026-06-28
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention]
 notation_introduced: ['p_\theta', 'p_{\text{data}}', '\mathcal L(\theta)', 'T', '\tilde{\mathbf y}', '\alpha', 't_{\text{warmup}}']
@@ -138,7 +138,7 @@ The KL identity (<XRef id="prop-ce-kl-training" />), the logit gradient $\mathbf
 The loss of <XRef id="def-ce-loss" /> conditions every position on the ground-truth prefix $x_{<t}$ — by construction, not as an approximation. The contrast is with *generation*, where each conditional is fed the model's own earlier outputs one step at a time. Conditioning training on the ground truth is called **teacher forcing**, and it is what lets all $T$ positions be scored in one parallel pass.
 
 <Theorem kind="definition" name="Teacher forcing" id="def-teacher-forcing">
-During training, **teacher forcing** supplies the ground-truth token $x_t$ as the input at position $t+1$, rather than the model's own prediction $\hat x_t = \arg\max_k p_\theta(k\mid x_{<t})$. Because the inputs no longer depend on the outputs, all $T$ predictions are computed in one forward pass with causal masking.
+During training, **teacher forcing** supplies the ground-truth token $x_t$ as the input at position $t+1$, rather than a token generated from the model's output distribution. Because the inputs no longer depend on the outputs, all $T$ predictions are computed in one forward pass with causal masking.
 </Theorem>
 
 <MarginNote variant="pattern" label="Why it parallelizes">Conditioning on gold tokens makes every position's input known in advance, so the $T$ losses share one masked forward pass.</MarginNote>
@@ -146,7 +146,7 @@ During training, **teacher forcing** supplies the ground-truth token $x_t$ as th
 <MarginNote variant="cross-ref" label="Two licenses">One pass yielding all $T$ conditionals is the causality theorem <XRef id="thm-one-pass" /> — every causal mixer has it; that the pass is also *fast* is the $\Theta(1)$-depth column of <XRef id="prop-sequential-depth" />, which recurrences lack.</MarginNote>
 
 <Theorem kind="remark" name="Exposure bias">
-At inference there are no gold tokens: the model must generate autoregressively, feeding each prediction back as the next input. If it errs at position $t$, every later prediction conditions on a prefix the model never saw during training — a train–test distribution mismatch known as **exposure bias**, and one that compounds with sequence length. Standard mitigations include scheduled sampling, which gradually substitutes model predictions for gold tokens during training, and sequence-level objectives that score the rollout directly rather than each position in isolation.
+At inference there are no gold tokens: the model must generate autoregressively, feeding each generated token back as the next input. The inference chapter defines how greedy, temperature, top-$k$, and top-$p$ rules turn each logit row into that token (<XRef id="def-token-decoding" />). If generation departs from the data prefix at position $t$, every later prediction conditions on a prefix the model never saw during training — a train–test distribution mismatch known as **exposure bias**, and one that compounds with sequence length. Standard mitigations include scheduled sampling, which gradually substitutes model-generated tokens for gold tokens during training, and sequence-level objectives that score the rollout directly rather than each position in isolation.
 </Theorem>
 
 ## Label smoothing

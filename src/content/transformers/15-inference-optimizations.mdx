@@ -3,15 +3,17 @@ title: "Inference Optimizations"
 slug: inference-optimizations
 chapter: 15
 part: 4
-description: "The mathematics behind production inference: the roofline cost-per-token equation and its memory-bound regime, generalized KV-cache width, exact reuse versus approximate cache selection, the materialized-cache O(n^2) → O(n) per-step argument, affine quantization, FlashAttention, and speculative decoding."
+description: "The mathematics behind production inference: tokenwise greedy, temperature, top-k, and nucleus decoding; the roofline cost model; generalized KV-cache width and exactness; quantization; FlashAttention; and speculative decoding."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention, multi-head-attention]
-notation_introduced: ['T_{\text{token}}', 'I^*', '\alpha', 'K', 'M_{\text{KV}}']
-theorems: ['def-cost-eq', 'prop-memory-bound', 'def-kv-cache', 'prop-kv-memory', 'prop-decode-cost', 'def-affine-quant', 'prop-quant-error', 'def-online-softmax', 'thm-online-softmax-exact', 'def-spec-decode', 'prop-spec-speedup']
+notation_introduced: ['T_{\text{token}}', 'I^*', '\mathbf p^{(\tau)}', '\mathcal R_S', 'S_k', 'S_{p_0}', '\alpha', 'K', 'M_{\text{KV}}']
+theorems: ['def-cost-eq', 'prop-memory-bound', 'def-token-decoding', 'prop-truncated-sampling', 'def-kv-cache', 'prop-kv-memory', 'prop-decode-cost', 'def-affine-quant', 'prop-quant-error', 'def-online-softmax', 'thm-online-softmax-exact', 'def-spec-decode', 'prop-spec-speedup']
 los:
   - id: lo-inference-roofline
     statement: "Derive the inference cost-per-token equation T = max(FLOPs/F, bytes/B) and characterize the memory-bound regime via the roofline ridge point."
+  - id: lo-decoding-sampling
+    statement: "Define tokenwise greedy, temperature, top-k, and top-p decoding on one softmax row; prove truncation preserves retained-token odds and characterize the endpoint cases."
   - id: lo-kv-cache-memory-and-compute
     statement: "Derive heterogeneous KV-cache memory from each layer's actually persisted width, prove that an exact materialized-head cache turns per-step attention compute from O(n^2) into O(n), and distinguish exact prefix reuse from approximate cache selection or eviction."
   - id: lo-affine-quantization-error
@@ -31,7 +33,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Inference Optimizations
 
-**Where we are.** Training optimized a loss; inference optimizes a different quantity — the time to emit one token on fixed hardware. This chapter extracts the algebraic core common to every production serving technique: each one moves a single term in one cost equation. We fix that equation first (the roofline model and its memory-bound regime), then derive the mathematics behind four techniques in turn — the **KV-cache** (why autoregressive decoding would otherwise recompute, how actual persisted width determines memory, and where approximate selection departs from exact prefix reuse), **quantization** (the affine map from floats to integers and its round-off bound), **FlashAttention** (the online-softmax recurrence that computes attention *exactly* without ever materializing the $n\times n$ score matrix), and **speculative decoding** (the draft-then-verify acceptance law and its expected speedup). Throughout, $\softmax$, scaled dot-product attention, and the standing dimensions $n,d,d_k$ are as fixed in earlier chapters. We give definitions and inline proofs for the quantitative claims and reserve remarks for the qualitative engineering facts.
+**Where we are.** Training optimized a loss; inference must turn each output-logit row into a token and minimize the time to emit it on fixed hardware. We first fix the roofline equation that prices emission, then define the four standard tokenwise rules — greedy, temperature, top-$k$, and top-$p$. We next derive four serving techniques — the **KV-cache** (actual persisted width, compute saved, and approximate selection versus exact reuse), **quantization** (the affine map and round-off bound), **FlashAttention** (exact online softmax without materializing the $n\times n$ score matrix), and **speculative decoding** (draft-then-verify acceptance and expected speedup). Throughout, $\softmax$, scaled dot-product attention, and the standing dimensions $n,d,d_k$ are as fixed in earlier chapters.
 
 ## The cost-per-token equation
 
@@ -72,6 +74,55 @@ The proposition isolates the lever. Below the ridge, the only way to go faster i
 <Theorem kind="remark" name="Prefill is compute-bound; decode is memory-bound" id="rem-prefill-decode">
 Prefill processes the whole prompt at once: the dominant products have shape $\R^{n\times d}\cdot\R^{d\times d}$ with $n$ in the thousands, so a weight read of $O(d^2)$ bytes is amortized across $O(n)$ rows: the weight term alone gives $I\approx n$, and activation reads and writes cap the total near $d/b$ once $n \gtrsim d$ — comfortably above the ridge either way, hence compute-bound. Decode generates one token at a time: each step has a single new query against the cached keys and values, so the matrix product degenerates to a matrix–vector product, the weight read is amortized across one row, and $I$ collapses to $\sim 1$. "Inference is memory-bound" is shorthand for "the decode phase is memory-bound."
 </Theorem>
+
+## From logits to the next token
+
+The model emits one row of vocabulary logits; a **decoding rule** turns that row into the next discrete token. Greedy decoding removes randomness. Temperature changes relative odds, while top-$k$ and top-$p$ delete a tail and renormalize what remains. These choices alter the generated distribution, not the transformer forward pass or the roofline cost of producing its logits.
+
+<Theorem kind="definition" name="Tokenwise decoding rules" id="def-token-decoding">
+Let $V\defeq|\mathcal V|$, let $\mathbf z\in\R^{V}$ be one vocabulary-logit row, let $\tau>0$, and set
+$$
+\mathbf p^{(\tau)}\defeq\softmax(\mathbf z/\tau).
+$$
+For a nonempty index set $S\subseteq\{1,\dots,V\}$, define truncation and renormalization by
+$$
+[\mathcal R_S(\mathbf p)]_i
+\defeq
+\begin{cases}
+p_i\big/\sum_{j\in S}p_j,&i\in S,\\
+0,&i\notin S.
+\end{cases}
+$$
+All score ties below are broken by the smaller vocabulary index.
+
+1. **Greedy:** emit $g=\arg\max_i z_i$ deterministically.
+2. **Temperature sampling:** draw $x\sim\mathbf p^{(\tau)}$. The limits $\tau\to0^+$ and $\tau\to\infty$ are those of <XRef id="rem-softmax-temperature" />.
+3. **Top-$k$ sampling:** for $1\le k\le V$, let $S_k$ contain the $k$ largest entries of $\mathbf p^{(\tau)}$ and draw $x\sim\mathcal R_{S_k}(\mathbf p^{(\tau)})$.
+4. **Top-$p$ (nucleus) sampling:** for $p_0\in(0,1]$, sort indices $\pi_1,\dots,\pi_V$ so $p^{(\tau)}_{\pi_1}\ge\cdots\ge p^{(\tau)}_{\pi_V}$, take
+$$
+m\defeq\min\left\{r:\sum_{j=1}^{r}p^{(\tau)}_{\pi_j}\ge p_0\right\},
+\qquad S_{p_0}\defeq\{\pi_1,\dots,\pi_m\},
+$$
+and draw $x\sim\mathcal R_{S_{p_0}}(\mathbf p^{(\tau)})$ <Cite key="holtzman2020curious" />.
+</Theorem>
+
+<Theorem kind="proposition" name="Truncation preserves retained odds and has exact endpoints" id="prop-truncated-sampling">
+For the rules of <XRef id="def-token-decoding" />:
+1. $\mathcal R_S(\mathbf p)$ is a probability distribution supported exactly on $S$ whenever every $p_i>0$.
+2. For retained $i,j\in S$, truncation preserves their odds: $[\mathcal R_S(\mathbf p)]_i/[\mathcal R_S(\mathbf p)]_j=p_i/p_j$.
+3. $S_{p_0}$ has minimum cardinality among all subsets whose $\mathbf p^{(\tau)}$-mass is at least $p_0$.
+4. Top-$1$ is tokenwise greedy; top-$V$ and top-$p$ at $p_0=1$ recover full temperature sampling.
+</Theorem>
+
+<Theorem kind="proof">
+Write $Z_S=\sum_{j\in S}p_j>0$. The retained entries $p_i/Z_S$ are positive, omitted entries are zero, and the sum is $Z_S/Z_S=1$, proving (1). For $i,j\in S$, the common denominator cancels: $(p_i/Z_S)/(p_j/Z_S)=p_i/p_j$, proving (2).
+
+For (3), the first $r$ sorted entries have at least as much mass as any $r$-element subset: replacing any selected lower-probability index by a missing higher-probability one cannot decrease the sum. By the minimal definition of $m$, the largest possible mass of any $(m-1)$-element subset is $\sum_{j=1}^{m-1}p^{(\tau)}_{\pi_j}<p_0$, while the $m$-entry prefix reaches $p_0$. No smaller subset can qualify.
+
+For (4), monotonicity of the exponential makes the largest $p_i^{(\tau)}$ the largest logit, so $S_1=\{g\}$ and renormalization puts unit mass on the greedy token. At $k=V$, $S_k$ is the whole vocabulary and its normalizer is $1$. Softmax entries are strictly positive, so a prefix reaches mass exactly $1$ only after all $V$ entries; hence $p_0=1$ also leaves $\mathbf p^{(\tau)}$ unchanged. $\qquad\blacksquare$
+</Theorem>
+
+<MarginNote variant="warning" label="Greedy is local">Tokenwise greedy need not maximize whole-sequence probability: a slightly less likely first token can lead to a much more likely continuation because every later conditional changes with the prefix.</MarginNote>
 
 ## The KV-cache
 
@@ -130,7 +181,7 @@ By <XRef id="prop-kv-memory" /> the cache grows linearly in context length and i
 <Theorem kind="remark" name="KV selection is approximate relative to dense attention" id="rem-kv-selection-exactness">
 <XRef id="prop-prefix-reuse" /> proves that settled prefix state may be reused; it does not say that arbitrary settled entries may be omitted while preserving the full dense-attention output. A two-entry counterexample is enough: with equal logits and scalar values $0$ and $2$, dense attention returns $(0+2)/2=1$, while retaining only the first entry and renormalizing returns $0$. Strict selection can therefore change the result even when every retained row is perfectly cached.
 
-Production methods choose the approximation differently. **StreamingLLM** keeps initial attention-sink tokens plus a rolling window of recent tokens <Cite key="xiao2023streamingllm" />. **H2O** combines recent tokens with historically important heavy hitters <Cite key="zhang2023h2o" />. **SnapKV** selects clustered prompt positions separately for each head before generation <Cite key="li2024snapkv" />. **Quest** keeps the full resident cache but loads query-conditioned top-$k$ pages for the current attention computation <Cite key="tang2024quest" />. All four are approximate relative to reading the full dense prefix: StreamingLLM, H2O, and SnapKV reduce both resident cache and read traffic, whereas Quest primarily reduces read traffic. They do not invalidate causal prefix consistency; they give up its full-dense-output consequence by deleting or skipping rows.
+As last verified on 2026-07-13, production methods choose the approximation differently. **StreamingLLM** keeps initial attention-sink tokens plus a rolling window of recent tokens <Cite key="xiao2023streamingllm" />. **H2O** combines recent tokens with historically important heavy hitters <Cite key="zhang2023h2o" />. **SnapKV** selects clustered prompt positions separately for each head before generation <Cite key="li2024snapkv" />. **Quest** keeps the full resident cache but loads query-conditioned top-$k$ pages for the current attention computation <Cite key="tang2024quest" />. All four are approximate relative to reading the full dense prefix: StreamingLLM, H2O, and SnapKV reduce both resident cache and read traffic, whereas Quest primarily reduces read traffic. They do not invalidate causal prefix consistency; they give up its full-dense-output consequence by deleting or skipping rows.
 </Theorem>
 
 ## Quantization
@@ -240,7 +291,7 @@ Successive FlashAttention variants reorganize the *parallelism* of the same recu
 The previous techniques shrank $\beta$. Speculative decoding <Cite key="leviathan2023speculative" /> attacks the per-token cost from the other side: a cheap draft model proposes several tokens, and one expensive forward pass of the target model verifies them all at once. Because a memory-bound target reads its weights once whether it scores one position or several, verifying $K{+}1$ candidates costs essentially the same as emitting one token — so every accepted draft is nearly free. The payoff is governed by how many drafts survive verification, which is a short expectation.
 
 <Theorem kind="definition" name="Speculative decoding" id="def-spec-decode">
-A small **draft model** generates $K$ candidate tokens autoregressively. The **target model** performs one parallel forward pass over the prefix and the $K$ candidates, producing its distribution at each position. Candidates are checked left to right under a rejection-sampling rule that accepts each with probability matching the target distribution; on the first rejection the target's own resampled token is used at that position, and the remaining drafts are discarded. The accepted prefix seeds the next cycle.
+A small **draft model** generates $K$ candidate tokens autoregressively. The **target model** performs one parallel forward pass over the prefix and the $K$ candidates, producing its distribution at each position. Candidates are checked left to right under a rejection-sampling rule that accepts each with probability matching the target distribution; on the first rejection the target's own resampled token is used at that position, and the remaining drafts are discarded. The accepted prefix seeds the next cycle. Here “target distribution” may be the full softmax or the distribution after a fixed temperature/truncation rule from <XRef id="def-token-decoding" />; preservation is relative to whichever target rule is chosen.
 </Theorem>
 
 <MarginNote variant="formula" label="Per cycle">One target pass (cost $1$) plus $K$ draft passes (cost $Kc$, where $c$ is the draft/target per-token cost ratio), in exchange for an expected $\E[T_K]$ accepted tokens.</MarginNote>
@@ -326,5 +377,22 @@ Induct on $j$. Base: $m_1 = s_1$, $\ell_1 = e^{s_1 - m_1} = 1$. Step: with $m_j 
 <SolutionBox>
 
 With $c=0.1$, $K=4$, the denominator is $1 + Kc = 1.4$. At $\alpha=0.8$: $\E[T_K] = (1 - 0.8^5)/0.2 \approx 3.36$, speedup $\approx 2.40$. At $\alpha=0.4$: $\E[T_K] = (1 - 0.4^5)/0.6 \approx 1.65$, speedup $\approx 1.18$. As $K\to\infty$ with $\alpha=0.8$, $\E[T_K]\to 1/(1-\alpha) = 5$ while draft cost $Kc$ keeps growing, so an interior $K$ is optimal. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 15.6 (Compute).** Let $\mathbf z=(\log0.50,\log0.25,\log0.15,\log0.10)$. Identify the greedy token. At $\tau=2$, compute $\mathbf p^{(\tau)}$, then compute (a) top-$2$ sampling and (b) top-$p$ sampling at $p_0=0.80$, including each retained set and renormalized distribution.
+
+<SolutionBox>
+
+The largest logit is the first, so greedy emits token $1$. Because $e^{z_i/2}=\sqrt{p_i}$, temperature $2$ gives unnormalized weights
+$$
+(\sqrt{0.50},\sqrt{0.25},\sqrt{0.15},\sqrt{0.10})
+\approx(0.7071,0.5000,0.3873,0.3162),
+$$
+whose sum is $1.9106$. Thus
+$$
+\mathbf p^{(2)}\approx(0.3701,0.2617,0.2027,0.1655).
+$$
+(a) $S_2=\{1,2\}$ has mass $0.6318$, so renormalization gives approximately $(0.5858,0.4142,0,0)$. (b) The first two entries have cumulative mass $0.6318<0.80$, while the first three have $0.8345\ge0.80$, so $S_{0.80}=\{1,2,3\}$ and the nucleus distribution is approximately $(0.4435,0.3136,0.2429,0)$. In both cases retained odds agree with the original temperature row, as <XRef id="prop-truncated-sampling" /> requires. $\qquad\blacksquare$
 
 </SolutionBox>

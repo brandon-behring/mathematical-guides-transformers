@@ -31,7 +31,8 @@ slot does not change an existing chapter URL.
   architecture families (causality as prefix-consistency, abstracted over any sequence mixer);
   training; encoder readouts, contrastive alignment, and detection.
 - **Part 4 — Efficient & Conditional Computation.** Training optimizations; inference optimizations
-  (the KV-cache, quantization, FlashAttention, and speculative decoding); mixture-of-experts
+  (greedy, temperature, top-$k$, and top-$p$ decoding; the KV-cache, quantization, FlashAttention,
+  and speculative decoding); mixture-of-experts
   (routing gradients, load balance, expert capacity, cost accounting, and expert parallelism).
 - **Part 5 — Sub-Quadratic & Selective Sequence Models.** Sparse and sub-quadratic attention
   (static and content-routed patterns, sparse expressiveness, NSA); selective state spaces and state
@@ -41,15 +42,26 @@ slot does not change an existing chapter URL.
   multimodal models; multimodal evaluation.
 
 Chapter files live in `src/content/transformers/`. Minimum frontmatter is `title` + `last_verified`;
-the schema is
-`researchPortfolioChapterSchema.merge(formalChapterExtensions)` (`src/content.config.ts`).
+the chapter schema is `researchPortfolioChapterSchema.merge(formalChapterExtensions)`. Glossary
+entries live in `src/content/glossary/` and use the scaffold's `glossarySchema`
+(`src/content.config.ts`).
+
+## Reference apparatus
+
+Chapter 00 contains the authoritative shared notation index. Chapter-local symbol or orientation
+departures are called out with `NotationOverride`; do not silently reuse a standing symbol. The
+site also exposes an alphabetical glossary at `/transformers/glossary/` and a pull-out notation and
+equation card at `/transformers/quick-reference/`. The print edition appends both resources after
+the chapters.
 
 ## Figures
 
 Diagrams are authored in **TikZ** under `figures/*.tex`, compiled to PDF, and converted to SVG into
 `public/figures/` by `book-scaffold build-figures` (PDF → SVG via pdftocairo), wired into `prebuild`.
-Reference them with `<Figure src="/figures/<name>.svg" ...>` (public-relative; the scaffold applies
-the base prefix at render). Regenerate all figures with:
+Reference them with the project-local `<Figure src="/figures/<name>.svg" ...>` wrapper
+(`src/components/Figure.astro`). It preserves inherited theming and namespaces converter-generated
+SVG IDs so multiple inline diagrams remain independent in the combined print document. Regenerate
+all figures with:
 
 ```bash
 npm run build:figures
@@ -60,6 +72,10 @@ npm run build:figures
 ```bash
 npm install && npm run build     # runs build:bib, build:labels, build:figures, validate, then astro build + pagefind
 npm run validate                 # XRef / Cite / Figure checks without a full build
+npm run test:properties          # numeric guards for quantitative claims
+npm run test:figure-svg          # inline-SVG ID/reference isolation
+npm run test:print-html          # chapter-scoped heading IDs in the combined print route
+npm run check:corpus             # verify tracked corpus structure, labels, and printed-number inventory
 npm run dev                      # local dev server
 ```
 

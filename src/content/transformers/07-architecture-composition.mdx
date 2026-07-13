@@ -25,9 +25,10 @@ los:
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
-import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
+import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
 # Architecture Composition
@@ -216,12 +217,16 @@ Two operations, each counted by the matrix products it performs.
 
 The complexity table treats the attention map as a fixed cost, but the two terms can be attacked separately — one by changing the operator, one by changing only the algorithm.
 
+<NotationOverride scope="Linear-attention derivation">
+The feature vectors $\phi(\mathbf k_j)$ and values $\mathbf v_j$ are **columns** here, so $\phi(\mathbf k_j)\mathbf v_j^\top$ is a $D\times d_v$ outer product. Outputs return to row form.
+</NotationOverride>
+
 <Theorem kind="remark" name="Linear attention changes the operator" id="rem-linear-attention">
 If the softmax kernel is replaced by an explicit feature map $\phi:\R^{d_k}\to\R^{D}$, the output at query $i$ becomes
 $$
 \text{output}_i = \frac{\phi(\mathbf q_i)^\top\sum_{j}\phi(\mathbf k_j)\mathbf v_j^\top}{\phi(\mathbf q_i)^\top\sum_{j}\phi(\mathbf k_j)}.
 $$
-The matrix $\sum_j\phi(\mathbf k_j)\mathbf v_j^\top\in\R^{D\times d_v}$ — with $\phi(\mathbf k_j)$ and $\mathbf v_j$ treated as column vectors here, so each summand is a $D\times d_v$ outer product — is computed **once** and shared across queries, so each output costs $O(D d_v)$ and the total is $O(n D d_v)$ — *linear* in $n$ <Cite key="katharopoulos2020transformers" />. This is a different function: with the standard choice $\phi(x) = \operatorname{elu}(x)+1 > 0$ the weights remain non-negative and row-normalized, so convexity survives; what is given up is the exponential kernel's temperature-controlled sharpness, trading approximation quality for the asymptotic gain. In the causal case the shared sums become *running* sums — a state updated token by token — and that observation is upgraded to a theorem later: causal linear attention **is** a matrix-state recurrence (<XRef id="thm-linattn-rnn" />), and with decay it is exactly a selective state space model (<XRef id="thm-ssd" />).
+The matrix $\sum_j\phi(\mathbf k_j)\mathbf v_j^\top\in\R^{D\times d_v}$ is computed **once** and shared across queries, so each output costs $O(D d_v)$ and the total is $O(n D d_v)$ — *linear* in $n$ <Cite key="katharopoulos2020transformers" />. This is a different function: with the standard choice $\phi(x) = \operatorname{elu}(x)+1 > 0$ the weights remain non-negative and row-normalized, so convexity survives; what is given up is the exponential kernel's temperature-controlled sharpness, trading approximation quality for the asymptotic gain. In the causal case the shared sums become *running* sums — a state updated token by token — and that observation is upgraded to a theorem later: causal linear attention **is** a matrix-state recurrence (<XRef id="thm-linattn-rnn" />), and with decay it is exactly a selective state space model (<XRef id="thm-ssd" />).
 </Theorem>
 
 <Theorem kind="remark" name="FlashAttention changes only the algorithm" id="rem-flash-attention">

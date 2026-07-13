@@ -1,0 +1,38 @@
+import NotationIndex from './NotationIndex.mdx';
+
+# Quick Reference
+
+This pull-out card is a compact lookup, not a second source of truth. The Notation chapter remains authoritative; chapter-local departures are displayed in notation-override boxes.
+
+## Shapes at a glance
+
+| Object | Shape | Reading |
+|---|---|---|
+| embedded sequence $\mathbf X$ | $n\times d$ | one sequence element per row |
+| projected $\mathbf Q,\mathbf K,\mathbf V$ | $n\times d_k$, $n\times d_k$, $n\times d_v$ per head | query/key/value rows |
+| attention weights $\mathbf A$ | $n\times n$ | row-stochastic after masking and softmax |
+| one-head context $\operatorname{head}_r$ | $n\times d_v$ | pre-$\mathbf W^O$ attention output |
+| $\operatorname{Concat}(\operatorname{head}_1,\dots,\operatorname{head}_h)$ | $n\times(hd_v)$ | input to $\mathbf W^O$ |
+| multi-head output | $n\times d$ | post-$\mathbf W^O$ block input/output width |
+
+## Core equations
+
+| Object | Canonical form |
+|---|---|
+| attention | $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)=\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k}+\mathbf M)\mathbf V$ |
+| pre-norm residual | $\mathbf y=\mathbf x+f(\operatorname{LN}(\mathbf x))$ |
+| autoregressive factorization | $p_\theta(\mathbf x)=\prod_t p_\theta(x_t\mid x_{<t})$ |
+| roofline lower bound | $T_{\text{token}}\ge\max(\Phi/F,\,\beta/\mathcal B)$ |
+| materialized KV memory | $M_{\text{KV}}=nb\sum_{\ell=1}^{N}d_{\text{cache},\ell}$ |
+| MoE accounting | resident $E\mu_{\text{FFN}}$; activated $Tk\Phi_{\text{FFN}}$; ideal traffic $A_B\mu_{\text{FFN}}$ |
+| sparse-attention work | score/value work follows $m_{\mathcal E}=\sum_i\lvert S_i\rvert$, not $n^2$, only when omitted pairs are never formed |
+
+## Exactness vocabulary
+
+- **Exact computation** means equality to the stated reference computation under the stated arithmetic model. It does not mean the representation is lossless.
+- **Lossless memory** means the stored representation retains enough information to reconstruct the required prefix state. A lossy representation can still be computed exactly.
+- **Approximate selection or eviction** changes dense-attention output in general, even when every retained cache row is reused exactly.
+
+## Notation and orientation index
+
+<NotationIndex />

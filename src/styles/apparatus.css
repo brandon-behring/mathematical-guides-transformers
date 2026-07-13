@@ -1,0 +1,88 @@
+.quick-reference,
+.print-glossary {
+  max-width: 64rem;
+}
+
+.quick-reference table {
+  font-size: 0.9rem;
+}
+
+.quick-reference tr,
+.print-glossary .glossary-entry {
+  break-inside: avoid;
+}
+
+.print-glossary .glossary-list {
+  margin-block: 1.5rem;
+}
+
+.print-glossary .glossary-entry {
+  padding-block: 0.75rem;
+  border-block-end: 1px solid var(--color-border, #e5e7eb);
+}
+
+.print-glossary .glossary-term {
+  font-weight: 600;
+}
+
+.print-glossary .glossary-aliases,
+.print-glossary .glossary-see {
+  color: var(--color-text-muted, #6b7280);
+}
+
+.print-glossary .glossary-def {
+  margin-inline-start: 0;
+  margin-block-start: 0.35rem;
+}
+
+.print-glossary .glossary-see {
+  font-size: 0.9rem;
+  margin-block-start: 0.4rem;
+}
+
+@media print {
+  /* Paged.js clones boxes while fragmenting a document. Chromium's implicit
+   * closed-<details> layout state is not preserved on every clone, which can
+   * expose an empty fallback summary ("Details") on its own page. Make the
+   * hidden solution body explicit and keep the visible disclosure row atomic. */
+  .print-edition .solution-box details:not([open]) > .callout-body {
+    display: none !important;
+  }
+
+  .print-edition .solution-box,
+  .print-edition .solution-box details,
+  .print-edition .solution-box summary {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-backmatter {
+    break-before: page;
+  }
+
+  .quick-reference a::after,
+  .print-glossary a::after {
+    content: none !important;
+  }
+
+  .quick-reference table {
+    font-size: 8.5pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .quick-reference .notation-print-break {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .quick-reference p:has(+ table) {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .print-backmatter > h1 {
+    break-before: auto;
+    page-break-before: auto;
+  }
+}

@@ -1,6 +1,7 @@
 # Dossier→guide integration (Track A) — 6-part restructure, review-hardened
 
-**Status:** execution in progress; A0–A6 complete, A7 apparatus and narrative repairs next. Supersedes
+**Status:** complete 2026-07-13; A0–A6 merged and A7 closes the track with the reader apparatus,
+completeness additions, narrative repairs, and end-to-end print audit. Supersedes
 `docs/notes/sparse-attention-chapter-ideas_2026-07-09.md`. Companion: `topic-gap-expansion_2026-07-10.md` (Track B).
 
 **Readiness review (Codex 2026-07-11):** the roadmap-readiness pass
@@ -16,7 +17,7 @@ authoring.
 The six merged research dossiers (`~/Claude/research-dossiers/`, research-dossiers PR #4) are the guide's backing
 evidence base, but the guide cites none yet. This track (a) **extends** the guide with two new chapters (Mixture-of-
 Experts; Sparse & Sub-Quadratic Attention) and (b) **improves** existing chapters with anchored primaries, inside a
-**6-part restructure** validated by a 3-voice / 3-round review + a dossier-coverage audit. This active plan and its
+**6-part restructure** validated by a 3-voice / 3-round review + a dossier-coverage audit. This plan and its
 tracked readiness review are now the authoritative record; the former home-directory design record is stale.
 
 **Cite-provenance principle:** the guide cites **primary papers** (`<Cite key=.../>` + `bibliography.bib` /
@@ -166,7 +167,7 @@ known correctness, and existing-chapter enrichment:
    top-ups close the capacity/balance/z-loss/all-to-all evidence gate.
 7. **A6 Sparse & Sub-Quadratic Attention chapter (complete)** — authored with honest edge/support accounting and
    relocated sliding-window material atomically from the hybrid chapter.
-8. **A7 apparatus + completeness + narrative repairs (next)** — native glossary, local notation overrides, web+print quick
+8. **A7 apparatus + completeness + narrative repairs (complete)** — native glossary, local notation overrides, web+print quick
    reference/glossary, decoding, RMSNorm, VQ-VAE onramp, narrative sweep, and plan closeout.
 Each independently reviewable/mergeable. **Per-PR gate:** `npm run validate` + `npm run build` + 0 KaTeX errors + 0
 duplicate labels + (content PRs) the **bibliography gate** — every new `<Cite key>` resolves 1:1 through
@@ -183,3 +184,28 @@ printed-number drift).
 - Prose-number sweep returns no wrong `Chapter N`; `validate` resolves all XRefs; build green.
 - The two new chapters pass the Codex-5.6 + Sonnet + numeric protocol; the split reads as one arc (P5 = sparse →
   selective-SSM → hybrids).
+
+## Completion (2026-07-13)
+
+**Shipped.** A0–A6 merged sequentially as PRs #11–#17 (`2afa353`, `dbc6b32`, `9e10cc1`, `aeb9804`,
+`96078b4`, `2be384b`, `b6ce6ac`). A7 is the closing change: 12-term native glossary; shared notation index,
+chapter-local override boxes, and pull-out quick reference; glossary/quick-reference/combined-print routes;
+decoding and truncated-sampling mathematics; exact RMSNorm and strengthened LayerNorm Jacobian bounds; the
+continuous-autoencoder → VQ-VAE on-ramp; narrative/dual-footing repairs; and updated authoring contracts.
+
+**Gate evidence.** The frozen Track-A corpus has 21 chapters, 275 semantic anchors, 96 learning objectives,
+705 XRefs, 193 registry references, 114 exercises (118 occurrences), and 27 figures. `validate` is clean;
+the production build emits 29 routes and Pagefind indexes 18,409 words; rendered HTML has zero KaTeX errors,
+duplicate IDs, dangling local SVG/ARIA references, or unnamespaced converter IDs. All 135 cited keys resolve
+uniquely through a 136-entry bibliography. Property coverage records 29 guarded claims and all 55 numeric tests
+pass, alongside five render-transform tests. The final letter-size print proof is 270 pages, contains all 21
+chapters plus glossary and quick reference, preserves the split notation tables, reports no PDF suspects, and
+contains no Paged.js fallback-`Details` artifact pages.
+
+**Implementation notes.** The combined print document exposed two infrastructure limits that chapter pages could
+not reveal. A project-local Figure wrapper now namespaces every inline asset ID/reference, preventing pdftocairo's
+generic glyph IDs from corrupting later diagrams; chapter-generated heading IDs are likewise scoped only inside the
+print document. The stock Paged.js CLI also exceeded Puppeteer's protocol timeout, so the renderer now launches the
+same printer with an explicit 15-minute protocol budget. Closed solution bodies remain excluded from print layout,
+but their summaries and all web disclosure behavior are unchanged. Deployment is deliberately not part of Track A
+and remains deferred until the Cloudflare account is configured.

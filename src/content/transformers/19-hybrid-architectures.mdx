@@ -23,16 +23,19 @@ los:
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
-import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
+import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
 # Modern Recurrent Models and Hybrid Architectures
 
 **Where we are.** The previous chapter proved the duality this chapter spends: causal linear attention *is* a matrix-state recurrence (<XRef id="thm-linattn-rnn" />), and a selective state space model *is* masked linear attention (<XRef id="thm-ssd" />). Here we close the arc. First we show that two production recurrent families are that one machine wearing different gates: RWKV's WKV recurrence is decayed linear attention run per channel (<XRef id="prop-rwkv-linattn" />), and xLSTM's mLSTM cell is the same matrix state under data-dependent scalar gates (<XRef id="prop-mlstm-gated-state" />). Second we upgrade the *write* itself: the delta rule of DeltaNet is exact online gradient descent on a key–value reconstruction loss at rate $\beta_t$ (<XRef id="thm-delta-descent" />), with Gated DeltaNet as the corollary that composes a decay with the descent step. Third we prove what no gate can evade: a pigeonhole bound shows that exact $K$-pair recall needs at least $K\log_2\lvert\mathcal V\rvert$ bits of decode state (<XRef id="prop-state-recall" />) — the fixed-vector bottleneck of <XRef id="prop-seq2seq-fixed-vector-bottleneck" /> returning as the arc's closing symmetry. Finally we price the trade: sliding-window attention (<XRef id="def-swa" />) and the hybrid stack (<XRef id="def-hybrid-stack" />) yield the decode-state accounting $M = N[f\cdot 2wd + (1-f)\,d_s d]\,b$ (<XRef id="prop-decode-state" />), and the production design space (<XRef id="rem-design-space" />) shows where Jamba, Griffin, Samba, and Zamba set the dial.
 
-Throughout this chapter $\mathbf k_t, \mathbf q_t\in\R^{d_k}$ and $\mathbf v_t\in\R^{d_v}$ are **column** vectors — the same stated departure from the row convention as the softmax Jacobian in the Notation chapter — so that $\mathbf v_t\mathbf k_t^\top$ is a $d_v\times d_k$ outer product and a state matrix acts on a query as $\mathbf S\mathbf q$. Our states are the transposes of the state in <XRef id="thm-linattn-rnn" />; nothing else changes.
+<NotationOverride scope="Modern Recurrent & Hybrid">
+Keys, queries, values, and recurrent-state vectors are **columns** throughout this chapter, so $\mathbf v_t\mathbf k_t^\top$ is a $d_v\times d_k$ outer product and a state matrix acts as $\mathbf S\mathbf q$. These states are the transposes of the convention in <XRef id="thm-linattn-rnn" />; the represented map is unchanged.
+</NotationOverride>
 
 ## RWKV: attention as decayed running averages
 
@@ -293,7 +296,9 @@ Jamba <Cite key="lieber2024jamba" /> interleaves one full-attention layer per ei
 
 The design space is decoder-centric because decoding is where the state accounting binds; on the encoder side the same substitution happens bidirectionally, with scans run in both directions standing in for unmasked attention.
 
-One design space, two currencies — that is the arc of this book in a sentence. The first currency is **state size**: from the RNN's $d$ numbers (<XRef id="prop-seq2seq-fixed-vector-bottleneck" />), through the LTI and selective states' $d_s d$, to the KV-cache's $2nd$ per layer; the recall bound (<XRef id="prop-state-recall" />) is the exchange rate that says what a given state size can never buy. The second currency is **content addressing**: the softmax comparison of a query against an exact prefix, born inside the RNN encoder–decoder, made sublinear-state by kernels and decay (<XRef id="thm-linattn-rnn" />), made revisable by the delta rule (<XRef id="thm-delta-descent" />), and purchased at full price only by attention over a lossless cache. Every architecture from chapter 2 to this page is a point on that budget line, and the hybrid stack makes the position an explicit dial $f$. What does not vary along the line is the logic: causality, prefix-consistency, and one-pass training hold verbatim at every $f$ — the guarantees were proved once, for any sequence mixer, and the bottleneck that opened the arc closes it not repealed but priced.
+Part 5's design space has two currencies. The first is **state size**: from the RNN's fixed summary (<XRef id="prop-seq2seq-fixed-vector-bottleneck" />), through LTI and selective states, to the KV cache's prefix-growing memory; the recall bound (<XRef id="prop-state-recall" />) is the exchange rate that says what a given state size can never buy. The second is **content addressing**: the query-to-prefix comparison born inside the recurrent encoder–decoder, made fixed-state by kernels and decay (<XRef id="thm-linattn-rnn" />), made revisable by the delta rule (<XRef id="thm-delta-descent" />), and purchased at full price only by attention over a lossless cache. Sparse patterns, selective recurrences, and hybrid stacks are points on that budget line, with $f$ making the mixture explicit; causality, prefix consistency, and one-pass training survive at every point because they were proved for arbitrary sequence mixers.
+
+Part 6 now changes the **interfaces**, not that mixer logic. Connectors turn image features into model rows (<XRef id="def-connector" />), and visual tokenizers turn pixels into finite-alphabet codes (<XRef id="def-codebook" />); either representation then enters the same row-sequence machinery priced here. The sub-quadratic-mixer arc therefore closes with its bottleneck not repealed but quantified, and the multimodal arc begins by asking what information reaches that mixer in the first place.
 
 ## Exercises
 

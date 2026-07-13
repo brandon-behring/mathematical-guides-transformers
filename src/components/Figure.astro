@@ -1,0 +1,44 @@
+---
+/**
+ * Project-local Figure wrapper.
+ *
+ * It preserves the scaffold component's public API and themable inline-SVG
+ * behavior while namespacing asset-internal IDs for the all-chapters print
+ * document. Read failures and non-local assets retain the ordinary img path.
+ */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { assembleSvg, shouldInline } from '../lib/figure.mjs';
+
+interface Props {
+  src: string;
+  caption?: string;
+  width?: string;
+  id?: string;
+  alt?: string;
+  desc?: string;
+}
+
+const { src, caption, width = '100%', id, alt, desc } = Astro.props;
+const altText = alt ?? caption ?? '';
+
+let inlineSvg: string | null = null;
+if (shouldInline(src)) {
+  try {
+    const raw = readFileSync(join(process.cwd(), 'public', src), 'utf8');
+    const idBase = id ?? `fig-${src.replace(/^\/+/, '').replace(/\.[^.]+$/, '')}`;
+    inlineSvg = assembleSvg(raw, { caption, alt, desc, width, idBase });
+  } catch {
+    inlineSvg = null;
+  }
+}
+---
+
+<figure class="figure" id={id}>
+  {inlineSvg ? (
+    <Fragment set:html={inlineSvg} />
+  ) : (
+    <img src={src} alt={altText} style={`width: ${width}; max-width: 100%;`} />
+  )}
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>

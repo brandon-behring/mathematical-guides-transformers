@@ -1,0 +1,8 @@
+---
+term: "Activated arithmetic"
+aliases: ["activated computation", "activated FLOPs"]
+see: [resident-parameters, active-expert-traffic]
+tags: [systems, mixture-of-experts]
+---
+
+The operations actually executed for a particular input or served batch. In a top-$k$ mixture-of-experts layer with $T$ routed rows and one expert call costing $\Phi_{\mathrm{FFN}}$ FLOPs, the idealized activated arithmetic is $Tk\Phi_{\mathrm{FFN}}$. It is neither the layer's total parameter capacity nor the number of weight bytes fetched.

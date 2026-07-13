@@ -27,9 +27,10 @@ los:
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
 import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
 import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
-import Figure from '@brandon_m_behring/book-scaffold-astro/components/Figure.astro';
+import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
+import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
 # Input Representations
@@ -262,6 +263,10 @@ $$
 It is orthogonal, with $\mathbf R(\theta)^\top = \mathbf R(-\theta) = \mathbf R(\theta)^{-1}$, and rotations compose additively: $\mathbf R(\alpha)\mathbf R(\beta) = \mathbf R(\alpha + \beta)$.
 </Theorem>
 
+<NotationOverride scope="RoPE and its relative-position proof">
+Queries, keys, and each 2D rotation pair are **columns** in this subsection, so rotations act as $\mathbf\Theta(t)\mathbf q$. Transposing returns the result to the guide's row-vector convention.
+</NotationOverride>
+
 <Theorem kind="definition" name="Rotary position embedding" id="def-rope">
 Given a query $\mathbf q \in \R^{d}$ at position $m$ and a key $\mathbf k \in \R^{d}$ at position $t$, RoPE applies a position-dependent rotation to each $2$D subspace before the dot product:
 $$
@@ -273,7 +278,7 @@ where
 $$
 \mathbf\Theta(t) \defeq \operatorname{diag}\!\big(\mathbf R(\theta_0 t),\, \mathbf R(\theta_1 t),\, \dots,\, \mathbf R(\theta_{d/2-1} t)\big)
 $$
-is block-diagonal in the $2\times 2$ rotations of <XRef id="def-rotation-2d" />, and the base angles $\theta_i = 10000^{-2i/d}$ follow the same geometric schedule as the sinusoidal frequencies (<XRef id="def-sinusoidal-pe" />). Here $\mathbf q, \mathbf k$ are treated as **column** vectors — as in the 2D-shift proof — and transposing converts the rotation action to the row form.
+is block-diagonal in the $2\times 2$ rotations of <XRef id="def-rotation-2d" />, and the base angles $\theta_i = 10000^{-2i/d}$ follow the same geometric schedule as the sinusoidal frequencies (<XRef id="def-sinusoidal-pe" />).
 </Theorem>
 
 <MarginNote variant="pattern" label="Position in the dot product">RoPE writes relative position directly into the query-key inner product — no fixed vector is added and no positions are subtracted.</MarginNote>
