@@ -3,9 +3,9 @@ name: content-validate
 on:
   push:
     branches: [main]
-    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', 'package-lock.json', '.github/workflows/content-validate.yml']
+    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', 'package-lock.json', 'scripts/**', 'tests/**', 'docs/manifests/**', '.github/workflows/content-validate.yml']
   pull_request:
-    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', 'package-lock.json', '.github/workflows/content-validate.yml']
+    paths: ['src/content/**', 'src/content.config.ts', 'bibliography.bib', 'package.json', 'package-lock.json', 'scripts/**', 'tests/**', 'docs/manifests/**', '.github/workflows/content-validate.yml']
 
 jobs:
   validate:
@@ -24,3 +24,15 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
       - run: npm run validate
+      - run: npm run check:corpus
+      - run: npm run check:properties
+
+  properties:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m unittest discover -s tests/properties -p 'test_*.py' -v
