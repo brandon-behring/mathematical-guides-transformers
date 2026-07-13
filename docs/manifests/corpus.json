@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "generatedBy": "scripts/corpus-manifest.mjs",
   "totals": {
-    "chapters": 23,
-    "labels": 300,
-    "learningObjectives": 105,
-    "proofMarkers": 217,
-    "printedNumberHits": 143
+    "chapters": 24,
+    "labels": 309,
+    "learningObjectives": 109,
+    "proofMarkers": 226,
+    "printedNumberHits": 153
   },
   "chapters": [
     {
@@ -862,6 +862,7 @@
         "rem-multimodal-crossattn",
         "rem-unified-sequence",
         "thm-any-to-any",
+        "thm-compute-optimal-allocation",
         "thm-one-pass"
       ],
       "kindCounts": {
@@ -874,7 +875,11 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 120,
+          "line": 85,
+          "text": "Chapter 13"
+        },
+        {
+          "line": 122,
           "text": "Chapter 11"
         },
         {
@@ -1060,6 +1065,81 @@
       ]
     },
     {
+      "path": "src/content/transformers/13-scaling-laws.mdx",
+      "slug": "scaling-laws",
+      "title": "Scaling Laws",
+      "chapter": 13,
+      "part": 4,
+      "labelIds": [
+        "cor-equal-exponent-allocation",
+        "def-separable-scaling-law",
+        "def-training-compute-proxy",
+        "ex-scaling-allocation-trace",
+        "fig-scaling-allocation",
+        "prop-optimal-excess-loss-rate",
+        "rem-lifecycle-allocation",
+        "rem-scaling-law-boundaries",
+        "thm-compute-optimal-allocation"
+      ],
+      "objectiveIds": [
+        "lo-compute-optimal-allocation",
+        "lo-scaling-law-boundaries",
+        "lo-scaling-law-interpretation",
+        "lo-square-root-allocation"
+      ],
+      "xrefs": [
+        "def-cost-eq",
+        "def-separable-scaling-law",
+        "def-train-memory",
+        "prop-moe-flops",
+        "thm-compute-optimal-allocation"
+      ],
+      "kindCounts": {
+        "corollary": 1,
+        "definition": 2,
+        "example": 1,
+        "proof": 3,
+        "proposition": 1,
+        "remark": 2,
+        "theorem": 1
+      },
+      "proofMarkers": 9,
+      "printedNumberHits": [
+        {
+          "line": 33,
+          "text": "Chapter 10"
+        },
+        {
+          "line": 33,
+          "text": "Chapters 14–16"
+        },
+        {
+          "line": 270,
+          "text": "Exercise 13.1"
+        },
+        {
+          "line": 289,
+          "text": "Exercise 13.2"
+        },
+        {
+          "line": 312,
+          "text": "Exercise 13.3"
+        },
+        {
+          "line": 326,
+          "text": "Exercise 13.4"
+        },
+        {
+          "line": 340,
+          "text": "Exercise 13.5"
+        },
+        {
+          "line": 348,
+          "text": "Exercise 13.6"
+        }
+      ]
+    },
+    {
       "path": "src/content/transformers/14-training-optimizations.mdx",
       "slug": "training-optimizations",
       "title": "Practical Training Optimizations",
@@ -1091,6 +1171,7 @@
         "lo-zero-memory-and-communication"
       ],
       "xrefs": [
+        "def-separable-scaling-law",
         "def-train-memory",
         "def-zero",
         "prop-fp32-adam",
@@ -1108,6 +1189,10 @@
       },
       "proofMarkers": 10,
       "printedNumberHits": [
+        {
+          "line": 35,
+          "text": "Chapter 13"
+        },
         {
           "line": 256,
           "text": "Exercise 14.1"
@@ -1186,6 +1271,7 @@
         "prop-spec-speedup",
         "prop-state-recall",
         "prop-truncated-sampling",
+        "rem-lifecycle-allocation",
         "rem-softmax-temperature",
         "thm-online-softmax-exact"
       ],
@@ -1199,27 +1285,27 @@
       "proofMarkers": 13,
       "printedNumberHits": [
         {
-          "line": 337,
+          "line": 339,
           "text": "Exercise 15.1"
         },
         {
-          "line": 345,
+          "line": 347,
           "text": "Exercise 15.2"
         },
         {
-          "line": 353,
+          "line": 355,
           "text": "Exercise 15.3"
         },
         {
-          "line": 367,
+          "line": 369,
           "text": "Exercise 15.4"
         },
         {
-          "line": 375,
+          "line": 377,
           "text": "Exercise 15.5"
         },
         {
-          "line": 383,
+          "line": 385,
           "text": "Exercise 15.6"
         }
       ]

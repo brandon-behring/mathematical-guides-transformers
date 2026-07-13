@@ -205,6 +205,31 @@
       "id": "prop-dpo-population-optimum",
       "test": "tests/properties/test_preference_optimization.py",
       "statementSha256": "92510d7b4c3b03703fd14f9121ce0a7f064babe218b4997c2bff05a23e61e238"
+    },
+    {
+      "id": "def-separable-scaling-law",
+      "test": "tests/properties/test_scaling_laws.py",
+      "statementSha256": "401690030249a36b97f3462f5c0e55be9343f876034d4d8d9070476a87f341c4"
+    },
+    {
+      "id": "def-training-compute-proxy",
+      "test": "tests/properties/test_scaling_laws.py",
+      "statementSha256": "290bdcdcb93246b8cbf2aaf61430e77dfc97e0785e7857b2130a9efa141fc850"
+    },
+    {
+      "id": "thm-compute-optimal-allocation",
+      "test": "tests/properties/test_scaling_laws.py",
+      "statementSha256": "e5417cec895b3e8f92555fe29e21b789c5e11f9e281f8296719452e74d30d54d"
+    },
+    {
+      "id": "cor-equal-exponent-allocation",
+      "test": "tests/properties/test_scaling_laws.py",
+      "statementSha256": "73c351a96448fe2c0ec4d80fd6dcb0f5d1e8ed215fddd4305ce59fd1006cd2be"
+    },
+    {
+      "id": "prop-optimal-excess-loss-rate",
+      "test": "tests/properties/test_scaling_laws.py",
+      "statementSha256": "1494d0d6b5ef65113b04a701239c214c1a1a95fc287e5a23df5f21caffef3eb5"
     }
   ]
 }

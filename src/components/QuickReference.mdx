@@ -27,6 +27,8 @@ This pull-out card is a compact lookup, not a second source of truth. The Notati
 | autoregressive factorization | $p_\theta(\mathbf x)=\prod_t p_\theta(x_t\mid x_{<t})$ |
 | KL-regularized reward optimum | $\pi_r(y\mid x)=\pi_{\mathrm{ref}}(y\mid x)e^{r(x,y)/\beta_{\mathrm{KL}}}/Z_r(x)$ and $J_x(\pi_r)-J_x(\pi)=\beta_{\mathrm{KL}}D_{\mathrm{KL}}(\pi\,\|\,\pi_r)$ |
 | DPO pair loss | $\Delta_\theta=\log\frac{\pi_\theta(y_w\mid x)}{\pi_{\mathrm{ref}}(y_w\mid x)}-\log\frac{\pi_\theta(y_\ell\mid x)}{\pi_{\mathrm{ref}}(y_\ell\mid x)}$, $\ell_{\mathrm{DPO}}=-\log\sigma_{\mathrm{sig}}(\beta_{\mathrm{KL}}\Delta_\theta)$ |
+| scaling-law surrogate | $\widehat L(N,D)=E+AN^{-\alpha}+BD^{-\beta}$ under proxy budget $\widehat C(N,D)=\kappa ND=C$ |
+| compute-optimal allocation | $\alpha A(N^\star)^{-\alpha}=\beta B(D^\star)^{-\beta}$; $N^\star\propto C^{\beta/(\alpha+\beta)}$, $D^\star\propto C^{\alpha/(\alpha+\beta)}$, and $\widehat L(N^\star,D^\star)-E\propto C^{-\alpha\beta/(\alpha+\beta)}$ |
 | roofline lower bound | $T_{\text{token}}\ge\max(\Phi/F,\,\beta/\mathcal B)$ |
 | materialized KV memory | $M_{\text{KV}}=nb\sum_{\ell=1}^{N}d_{\text{cache},\ell}$ |
 | MoE accounting | resident $E\mu_{\text{FFN}}$; activated $Tk\Phi_{\text{FFN}}$; ideal traffic $A_B\mu_{\text{FFN}}$ |

@@ -1,0 +1,8 @@
+---
+term: "Over-training"
+aliases: ["overtrained model", "deliberate over-training"]
+see: [compute-optimal-training, scaling-law]
+tags: [training, scaling, deployment]
+---
+
+Training on more tokens, at a fixed model size, than a selected training-only compute-optimal rule prescribes. A lifecycle objective may choose this deliberately—often to reduce repeated inference cost. It does not necessarily mean training past convergence, reusing identical data, or spending additional compute during test-time reasoning.

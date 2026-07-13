@@ -1,0 +1,73 @@
+%! no-theme
+% scaling-allocation (ch13 opening figure) — allocation along a fixed pretraining
+% compute budget.  In log coordinates, C \approx \kappa ND is a line of slope -1.
+% The marked point is the loss-minimizing allocation on that line; moving toward
+% either end spends the same compute but becomes respectively data-heavy or
+% model-heavy.  Labels, dash patterns, and colour all distinguish the directions.
+\documentclass[tikz,border=7pt]{standalone}
+\usepackage{transformer-figures}
+
+% The semantic direction colours collapse onto the tfInk seam in gate mode, so
+% the collision audit sees these connectors as well as the axes and budget line.
+\colorlet{tfModelDir}{purple!68}
+\colorlet{tfDataDir}{blue!68}
+\makeatletter
+\ifx\tfgatemode\tf@gm@gate
+  \colorlet{tfModelDir}{tfInk}
+  \colorlet{tfDataDir}{tfInk}
+\fi
+\makeatother
+
+\begin{document}
+\begin{tikzpicture}[x=10.5mm,y=10.5mm]
+  \tikzset{
+    budget/.style={draw=tfInkDim, line width=0.45pt},
+    modeldir/.style={->, >={Stealth[length=2.1mm]}, draw=tfModelDir,
+                     line width=1.15pt, densely dashed},
+    datadir/.style={->, >={Stealth[length=2.1mm]}, draw=tfDataDir,
+                    line width=1.15pt, densely dotted},
+  }
+
+  % Log-coordinate axes.  The verbal glosses keep the two symbols decodable at
+  % mobile width without requiring a separate legend.
+  \draw[tfflow] (0,0) -- (8.0,0);
+  \draw[tfflow] (0,0) -- (0,5.9);
+  \node[tfaxis, font=\footnotesize\itshape, anchor=north east, align=right] at (8.0,-0.18)
+        {model size $\log N$};
+  \node[tfaxis, font=\footnotesize\itshape, rotate=90, anchor=south, align=center] at (-0.32,5.9)
+        {training data $\log D$};
+
+  % Every point on this descending line has the same product ND and therefore
+  % the same approximate training compute.
+  \coordinate (dataend) at (1.05,5.30);
+  \coordinate (best)    at (3.50,2.85);
+  \coordinate (modelend) at (5.95,0.40);
+  \draw[budget] (dataend) -- (modelend);
+
+  % The two arrows share an origin but use redundant cues: direction words,
+  % distinct dash patterns, and blue/purple colour.
+  \draw[datadir] (3.30,3.05) -- (1.58,4.77);
+  \draw[modeldir] (3.70,2.65) -- (5.25,1.10);
+
+  \node[tfinput, text width=24mm, minimum width=28mm, minimum height=9mm,
+        anchor=south west, align=center] at (0.48,4.83)
+        {data-heavy\\[-1pt]{\footnotesize more data, smaller model}};
+  \node[tfproj, text width=24mm, minimum width=28mm, minimum height=9mm,
+        anchor=north west, align=center] at (5.02,1.04)
+        {model-heavy\\[-1pt]{\footnotesize larger model, less data}};
+
+  % A ring survives grayscale and marks the constrained optimum independently
+  % of the orange fill.  Its nearby label states the interpretation.
+  \node[circle, draw=orange!78!black, fill=orange!18, line width=1.0pt,
+        minimum size=5.8mm, inner sep=0pt] (opt) at (best) {};
+  \fill[tfText] (best) circle[radius=0.65pt];
+  \node[tfrole, anchor=south west, align=left] at (3.70,3.03)
+        {balanced optimum\\[-1pt]{\footnotesize lowest loss at fixed compute}};
+
+  % A line sample explicitly maps the solid stroke to the budget constraint.
+  \draw[budget] (5.50,5.36) -- (6.26,5.36);
+  \node[tfcap, font=\footnotesize, anchor=west, align=left] at (6.38,5.36)
+        {fixed $C$\\$ND=\mathrm{constant}$};
+
+\end{tikzpicture}
+\end{document}
