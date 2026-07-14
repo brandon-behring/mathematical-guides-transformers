@@ -123,24 +123,31 @@ export function assembleSvg(raw, opts = {}) {
     .replace(/<title\b[^>]*>[\s\S]*?<\/title>/gi, '')
     .replace(/<desc\b[^>]*>[\s\S]*?<\/desc>/gi, '');
 
-  const titleText = caption ?? alt ?? '';
-  const descText = desc ?? (alt && alt !== titleText ? alt : '');
+  // The concise alternative text is the accessible name. The longer authored
+  // description explains the diagram's structure, while the visible caption
+  // remains independent prose for the surrounding argument.
+  const titleText = alt ?? caption ?? '';
+  const descText = desc ?? '';
   const id = safeId(idBase);
   const a11y = [];
-  const labelledby = [];
+  let titleId = '';
+  let descId = '';
 
   if (titleText) {
-    a11y.push(`<title id="${id}-title">${escapeXml(titleText)}</title>`);
-    labelledby.push(`${id}-title`);
+    titleId = `${id}-title`;
+    a11y.push(`<title id="${titleId}">${escapeXml(titleText)}</title>`);
   }
   if (descText) {
-    a11y.push(`<desc id="${id}-desc">${escapeXml(descText)}</desc>`);
-    labelledby.push(`${id}-desc`);
+    descId = `${id}-desc`;
+    a11y.push(`<desc id="${descId}">${escapeXml(descText)}</desc>`);
   }
 
   openTag = ensureSvgAttr(openTag, 'role', 'img');
-  if (labelledby.length > 0) {
-    openTag = setSvgAttr(openTag, 'aria-labelledby', labelledby.join(' '));
+  if (titleId) {
+    openTag = setSvgAttr(openTag, 'aria-labelledby', titleId);
+  }
+  if (descId) {
+    openTag = setSvgAttr(openTag, 'aria-describedby', descId);
   }
   openTag = mergeSvgStyle(openTag, `width:${width};max-width:100%;height:auto`);
 

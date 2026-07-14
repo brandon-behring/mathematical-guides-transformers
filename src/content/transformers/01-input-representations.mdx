@@ -3,7 +3,7 @@ title: "Input Representations"
 slug: input-representations
 chapter: 1
 part: 1
-description: "How normalized text becomes a boundary-preserving sequence of subword indices through a reversible base representation and BPE merge learning, then how any modality becomes continuous vectors carrying semantic identity and position: the embedding interface, sinusoidal and factorized 2D positional encodings, and RoPE with its exact relative-position property."
+description: "Builds transformer inputs from tokenization, embeddings, and positional encodings, then shows how text tokens, image patches, and discrete codes share one vector interface."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation]
@@ -17,7 +17,7 @@ los:
   - id: lo-sinusoidal-position-properties
     statement: "Derive a guaranteed collision-free window for sinusoidal positional encodings and prove that a positional shift is a fixed linear transformation."
   - id: lo-rope-relative-position
-    statement: "Explain how RoPE encodes relative position through rotations applied to query-key subspaces, and prove the dot product depends only on the offset."
+    statement: "Explain how RoPE encodes relative position through rotations applied to query–key subspaces, and prove the dot product depends only on the offset."
   - id: lo-positional-encoding-computation
     statement: "Compute positional encodings for small examples and verify the rotation property numerically."
   - id: lo-patch-and-codebook-embeddings
@@ -27,8 +27,8 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
@@ -36,9 +36,7 @@ import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 import BpeMergeExplorer from '../../components/BpeMergeExplorer.astro';
 
-# Input Representations
-
-**Where we are.** The notation chapter fixed our toolkit — softmax, cross-entropy, and the convex-combination property of row-stochastic matrices. Here we build the *inputs* the transformer consumes. Normalized text first has to become a finite sequence of indices; we separate the reversible base representation that preserves its boundaries from BPE's learned merge stage. Those discrete indices must then become continuous vectors carrying two things at once: *semantic identity* (which token) and *positional information* (where in the sequence). The second is not optional. Attention, defined in the Attention chapter, is permutation-equivariant — permute the input rows and the output rows permute identically — so without injected position the model cannot tell "dog bites man" from "man bites dog." We construct identity as a token lookup, generalize it to a single **embedding interface** that carries any modality — text tokens, image patches, discrete codes — into the same space $\R^{n\times d}$, then build position by the *additive* sinusoidal and *multiplicative* rotary (RoPE) routes. Each position construction extends to image grids, and we prove its relative-position property.
+**Where we are.** The Notation chapter fixed the shared mathematical toolkit; now we construct the rows a sequence model actually receives. Normalized text becomes a finite index sequence through a reversible base representation and BPE merges, and each index becomes a learned vector. The same embedding interface also accepts image patches and discrete visual codes, so modality changes the input map rather than the transformer body. Because bare attention is permutation-equivariant and cannot use positional identity on its own, we add position through sinusoidal encodings or apply it inside query–key geometry with RoPE, extending both ideas from one-dimensional sequences to image grids.
 
 ## Token embeddings
 
@@ -60,7 +58,7 @@ the $x_t$-th row of $\mathbf E$. Equivalently, $\mathbf e_t = \mathbf e_{x_t}\ma
 
 The embedding carries identity but no order: a permutation of the tokens permutes the rows of $\hat{\mathbf X}$ and nothing else. Position must be supplied separately, which is the subject of the later sections. The definition also begins *after* the raw text has somehow become indices. Before generalizing the lookup, we construct that upstream map.
 
-<MarginNote variant="cross-ref" label="Who needs position">Injected position is attention's need, not every model's: a recurrence carries order in the *arrival sequence* of its state updates (<XRef id="def-rnn" />), while attention processes a set (<XRef id="def-attention" />) — which is exactly why positional encodings exist.</MarginNote>
+<MarginNote variant="cross-ref" label="Who needs position">Recurrence encodes arrival order in its state updates, whereas bare attention is permutation-equivariant and therefore needs injected position (<XRef id="def-rnn" />, <XRef id="def-attention" />).</MarginNote>
 
 ## From raw text to token indices: BPE
 
@@ -101,7 +99,7 @@ If every pair has score $0$ — equivalently, no adjacent pair remains in the we
 
 <Figure
   src="/figures/bpe-merge.svg"
-  caption="One BPE merge spends one new vocabulary entry to buy fewer sequence positions. If the chosen pair is actually replaced r_t times in the frequency-weighted corpus, the token count falls from N_t to N_t-r_t while the piece vocabulary grows from V_t to V_t+1. Rendered from TikZ via the figures pipeline."
+  caption="A BPE merge spends one vocabulary entry to replace repeated adjacent pairs, shortening the weighted training sequence by the number of non-overlapping replacements."
   id="fig-bpe-merge"
   width="100%"
   alt="A BPE pair merge trading one additional vocabulary entry for fewer sequence positions."
@@ -164,7 +162,7 @@ $$
 $$
 not recovery of information discarded by normalization. These design and reversibility claims follow <Cite key="kudo2018sentencepiece" />.
 
-This makes the text/vision symmetry precise. BPE over a reversible base stream remains a reversible code for normalized text, whereas the visual quantizer is generally lossy and has the information-rate ceiling of <XRef id="prop-rate" />. Both end at a finite index sequence, however, so both enter the same lookup of <XRef id="def-embedding-interface" /> and the same transformer core.
+This makes the text–vision symmetry precise. BPE over a reversible base stream remains a reversible code for normalized text, whereas the visual quantizer is generally lossy and has the information-rate ceiling of <XRef id="prop-rate" />. Both end at a finite index sequence, however, so both enter the same lookup of <XRef id="def-embedding-interface" /> and the same transformer core.
 </Theorem>
 
 With the text indices now constructed rather than assumed, we generalize their lookup to every kind of input unit.
@@ -217,7 +215,7 @@ Two facts assemble the claim: the windows tile the image, and one window is one 
 
 **One output channel is one Frobenius product.** By the definition of cross-correlation, output channel $j$ at window $(a,b)$ is
 $$
-\langle \mathbf K[:,:,:,j],\,\mathbf u_{ab}\rangle_F = \sum_{r,s,e}\mathbf K[r,s,e,j]\,\mathbf u_{ab}[r,s,e].
+\inner{\mathbf K[:,:,:,j]}{\mathbf u_{ab}}_F = \sum_{r,s,e}\mathbf K[r,s,e,j]\,\mathbf u_{ab}[r,s,e].
 $$
 By construction $\mathbf K[:,:,:,j]$ is the reshape of column $j$ of $\mathbf W_{\text{patch}}$, and the reshape and $\operatorname{vec}$ share an index order, so this sum equals $\operatorname{vec}(\mathbf u_{ab})\mathbf W_{\text{patch}}[:,j] = \Emb(\mathbf u_{ab})_j$. The windows tile the image, so the maps agree on every patch. $\qquad\blacksquare$
 </Theorem>
@@ -226,7 +224,9 @@ By construction $\mathbf K[:,:,:,j]$ is the reshape of column $j$ of $\mathbf W_
 
 <Figure
   src="/figures/dual-embedding.svg"
-  caption="The embedding interface. Text token lookup and image patch projection are two instances of one linear map into the same space R^(n×d), producing X-hat; position is then added (X = X-hat + P) and everything the transformer does afterwards is identical. Rendered from TikZ via the figures pipeline."
+  alt="Text token lookup and image patch projection converging on the same embedded-sequence interface."
+  desc="Two input branches map a token index by table lookup and a flattened image patch by linear projection. Their output rows enter the same sequence matrix, receive positional information, and feed one shared transformer body."
+  caption="Token lookup and patch projection both produce rows in one shared vector sequence. Position is added afterward, and the transformer body receives the same interface regardless of modality."
   id="fig-dual-embedding"
   width="70%"
 />
@@ -268,7 +268,7 @@ $$
 \operatorname{PE}(t + k) = \operatorname{PE}(t)\,\mathbf M_k^\top
 \qquad \text{for every }t\in\Z_{\ge0}\text{ with }t+k\in\Z_{\ge0}.
 $$
-Here $\mathbf M_k = \operatorname{diag}\!\big(\mathbf R_0(k), \mathbf R_1(k), \dots, \mathbf R_{d/2-1}(k)\big)$, and each $2\times 2$ block is the rotation
+Here $\mathbf M_k$ is block diagonal, with $\mathbf R_i(k)$ as its $i$-th block for $i=0,\dots,d/2-1$. Each $2\times 2$ block is the rotation
 $$
 \mathbf R_i(k) =
 \begin{pmatrix}
@@ -362,7 +362,7 @@ Concatenation makes the two halves act independently. Applying <XRef id="thm-pe-
 
 ## Rotary position embedding (RoPE)
 
-Sinusoidal PE *adds* position to the input. RoPE instead *rotates* the query and key vectors inside attention, so that the query-key dot product — the only place position needs to act — depends exactly on the relative offset. The concept image is again rotating hands, but now the data vectors themselves are the hands: rotate the query by an angle set by its position and the key by an angle set by its, and only the difference of angles survives the inner product. We first fix the rotation we use.
+Sinusoidal PE *adds* position to the input. RoPE instead *rotates* the query and key vectors inside attention, so that the query–key dot product — the only place position needs to act — depends exactly on the relative offset. The concept image is again rotating hands, but now the data vectors themselves are the hands: rotate the query by an angle set by its position and the key by an angle set by its, and only the difference of angles survives the inner product. We first fix the rotation we use.
 
 <Theorem kind="definition" name="2D rotation matrix" id="def-rotation-2d">
 For angle $\theta \in \R$, the $2\times 2$ rotation matrix is
@@ -376,7 +376,7 @@ $$
 It is orthogonal, with $\mathbf R(\theta)^\top = \mathbf R(-\theta) = \mathbf R(\theta)^{-1}$, and rotations compose additively: $\mathbf R(\alpha)\mathbf R(\beta) = \mathbf R(\alpha + \beta)$.
 </Theorem>
 
-<NotationOverride scope="RoPE and its relative-position proof">
+<NotationOverride scope="Rotary position embedding (RoPE) and its relative-position proof">
 Queries, keys, and each 2D rotation pair are **columns** in this subsection, so rotations act as $\mathbf\Theta(t)\mathbf q$. Transposing returns the result to the guide's row-vector convention.
 </NotationOverride>
 
@@ -394,7 +394,7 @@ $$
 is block-diagonal in the $2\times 2$ rotations of <XRef id="def-rotation-2d" />, and the base angles $\theta_i = 10000^{-2i/d}$ follow the same geometric schedule as the sinusoidal frequencies (<XRef id="def-sinusoidal-pe" />).
 </Theorem>
 
-<MarginNote variant="pattern" label="Position in the dot product">RoPE writes relative position directly into the query-key inner product — no fixed vector is added and no positions are subtracted.</MarginNote>
+<MarginNote variant="pattern" label="Position in the dot product">RoPE writes relative position directly into the query–key inner product — no fixed vector is added and no positions are subtracted.</MarginNote>
 
 <MarginNote variant="tip" label="Self-explanation">Before reading the proof: $\mathbf\Theta(t)$ is built from orthogonal rotations that compose additively. What does $\mathbf\Theta(m)^\top\mathbf\Theta(t)$ have to be?</MarginNote>
 
@@ -435,7 +435,7 @@ Both schemes use the geometric schedule $\theta_i = 10000^{-2i/d}$, but they inj
 </Theorem>
 
 <Theorem kind="remark" name="Axial RoPE" id="rem-rope-2d">
-RoPE extends to a grid the same way the sinusoidal scheme did in <XRef id="thm-pe-2d-shift" />: assign half the rotary pairs the row angle $\theta_i a$ and half the column angle $\theta_i b$. <XRef id="thm-rope-relative" /> then holds per axis, so the rotated query-key dot product depends only on the 2D offset $(a-a',\,b-b')$. This is the position scheme of modern vision and multimodal transformers over patch grids.
+RoPE extends to a grid the same way the sinusoidal scheme did in <XRef id="thm-pe-2d-shift" />: assign half the rotary pairs the row angle $\theta_i a$ and half the column angle $\theta_i b$. <XRef id="thm-rope-relative" /> then holds per axis, so the rotated query–key dot product depends only on the 2D offset $(a-a',\,b-b')$. This is the position scheme of modern vision and multimodal transformers over patch grids.
 </Theorem>
 
 <Theorem kind="remark" name="The core cannot tell which modality produced X" id="rem-modality-blind">
@@ -444,17 +444,17 @@ Once $\mathbf X = \hat{\mathbf X} + \mathbf P$ is formed, it is a point in $\R^{
 
 ## Other positional schemes
 
-Three further schemes recur in practice and contrast usefully with the two above. A **learned positional encoding** is a parameter matrix $\mathbf P \in \R^{n_{\max}\times d}$ trained jointly with the model, giving position $t$ the row $\mathbf P[t, :]$; it is flexible at a fixed context length but, having no closed form, cannot extrapolate beyond $n_{\max}$. **ALiBi** leaves the query and key vectors untouched and instead subtracts a head-specific linear penalty $m_r\,(i - j)$ from each logit before softmax, encoding an explicit monotone preference for nearby tokens that is defined for any distance and so extrapolates naturally<Cite key="press2022alibi" />. RoPE and ALiBi both encode *relative* position but in different places — RoPE in the geometry of the query-key vectors (<XRef id="thm-rope-relative" />), ALiBi in the logits after the dot product. Finally, for patch grids a **learned 2D positional encoding** factorizes the table into row and column halves, $\mathbf P^{\text{row}}_a + \mathbf P^{\text{col}}_b$ — the learned counterpart of the axial construction of <XRef id="def-pe-2d" />.
+Three further schemes recur in practice and contrast usefully with the two above. A **learned positional encoding** is a parameter matrix $\mathbf P \in \R^{n_{\max}\times d}$ trained jointly with the model, giving position $t$ the row $\mathbf P[t, :]$; it is flexible at a fixed context length but, having no closed form, cannot extrapolate beyond $n_{\max}$. **ALiBi** leaves the query and key vectors untouched and instead subtracts a head-specific linear penalty $m_r\,(i - j)$ from each logit before softmax, encoding an explicit monotone preference for nearby tokens that is defined for any distance and so extrapolates naturally <Cite key="press2022alibi" />. RoPE and ALiBi both encode *relative* position but in different places — RoPE in the geometry of the query–key vectors (<XRef id="thm-rope-relative" />), ALiBi in the logits after the dot product. Finally, for patch grids a **learned 2D positional encoding** factorizes the table into row and column halves, $\mathbf P^{\text{row}}_a + \mathbf P^{\text{col}}_b$ — the learned counterpart of the axial construction of <XRef id="def-pe-2d" />.
 
 We summarize the five schemes by where they inject position and how they extrapolate.
 
 | Method | Relative-position mechanism | Extrapolation |
 |---|---|---|
 | Sinusoidal PE | Additive input features; an offset becomes a fixed rotation (<XRef id="thm-pe-rotation" />), exact only before the $\mathbf W^Q,\mathbf W^K$ projections | Defined for all positions; periodicity weakens very-long-range uniqueness |
-| RoPE | Multiplicative rotations applied directly in the query/key subspaces (<XRef id="thm-rope-relative" />) | Relative effect is exact in the dot product; strong long-context behavior |
+| RoPE | Multiplicative rotations applied directly in the query–key subspaces (<XRef id="thm-rope-relative" />) | Relative effect is exact in the dot product; strong long-context behavior |
 | Learned PE | Absolute-position lookup $\mathbf P[t, :]$ | None beyond $n_{\max}$ |
 | ALiBi | Head-specific linear distance bias added to the logits | Natural — the bias is defined for arbitrary distances |
-| Learned 2D PE | Separable row/column tables $\mathbf P^{\text{row}} + \mathbf P^{\text{col}}$ over the patch grid | None beyond the trained grid; interpolated for new resolutions |
+| Learned 2D PE | Separable row and column tables $\mathbf P^{\text{row}} + \mathbf P^{\text{col}}$ over the patch grid | None beyond the trained grid; interpolated for new resolutions |
 
 The Vision Transformer originally used a *learned 1D* table over the raster patch index, observing **no significant gain** from explicitly 2D-aware encodings — in the reported ablation the 2D variant scored marginally *worse* — since self-attention recovers grid structure from the data.<Sidenote>The ablation is reported in the original ViT study <Cite key="dosovitskiy2021vit" />.</Sidenote>
 
@@ -464,7 +464,7 @@ Attempt each before expanding its solution.
 
 **Exercise 1.1 (Compute).** Let $d = 4$, so $\omega_0 = 1$ and $\omega_1 = 10000^{-1/2} = 0.01$. Write out $\operatorname{PE}(0)$ and $\operatorname{PE}(1)$ numerically, and confirm $\operatorname{PE}(0) \ne \operatorname{PE}(1)$.
 
-<SolutionBox>
+<SolutionBox exercise="1.1">
 
 With $d = 4$ the frequencies are $\omega_0 = 10000^{-0/4} = 1$ and $\omega_1 = 10000^{-2/4} = 0.01$. By <XRef id="def-sinusoidal-pe" />, $\operatorname{PE}(t) = \big(\sin(\omega_0 t),\, \cos(\omega_0 t),\, \sin(\omega_1 t),\, \cos(\omega_1 t)\big)$, so
 $$
@@ -477,7 +477,7 @@ They differ already in the fast pair ($\sin 1 \approx 0.8415 \ne 0$), so $\opera
 
 **Exercise 1.2 (Compute).** Continuing with $d = 4$, form $\mathbf R_0(1)$ and apply it to the first pair of $\operatorname{PE}(0)$; check that the result equals the first pair of $\operatorname{PE}(1)$, verifying <XRef id="thm-pe-rotation" /> on one block.
 
-<SolutionBox>
+<SolutionBox exercise="1.2">
 
 For offset $k = 1$ and pair $i = 0$ ($\omega_0 = 1$), the rotation is $\mathbf R_0(1) = \begin{pmatrix} \cos 1 & \sin 1 \\ -\sin 1 & \cos 1 \end{pmatrix}$. The first pair of $\operatorname{PE}(0)$ is $(0, 1)^\top$, and
 $$
@@ -489,7 +489,7 @@ exactly the first pair of $\operatorname{PE}(1)$. This verifies $\operatorname{P
 
 **Exercise 1.3 (Prove).** For $t,t+k\in\Z_{\ge0}$, show that the inner product $\operatorname{PE}(t)\cdot\operatorname{PE}(t+k)$ depends only on the offset $k$, not on $t$, and give its closed form as a sum over frequency pairs.
 
-<SolutionBox>
+<SolutionBox exercise="1.3">
 
 For pair $i$, the contribution to the inner product is
 $$
@@ -501,7 +501,7 @@ using $\cos(A - B) = \cos A\cos B + \sin A\sin B$. Summing over the $d/2$ pairs,
 
 **Exercise 1.4 (Derive).** A vocabulary lookup table $\mathbf E$ admits no analogue of <XRef id="thm-pe-rotation" />: prove there is in general no fixed map sending the embedding of token $x$ to that of token $x+1$ for every $x$, and explain in one sentence what structural feature of $\operatorname{PE}$ makes the shift law possible.
 
-<SolutionBox>
+<SolutionBox exercise="1.4">
 
 Suppose a fixed map sent each token's embedding to the next, $\mathbf E[x+1,:] = g(\mathbf E[x,:])$ for one fixed $g$. The rows of $\mathbf E$ are free parameters, so choose $x, x'$ with $\mathbf E[x,:] = \mathbf E[x',:]$ yet $\mathbf E[x+1,:] \ne \mathbf E[x'+1,:]$; then $g$ must send one input to two outputs — a contradiction. The index $x{+}1$ is an arbitrary symbol, not a geometric increment. What makes $\operatorname{PE}$'s shift law possible is that position enters through angles $\omega_i t$, where adding $k$ is the same rotation $\mathbf R_i(k)$ for every $t$. $\qquad\blacksquare$
 
@@ -509,7 +509,7 @@ Suppose a fixed map sent each token's embedding to the next, $\mathbf E[x+1,:] =
 
 **Exercise 1.5 (Prove).** Using only <XRef id="def-rotation-2d" />, establish $\mathbf\Theta(s)\mathbf\Theta(t) = \mathbf\Theta(s+t)$ and $\mathbf\Theta(t)^\top = \mathbf\Theta(-t)$ for the block-diagonal RoPE map, and deduce <XRef id="thm-rope-relative" /> in one line.
 
-<SolutionBox>
+<SolutionBox exercise="1.5">
 
 Each diagonal block of $\mathbf\Theta(\cdot)$ is $\mathbf R(\theta_i\,\cdot)$. By <XRef id="def-rotation-2d" />, $\mathbf R(\theta_i s)\mathbf R(\theta_i t) = \mathbf R(\theta_i(s+t))$ and $\mathbf R(\theta_i t)^\top = \mathbf R(-\theta_i t)$; blockwise this gives $\mathbf\Theta(s)\mathbf\Theta(t) = \mathbf\Theta(s+t)$ and $\mathbf\Theta(t)^\top = \mathbf\Theta(-t)$. Then $f(\mathbf q,m)^\top f(\mathbf k,t) = \mathbf q^\top\mathbf\Theta(m)^\top\mathbf\Theta(t)\mathbf k = \mathbf q^\top\mathbf\Theta(t-m)\mathbf k$, which is <XRef id="thm-rope-relative" />. $\qquad\blacksquare$
 
@@ -517,7 +517,7 @@ Each diagonal block of $\mathbf\Theta(\cdot)$ is $\mathbf R(\theta_i\,\cdot)$. B
 
 **Exercise 1.6 (Prove).** Exhibit a weight matrix $\mathbf W_{\text{patch}}$ and inputs making patch embedding (<XRef id="def-patch-embedding" />) reduce to token embedding (<XRef id="def-token-embedding" />), and conclude that token lookup is the one-hot special case of patch projection.
 
-<SolutionBox>
+<SolutionBox exercise="1.6">
 
 Set the flattened-patch dimension to the vocabulary size, $p^2 c = \lvert\mathcal V\rvert$, and take $\mathbf W_{\text{patch}} = \mathbf E\in\R^{\lvert\mathcal V\rvert\times d}$. For token $x$, feed the patch whose flattening is the one-hot $\mathbf e_x$ (a "pixel" array that is $1$ at flat index $x$ and $0$ elsewhere). Then, by <XRef id="def-patch-embedding" />,
 $$
@@ -529,7 +529,7 @@ the token embedding of <XRef id="def-token-embedding" />. Token lookup is thus p
 
 **Exercise 1.7 (Compute).** For a $4\times 4\times 1$ image with $p = 2$, list the $n = 4$ patches, give the shapes of $\mathbf W_{\text{patch}}$ and $\hat{\mathbf X}$ for $d = 3$, build the kernel $\mathbf K$ of <XRef id="thm-patch-conv" />, and verify that one output channel equals the corresponding patch Frobenius product.
 
-<SolutionBox>
+<SolutionBox exercise="1.7">
 
 With $H = W = 4$, $c = 1$, $p = 2$ we get $H_p = W_p = 2$, so $n = 4$ patches, each $2\times 2\times 1$ flattening to dimension $p^2 c = 4$. Writing the image entries $I_{rs}$, the four patches are the disjoint $2\times2$ blocks
 $$
@@ -540,7 +540,7 @@ $$
 $$
 For $d = 3$, $\mathbf W_{\text{patch}}\in\R^{4\times 3}$ and $\hat{\mathbf X}\in\R^{4\times 3}$. The kernel reshapes each column $\mathbf W_{\text{patch}}[:,j] = (w_{1j},w_{2j},w_{3j},w_{4j})$ in row-major order to $\mathbf K[:,:,:,j] = \left(\begin{smallmatrix} w_{1j} & w_{2j}\\ w_{3j} & w_{4j}\end{smallmatrix}\right)$. Then, for patch $\mathbf u_{00}$ with $\operatorname{vec}(\mathbf u_{00}) = (I_{00},I_{01},I_{10},I_{11})$,
 $$
-\langle \mathbf K[:,:,:,j], \mathbf u_{00}\rangle_F = w_{1j}I_{00} + w_{2j}I_{01} + w_{3j}I_{10} + w_{4j}I_{11} = \operatorname{vec}(\mathbf u_{00})\mathbf W_{\text{patch}}[:,j] = \Emb(\mathbf u_{00})_j,
+\inner{\mathbf K[:,:,:,j]}{\mathbf u_{00}}_F = w_{1j}I_{00} + w_{2j}I_{01} + w_{3j}I_{10} + w_{4j}I_{11} = \operatorname{vec}(\mathbf u_{00})\mathbf W_{\text{patch}}[:,j] = \Emb(\mathbf u_{00})_j,
 $$
 matching <XRef id="thm-patch-conv" />. $\qquad\blacksquare$
 
@@ -548,7 +548,7 @@ matching <XRef id="thm-patch-conv" />. $\qquad\blacksquare$
 
 **Exercise 1.8 (Prove).** For offsets that keep both shifted coordinates nonnegative, deduce the factorized 2D shift law (<XRef id="thm-pe-2d-shift" />) from the 1D shift law (<XRef id="thm-pe-rotation" />) by applying it to each channel half, and write out the closed form of the 2D inner product.
 
-<SolutionBox>
+<SolutionBox exercise="1.8">
 
 Write $\operatorname{PE}_{\text{2D}}(a,b) = (\operatorname{PE}(a),\operatorname{PE}(b))$ on disjoint row and column halves. For offset $(k,l)$,
 $$
@@ -563,7 +563,7 @@ $$
 
 **Exercise 1.9 (Compute).** Use the frequency-weighted dictionary $\{\mathtt{low}:5,\ \mathtt{lower}:2,\ \mathtt{newest}:6,\ \mathtt{widest}:3\}$, with one $\mathtt{EOW}$ symbol appended per word. (a) Verify that the initial character segmentation has $V_0=11$ symbol types and $N_0=95$ weighted positions. (b) The pairs $(\mathtt e,\mathtt s)$, $(\mathtt s,\mathtt t)$, and $(\mathtt t,\mathtt{EOW})$ each score $9$; suppose the tie rule selects $(\mathtt e,\mathtt s)$. Compute $r_0,V_1,N_1,B_0$, and $B_1$. (c) Expand the merged symbol in `newest` and `widest` to verify preservation of the pretokenized word stream.
 
-<SolutionBox>
+<SolutionBox exercise="1.9">
 
 (a) The initial types are the ten characters $\{\mathtt l,\mathtt o,\mathtt w,\mathtt e,\mathtt r,\mathtt n,\mathtt s,\mathtt t,\mathtt i,\mathtt d\}$ plus $\mathtt{EOW}$, so $V_0=11$. Including the boundary marker, the weighted position count is
 $$

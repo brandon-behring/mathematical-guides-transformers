@@ -3,7 +3,7 @@ title: "Notation and Prerequisites"
 slug: notation
 chapter: 0
 part: 1
-description: "The single-source notation reference: a scoped disambiguation and orientation index, the modality-agnostic embedding interface, softmax calculus, cross-entropy as KL divergence up to a constant, and row-stochastic matrices."
+description: "Defines the notation, probability tools, and figure conventions used throughout the guide, with clear preparation for both a core transformer route and the full mathematical development."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: []
@@ -17,12 +17,12 @@ los:
   - id: lo-row-stochastic-convex-combinations
     statement: "Define row-stochastic matrices and prove their product with a value matrix is a convex combination of the values."
   - id: lo-modality-agnostic-embedding-interface
-    statement: "State the modality-agnostic embedding interface and the unit/stream notation that place text and vision on a dual footing."
+    statement: "State the modality-agnostic embedding interface and the unit-and-stream notation that place text and vision on a dual footing."
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
@@ -31,9 +31,13 @@ import NotationIndex from '../../components/NotationIndex.mdx';
 import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Notation and Prerequisites
+**Where we are.** This opening chapter fixes the language used throughout the guide: row-vector conventions, standing dimensions, overloaded symbols, and the notation for modality-independent input streams. It also develops three tools that recur everywhere — softmax, cross-entropy and KL divergence, and row-stochastic averaging. It can be read once for orientation and then used as a reference whenever a later proof cites a shared definition or announces a local override. The next section states the mathematical preparation honestly and offers a shorter transformer route alongside the complete sequence-model arc.
 
-**Where we are.** This chapter is the single-source notation reference for the guide: standing symbols and operators are fixed here, repeated glyphs are indexed by scope, and every departure from the row-vector convention is enumerated. Read it front to back on a first pass, then return whenever a proof cites a definition or displays a local override. We assume linear algebra and elementary probability; everything specific to sequence models is built from the three tools developed below — the softmax, cross-entropy, and row-stochastic matrices.
+## How to read this guide
+
+The **core route** assumes comfortable matrix algebra, eigenvalues and singular values, single- and multivariable calculus through the chain rule and Jacobians, and elementary probability, entropy, and optimization. Chapters introduce the sequence-model constructions themselves, but they do not teach those background subjects from scratch. The shortest transformer path runs through Chapters 0, 1, 4–7, and 9–10. Chapters 2–3 can be inserted before Chapter 9 for the cross-family comparison of recurrent, state-space, and attention encoders and decoders. From either route, we can branch into the efficiency, alternative-mixer, or multimodal chapters according to the desired depth.
+
+The **full route** reads Chapters 0–23 in order and additionally uses ordinary differential equations, matrix exponentials, spectral analysis, uniform convergence, orthogonal projection in function spaces, measure-based approximation, and constrained optimization. Those tools are concentrated in clearly signposted advanced sections. On a first pass, readers may skip the full HiPPO derivation in Chapter 3 and the universal-approximation section in Chapter 7 without losing the definitions needed by subsequent core chapters, then return for the complete proofs and theoretical context.
 
 ## Conventions
 
@@ -43,13 +47,13 @@ Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d
 
 ## Reading the figures
 
-The figures in this guide follow one visual grammar, so a diagram in a later chapter reads the same way as one here. Boxes are typed by role — each carrying a colour, a border style, *and* a label, so the role survives in grayscale and under colour-vision deficiency — while arrows carry the flow of data and a matrix's size is read off its own edges. Any colour beyond these fixed roles is local to the figure that uses it, and is explained there. The legend below is the key.
+The figures in this guide follow one visual grammar, so a diagram in a later chapter reads the same way as one here. Boxes are typed by role — each carrying a color, a border style, *and* a label, so the role survives in grayscale and under color-vision deficiency — while arrows carry the flow of data and a matrix's size is read off its own edges. Any color beyond these fixed roles is local to the figure that uses it, and is explained there. The legend below is the key.
 
 <Figure
   src="/figures/figure-legend.svg"
-  alt="A key to the guide's figure vocabulary: query/key/value and input/output/operation boxes, flow arrows, split-merge junctions, the residual-add node, and edge-dimension brackets."
-  desc="Two columns. Roles: query (purple, solid border), key (blue, dashed), value (orange, dotted), and input/activation, output, and operation boxes — each carrying colour, border style, and a label. Wiring and shapes: a data-flow arrow, a split/merge junction, a residual-add node, and an edge-dimension bracket. A note states that colour beyond these roles is figure-local and that each role stays legible in grayscale through its border style and label."
-  caption="The figure vocabulary used throughout the guide. Each role is encoded by colour, border style, and label together, so meaning survives grayscale and colour-vision deficiency; any colour beyond these roles is local to the figure that uses it."
+  alt="A legend for query, key, value, input, output, operation, flow, merge, residual-add, and dimension symbols."
+  desc="Two columns map box colors, border styles, and labels to semantic roles, then identify the arrows, junctions, residual-add node, and dimension brackets used in later diagrams."
+  caption="The guide's visual vocabulary encodes each role with color, border style, and a written label, keeping the diagrams legible in grayscale and under color-vision differences."
   id="fig-reading-figures"
   width="82%"
 />
@@ -212,7 +216,7 @@ Attempt each before expanding its solution.
 
 **Exercise 0.1 (Prove).** Show $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$ for every $c\in\R$, and conclude that the Jacobian satisfies $\mathbf J\mathbf 1 = \mathbf 0$.
 
-<SolutionBox>
+<SolutionBox exercise="0.1">
 
 For any $c\in\R$, multiplying the numerator and denominator of $\softmax(\mathbf z)_i$ by $e^{c}$ leaves each entry unchanged, so $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)$. The Jacobian then annihilates $\mathbf 1$ directly: $\mathbf J\mathbf 1 = \operatorname{diag}(\mathbf p)\mathbf 1 - \mathbf p(\mathbf p^\top\mathbf 1) = \mathbf p - \mathbf p = \mathbf 0$, since $\mathbf p^\top\mathbf 1 = 1$. (Equivalently, differentiating the invariance in $c$ at $c=0$ gives the directional derivative $\mathbf J\mathbf 1 = \mathbf 0$.) $\qquad\blacksquare$
 
@@ -220,7 +224,7 @@ For any $c\in\R$, multiplying the numerator and denominator of $\softmax(\mathbf
 
 **Exercise 0.2 (Derive).** From $\mathbf J = \operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top$ with every $p_i > 0$, show $\operatorname{rank}\mathbf J = K-1$ and identify the null space.
 
-<SolutionBox>
+<SolutionBox exercise="0.2">
 
 Suppose $\mathbf J\mathbf x = \mathbf 0$, i.e. $\operatorname{diag}(\mathbf p)\mathbf x = \mathbf p(\mathbf p^\top\mathbf x)$. Componentwise, $p_i x_i = p_i(\mathbf p^\top\mathbf x)$ for every $i$. Since every $p_i > 0$, divide by $p_i$ to get $x_i = \mathbf p^\top\mathbf x$ — the same constant for all $i$. Hence $\mathbf x = c\mathbf 1$, so the null space is $\operatorname{span}\{\mathbf 1\}$, of dimension $1$. By rank–nullity, $\operatorname{rank}\mathbf J = K - 1$. $\qquad\blacksquare$
 
@@ -228,7 +232,7 @@ Suppose $\mathbf J\mathbf x = \mathbf 0$, i.e. $\operatorname{diag}(\mathbf p)\m
 
 **Exercise 0.3 (Compute).** For $\mathbf z = (2, 0, -1)$, compute the numerically stable softmax and verify it is unchanged by $\mathbf z + 5\mathbf 1$.
 
-<SolutionBox>
+<SolutionBox exercise="0.3">
 
 Subtract $\max_i z_i = 2$: $\mathbf z - 2\mathbf 1 = (0, -2, -3)$. Exponentiate to $(1,\ e^{-2},\ e^{-3}) \approx (1,\ 0.135,\ 0.0498)$, with sum $\approx 1.185$, so
 $$
@@ -240,7 +244,7 @@ Adding $5\mathbf 1$ gives $(7,5,4)$; every weight is multiplied by $e^{5}$, whic
 
 **Exercise 0.4 (Prove).** Using only the definitions, establish $H(\mathbf p, \mathbf q) = H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q)$, and explain why this makes cross-entropy minimization equivalent to KL minimization.
 
-<SolutionBox>
+<SolutionBox exercise="0.4">
 
 Add and subtract $\sum_k p_k \log p_k$:
 $$

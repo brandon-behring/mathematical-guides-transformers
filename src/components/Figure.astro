@@ -21,24 +21,37 @@ interface Props {
 
 const { src, caption, width = '100%', id, alt, desc } = Astro.props;
 const altText = alt ?? caption ?? '';
+const figureKey = (id ?? `fig-${src.replace(/^\/+/, '').replace(/\.[^.]+$/, '')}`)
+  .replace(/[^a-zA-Z0-9_-]/g, '-');
+const captionId = caption ? `${figureKey}-caption` : undefined;
 
 let inlineSvg: string | null = null;
 if (shouldInline(src)) {
   try {
     const raw = readFileSync(join(process.cwd(), 'public', src), 'utf8');
-    const idBase = id ?? `fig-${src.replace(/^\/+/, '').replace(/\.[^.]+$/, '')}`;
-    inlineSvg = assembleSvg(raw, { caption, alt, desc, width, idBase });
+    inlineSvg = assembleSvg(raw, { caption, alt, desc, width, idBase: figureKey });
   } catch {
     inlineSvg = null;
   }
 }
 ---
 
-<figure class="figure" id={id}>
+<figure class="figure" id={id} aria-labelledby={captionId}>
   {inlineSvg ? (
     <Fragment set:html={inlineSvg} />
   ) : (
     <img src={src} alt={altText} style={`width: ${width}; max-width: 100%;`} />
   )}
-  {caption && <figcaption>{caption}</figcaption>}
+  {caption && <figcaption id={captionId}>{caption}</figcaption>}
 </figure>
+
+<style>
+  /* Authored percentages tune desktop and print rhythm. On a phone they make
+   * dense labels unnecessarily small, so diagrams use the available column. */
+  @media (max-width: 42rem) {
+    .figure :global(svg),
+    .figure > img {
+      width: 100% !important;
+    }
+  }
+</style>

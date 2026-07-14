@@ -3,7 +3,7 @@ title: "The Attention Mechanism"
 slug: attention
 chapter: 4
 part: 3
-description: "Scaled dot-product attention from first principles: softmax and its translation invariance, attention as a learned-kernel regression, and why the 1/sqrt(d_k) scaling is exactly the factor that restores unit variance."
+description: "Builds scaled dot-product attention from scores, softmax weights, and value averages, then explains causal masking and the dimension-dependent scaling factor."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation]
@@ -17,24 +17,22 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# The Attention Mechanism
-
-**Where we are.** Attention is the transformer's central operation — each token aggregates information from every other token, selectively — though not its invention: content addressing was born inside the recurrent encoder–decoder (<XRef id="def-additive-attention" />), and what the transformer did was let it stand alone. We build it from one nonlinearity (softmax), one similarity (the dot product), and one piece of normalization (the $1/\sqrt{d_k}$ scaling), and prove the property that makes each true.
+**Where we are.** Recurrent encoder–decoders introduced content addressing (<XRef id="def-additive-attention" />) as a way to read whichever source states mattered at the current step. The transformer keeps that score–normalize–average operation and removes the recurrent controller around it. This chapter builds the resulting attention map from three pieces: dot products compare queries with keys, row-wise softmax turns those scores into weights, and the weights average value rows. We then add the causal mask needed for generation and show why scaling each dot product by the square root of its width prevents dimension alone from driving softmax toward saturation.
 
 ## Notation
 
-Vector conventions, the standing dimensions ($n$, $d$, $d_k$), $\defeq$, the inner product, and the softmax are all fixed in the notation chapter; we invoke them by name. This chapter introduces the attention operator $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$, the causal mask $\mathbf M$, and the per-head value dimension $d_v$.
+Vector conventions, the standing dimensions ($n$, $d$, $d_k$), $\defeq$, the inner product, and the softmax are all fixed in the Notation chapter; we invoke them by name. This chapter introduces the attention operator $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$, the causal mask $\mathbf M$, and the per-head value dimension $d_v$.
 
 ## Softmax, recalled
 
-Softmax turns a vector of scores into a probability distribution: larger scores get exponentially more weight, and the weights sum to one. Its definition and its two working properties are fixed once in the notation chapter — the definition (<XRef id="def-softmax" />), translation invariance (<XRef id="prop-softmax-translation-inv" />), and the Jacobian (<XRef id="prop-softmax-jacobian" />). Everything this chapter proves rides on the first two: the definition makes each attention weight row a probability vector, and translation invariance is what makes the numerically stable max-subtracted implementation exact.
+Softmax turns a vector of scores into a probability distribution: larger scores get exponentially more weight, and the weights sum to one. Its definition and its two working properties are fixed once in the Notation chapter — the definition (<XRef id="def-softmax" />), translation invariance (<XRef id="prop-softmax-translation-inv" />), and the Jacobian (<XRef id="prop-softmax-jacobian" />). Everything this chapter proves rides on the first two: the definition makes each attention weight row a probability vector, and translation invariance is what makes the numerically stable max-subtracted implementation exact.
 
 ## Scaled dot-product attention
 
@@ -52,13 +50,56 @@ $$
 with softmax applied row-wise to the $n\times n$ logit matrix.
 </Theorem>
 
-Because each softmax row is non-negative and sums to one (<XRef id="def-softmax" />), the weight matrix is row-stochastic, so output row $i$ is a **convex combination** of the value rows (<XRef id="prop-row-stochastic-convex" />) — the kernel-regression reading made literal.
+### A complete two-token trace
+
+Take two-dimensional queries and keys with
+$$
+\mathbf Q=\mathbf K=
+\begin{pmatrix}1&0\\0&1\end{pmatrix},
+\qquad
+\mathbf V=
+\begin{pmatrix}2&0\\0&4\end{pmatrix},
+\qquad d_k=2.
+$$
+The scaled logit matrix is
+$$
+\mathbf L=\frac{\mathbf Q\mathbf K^\top}{\sqrt2}
+=\begin{pmatrix}1/\sqrt2&0\\0&1/\sqrt2\end{pmatrix}.
+$$
+Set $a\defeq e^{1/\sqrt2}$, $\alpha\defeq a/(a+1)\approx0.6698$, and $\beta\defeq1/(a+1)\approx0.3302$. Applying softmax row by row gives
+$$
+\mathbf A=\softmax(\mathbf L)
+=\begin{pmatrix}\alpha&\beta\\\beta&\alpha\end{pmatrix}
+\approx
+\begin{pmatrix}0.6698&0.3302\\0.3302&0.6698\end{pmatrix}.
+$$
+The attention output is therefore
+$$
+\mathbf A\mathbf V
+=\begin{pmatrix}2\alpha&4\beta\\2\beta&4\alpha\end{pmatrix}
+\approx
+\begin{pmatrix}1.3395&1.3210\\0.6605&2.6790\end{pmatrix}.
+$$
+Each row is visibly a weighted average of the two value rows. With a causal mask, the first query may read only the first key while the second may still read both:
+$$
+\mathbf A_{\mathrm{causal}}
+=\begin{pmatrix}1&0\\\beta&\alpha\end{pmatrix},
+\qquad
+\mathbf A_{\mathrm{causal}}\mathbf V
+=\begin{pmatrix}2&0\\2\beta&4\alpha\end{pmatrix}
+\approx
+\begin{pmatrix}2&0\\0.6605&2.6790\end{pmatrix}.
+$$
+
+Adding the same constant to every entry of either logit row would leave that row's weights unchanged by softmax translation invariance (<XRef id="prop-softmax-translation-inv" />).
+
+Because each softmax row is nonnegative and sums to one (<XRef id="def-softmax" />), the weight matrix is row-stochastic, so output row $i$ is a **convex combination** of the value rows (<XRef id="prop-row-stochastic-convex" />) — the kernel-regression reading made literal.
 
 <Figure
   src="/figures/attention-shapes.svg"
   alt="Scaled dot-product attention as a shape pipeline: Q and K form an n×n weight matrix A, which averages the rows of V into the context C."
   desc="Query and key matrices (each n×d_k) combine through a QKᵀ/√d_k, row-wise softmax step into the n×n attention matrix A, drawn as a concrete 3×3 grayscale magnitude heatmap whose rows sum to one. Row 1 is highlighted and expanded below as C_{1,:} = 0.56 V_{1,:} + 0.09 V_{2,:} + 0.35 V_{3,:}, showing that each output row is a weighted average of the value rows. A then multiplies V (n×d_v) at a product node to give the context C (n×d_v)."
-  caption="Scaled dot-product attention as a shape pipeline (def-attention). Q·Kᵀ/√d_k then row-wise softmax gives the n×n weight matrix A — each row a probability distribution — so the context C = AV has each row a convex combination of the value rows (prop-row-stochastic-convex). The highlighted row makes one such weighted average concrete. Shapes flow n×d_k → n×n → n×d_v."
+  caption="Queries and keys produce a row-stochastic weight matrix; multiplying it by the value rows returns one weighted average per query. The highlighted row makes that averaging operation concrete."
   id="fig-attention-shapes"
   width="92%"
 />
@@ -83,12 +124,12 @@ Equivalently, use the extended-real mask $\mathbf M\in(\R\cup\{-\infty\})^{n\tim
   src="/figures/attention-pattern.svg"
   alt="Causal self-attention mask: query i attends only to keys j ≤ i, so the weight matrix is lower-triangular."
   desc="A lower-triangular attention pattern — position i may attend to positions j ≤ i only; entries above the diagonal are masked to zero (a -∞ logit exponentiates to a 0 weight), and each row remains a probability distribution over the allowed keys."
-  caption="Causal self-attention. Query q_i attends only to keys k_j with j ≤ i; each row of the masked weight matrix is a probability distribution. Rendered from TikZ via the figures pipeline."
+  caption="Causal masking excludes every future key position before normalization, leaving a lower-triangular attention pattern whose allowed weights still sum to one in each row."
   id="fig-causal-mask"
   width="58%"
 />
 
-## Why the $1/\sqrt{d_k}$ scaling
+## Why scale the dot products before softmax?
 
 Each logit $\inner{\mathbf q}{\mathbf k}$ sums $d_k$ independent product terms, so its spread grows with $d_k$ and pushes softmax toward saturation. The scaling is chosen to *exactly* cancel that growth.
 
@@ -129,7 +170,7 @@ Attempt each before expanding its solution.
 
 **Exercise 4.1 (Prove).** The weight matrix $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic (<XRef id="def-row-stochastic" />); conclude each attention output is a convex combination of the value rows.
 
-<SolutionBox>
+<SolutionBox exercise="4.1">
 
 Fix a query row $i$ and write the logits $\ell_{ij} = \inner{\mathbf q_i}{\mathbf k_j}/\sqrt{d_k}$. The attention weight $w_{ij} = e^{\ell_{ij}}/\sum_{j'} e^{\ell_{ij'}}$ is **positive** (an exponential over a positive sum) and the row **sums to one** ($\sum_j w_{ij} = \sum_j e^{\ell_{ij}} / \sum_{j'} e^{\ell_{ij'}} = 1$); so every row is a probability vector, i.e. the weight matrix is row-stochastic. The output row is $\sum_j w_{ij}\,\mathbf v_j$ with $w_{ij}\ge 0$ and $\sum_j w_{ij}=1$, i.e. a **convex combination** of the value rows. $\qquad\blacksquare$
 
@@ -137,7 +178,7 @@ Fix a query row $i$ and write the logits $\ell_{ij} = \inner{\mathbf q_i}{\mathb
 
 **Exercise 4.2 (Derive).** Without the $1/\sqrt{d_k}$ scaling, give $\Var(\inner{\mathbf q}{\mathbf k})$. State a sufficient logit-gap condition under which a softmax row approaches one-hot as $d_k\to\infty$, relate it to gradient saturation, and contrast the case of tied maxima.
 
-<SolutionBox>
+<SolutionBox exercise="4.2">
 
 By the variance-preservation theorem (unscaled case), $\Var(\inner{\mathbf q}{\mathbf k}) = d_k$. Variance growth alone does **not** deterministically imply a one-hot row. For a sequence of logit rows $\boldsymbol\ell^{(d_k)}$, a sufficient condition is a unique maximizing index $i^\ast$ whose gaps diverge:
 $$
@@ -148,14 +189,45 @@ Dividing numerator and denominator by $e^{\ell_{i^\ast}}$ then gives $\softmax(\
 
 </SolutionBox>
 
-**Exercise 4.3 (Compute).** For $\mathbf z=(2,1,0)$, compute $\softmax(\mathbf z)$ and verify it is unchanged by $\mathbf z + 5\mathbf 1$.
-
-<SolutionBox>
-
-With $\mathbf z=(2,1,0)$ the unnormalized weights are $(e^2, e^1, e^0) \approx (7.389,\, 2.718,\, 1.000)$, summing to $\approx 11.107$, so
+**Exercise 4.3 (Compute).** Let $d_k=1$ and
 $$
-\softmax(\mathbf z) \approx (0.665,\; 0.245,\; 0.090).
+\mathbf Q=\begin{pmatrix}1\\0\end{pmatrix},
+\qquad
+\mathbf K=\begin{pmatrix}1\\2\end{pmatrix},
+\qquad
+\mathbf V=\begin{pmatrix}1&0\\0&3\end{pmatrix}.
 $$
-For $\mathbf z + 5\mathbf 1 = (7,6,5)$ every weight is multiplied by $e^5$, which cancels in the normalization, giving the identical vector — exactly <XRef id="prop-softmax-translation-inv" />. $\qquad\blacksquare$
+Compute the dense attention logits, row-wise softmax weights, and output. Then apply the causal mask and compute the masked output.
+
+<SolutionBox exercise="4.3">
+
+Because $d_k=1$, scaling changes nothing. The dense logit matrix is
+$$
+\mathbf Q\mathbf K^\top
+=\begin{pmatrix}1&2\\0&0\end{pmatrix}.
+$$
+Set $p\defeq1/(1+e)\approx0.2689$ and $q\defeq e/(1+e)\approx0.7311$. Row-wise softmax gives
+$$
+\mathbf A
+=\begin{pmatrix}p&q\\1/2&1/2\end{pmatrix}
+\approx
+\begin{pmatrix}0.2689&0.7311\\0.5&0.5\end{pmatrix}.
+$$
+Multiplying by the values,
+$$
+\mathbf A\mathbf V
+=\begin{pmatrix}p&3q\\1/2&3/2\end{pmatrix}
+\approx
+\begin{pmatrix}0.2689&2.1932\\0.5&1.5\end{pmatrix}.
+$$
+The causal mask deletes the first row's future logit but leaves the second row unchanged, so
+$$
+\mathbf A_{\mathrm{causal}}
+=\begin{pmatrix}1&0\\1/2&1/2\end{pmatrix},
+\qquad
+\mathbf A_{\mathrm{causal}}\mathbf V
+=\begin{pmatrix}1&0\\1/2&3/2\end{pmatrix}.
+$$
+This traces the complete score–normalize–average computation in both visibility regimes. $\qquad\blacksquare$
 
 </SolutionBox>

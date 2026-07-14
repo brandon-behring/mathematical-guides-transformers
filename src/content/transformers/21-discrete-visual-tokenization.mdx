@@ -3,7 +3,7 @@ title: "Discrete Visual Tokenization"
 slug: discrete-visual-tokenization
 chapter: 21
 part: 6
-description: "From a continuous autoencoder to VQ-VAE's discrete waist: codebook quantization and Voronoi geometry, straight-through gradients, the VQ loss and k-means update, autoregressive visual-code modeling, and the code-rate bound."
+description: "Develops vector quantization that turns images into discrete code sequences, trains through nearest-neighbor assignments, updates codebooks by clustering, and enables autoregressive image generation."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, input-representations, architecture-composition, training, connectors-resamplers]
@@ -23,21 +23,19 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import Figure from '../../components/Figure.astro';
 import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Discrete Visual Tokenization
-
-**Where we are.** The connectors of the previous chapter produced *soft* visual tokens — arbitrary vectors in $\R^{d}$. This chapter takes the opposite route: make the image **discrete**, a finite sequence of symbols drawn from a fixed vocabulary, exactly like text. The payoff is total reuse. Once an image is a sequence over an alphabet of size $K$, the autoregressive language model of the training chapter applies *verbatim* — same factorization, same softmax head, same cross-entropy, same teacher forcing — with the vocabulary $\mathcal V$ swapped for the visual codebook. Three things stand between us and that payoff. First, the map that snaps a continuous encoder output to the nearest codebook entry is not differentiable, so we cannot train through it by ordinary backpropagation; the **straight-through estimator** is the standard repair. Second, the codebook itself must be learned, and we show its update rule is exactly a step of k-means. Third, and most importantly, we prove the dual-footing claim in its sharpest form: image generation *is* autoregressive language modeling over a visual vocabulary, with modality confined to a fixed image-to-token codec. We write $\mathcal C$ for the codebook, $q$ for the quantizer, $\mathbf z_e$ and $\mathbf z_q$ for the encoder output before and after quantization, $\Phi,\Psi$ for the encoder and decoder, $K$ for the codebook size, and $L$ for the code length.
+**Where we are.** Connector outputs are continuous vectors. Vector quantization takes a different route by snapping encoder outputs to codebook entries and serializing their indices. We define the nearest-code quantizer and its Voronoi geometry, show why its true Jacobian is unhelpful for learning, and introduce a straight-through estimator that combines discrete forward values with an identity backward path. We then separate reconstruction, codebook, and commitment gradients; derive the codebook's k-means update; and show how the resulting visual codes support autoregressive generation. A final rate bound makes the compression price explicit.
 
 ## From a continuous autoencoder to a discrete waist
 
-A continuous autoencoder already has the two modality-specific maps this chapter needs: an encoder compresses pixels to a latent grid and a decoder reconstructs pixels from that grid. VQ-VAE changes one interface — it forces every latent row through a finite codebook before decoding — and that finite waist is what later makes the image available to a categorical transformer.
+A continuous autoencoder already has the two modality-specific maps this chapter needs: an encoder compresses pixels to a latent grid and a decoder reconstructs pixels from that grid. A vector-quantized variational autoencoder (VQ-VAE) changes one interface — it forces every latent row through a finite codebook before decoding — and that finite waist is what later makes the image available to a categorical transformer.
 
 <Theorem kind="definition" name="Continuous autoencoder and VQ-VAE insertion" id="def-autoencoder">
 Let $\mathcal X$ be an image space. A **continuous autoencoder** consists of an encoder and decoder
@@ -57,10 +55,10 @@ The architecture is therefore encoder $\to$ quantizer $\to$ decoder; the next de
 
 ## The codebook quantizer
 
-Starting from <XRef id="def-autoencoder" />, replace each of the encoder's $L$ latent rows by its nearest learned code. After that replacement the image is fully described by $L$ integers in $\{1,\dots,K\}$.
+Starting from <XRef id="def-autoencoder" />, replace each of the encoder's $L$ latent rows by its nearest learned code. After that replacement, the quantized latent $\mathbf z_q$ — and therefore the codec reconstruction $\widehat x$ — is fully specified by $L$ integers in $\{1,\dots,K\}$. The original image need not be recoverable from this lossy representation.
 
 <NotationOverride scope="Discrete Visual Tokenization">
-$K$ is codebook size; $\beta$ is commitment weight; $q$ is the single-row quantizer and $q_L$ its gridwise extension; and $\Phi,\Psi$ are codec encoder/decoder maps. The vector $\mathbf e_k\in\R^{d_c}$ is a learned **code vector**, overriding the standing one-hot meaning of $\mathbf e_k\in\R^K$.
+$K$ is codebook size; $\beta$ is commitment weight; $q$ is the single-row quantizer and $q_L$ its gridwise extension; and $\Phi,\Psi$ are codec encoder and decoder maps. The vector $\mathbf e_k\in\R^{d_c}$ is a learned **code vector**, overriding the standing one-hot meaning of $\mathbf e_k\in\R^K$.
 </NotationOverride>
 
 <Theorem kind="definition" name="Codebook and quantizer" id="def-codebook">
@@ -89,14 +87,16 @@ For the encoder grid $\mathbf z_e=\Phi(x)$ of <XRef id="def-autoencoder" />, the
 
 <Figure
   src="/figures/grid-sequence.svg"
-  caption="From index grid to sequence. Each cell of the L-cell grid holds the index of its nearest codebook vector (the quantization happens upstream); reading the grid in raster order yields a length-L sequence over the alphabet {1,…,K} — a sentence in the visual vocabulary. Rendered from TikZ via the figures pipeline."
+  alt="A grid of visual code indices flattened into a one-dimensional token sequence."
+  desc="Numbered cells form a two-dimensional code grid. A raster-order arrow visits each row from left to right and concatenates the indices into a single ordered sequence over the visual vocabulary."
+  caption="Raster order turns a grid of nearest-code indices into a fixed-length sequence over the visual vocabulary. The quantizer chooses the indices before this serialization step."
   id="fig-grid-sequence"
   width="70%"
 />
 
 The index sequence is the object the rest of the chapter cares about. Everything modality-specific — pixels, patches, the encoder $\Phi$ and decoder $\Psi$ — lives outside it; inside, we have a sequence over a finite alphabet, and the transformer is blind to where it came from (<XRef id="rem-modality-blind" />).
 
-## The non-differentiable obstacle
+## The nondifferentiable obstacle
 
 To train the autoencoder end to end we must push a reconstruction gradient from the decoder back through the quantizer to the encoder. But the quantizer is piecewise constant, and its derivative is useless.
 
@@ -129,7 +129,9 @@ The decoder receives $\mathbf z_q$; gradients are computed as if $\mathbf z_q=\m
 
 <Figure
   src="/figures/vq-pipeline.svg"
-  caption="The VQ-VAE pipeline with the straight-through estimator. Forward (solid): every row of encoder grid z_e is quantized to its nearest code, z_q = q_L(z_e), then decoded. Backward (dashed): the reconstruction gradient is copied around the non-differentiable quantizer onto the encoder, because the STE Jacobian is the identity. Rendered from TikZ via the figures pipeline."
+  alt="VQ-VAE forward and backward paths through a discrete quantizer."
+  desc="The solid path runs from input through encoder, nearest-code quantizer, and decoder to reconstruction. A dashed backward arrow bypasses the quantizer and carries the reconstruction gradient directly from the quantized latent to the encoder output."
+  caption="The VQ-VAE forward path encodes, quantizes to the nearest code, and decodes. The dashed backward path copies the reconstruction gradient around the nondifferentiable quantizer, giving the encoder the straight-through update."
   id="fig-vq-pipeline"
   width="72%"
 />
@@ -137,15 +139,17 @@ The decoder receives $\mathbf z_q$; gradients are computed as if $\mathbf z_q=\m
 <Theorem kind="theorem" name="STE: forward quantizes, backward is the identity" id="thm-ste-identity">
 For the STE of <XRef id="def-ste" />:
 1. **Forward.** $\mathbf z_q = q_L(\mathbf z_e)$ exactly — the decoder sees the true quantized grid.
-2. **Backward.** $\partial\mathbf z_q/\partial\mathbf z_e = \mathbf I$, so for any loss $\mathcal L$ the reconstruction gradient is copied unchanged from the quantized latent to the encoder output: $\partial\mathcal L/\partial\mathbf z_e = \partial\mathcal L/\partial\mathbf z_q$.
+2. **Backward.** $\partial\mathbf z_q/\partial\mathbf z_e = \mathbf I$. Therefore, for any differentiable scalar loss $\mathcal L=\mathcal L(\mathbf z_q)$ with no other dependence on $\mathbf z_e$, the gradient is copied unchanged from the quantized latent to the encoder output: $\partial\mathcal L/\partial\mathbf z_e = \partial\mathcal L/\partial\mathbf z_q$. In particular, this holds for the reconstruction loss.
 </Theorem>
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: evaluate the stop-gradient term once in the forward pass and once under differentiation. Which copy changes the value, and which derivative survives backward?</MarginNote>
 
 <Theorem kind="proof">
 **Proof.**
-(1) In the forward pass $\sg$ is the identity, so $\mathbf z_q=\mathbf z_e+\big(q_L(\mathbf z_e)-\mathbf z_e\big)=q_L(\mathbf z_e)$. (2) Differentiate $\mathbf z_q=\mathbf z_e+\sg[q_L(\mathbf z_e)-\mathbf z_e]$ with respect to the vectorization of $\mathbf z_e$. The first term contributes $\mathbf I$. The second term is a stop-gradient, whose backward Jacobian is $\mathbf 0$ by definition — this discards the row-wise quantizer's useless true Jacobian together with the $-\mathbf I$ inside the bracket. Hence $\partial\mathbf z_q/\partial\mathbf z_e=\mathbf I+\mathbf 0=\mathbf I$, and by the chain rule $\partial\mathcal L/\partial\mathbf z_e=\partial\mathcal L/\partial\mathbf z_q$. $\qquad\blacksquare$
+(1) In the forward pass $\sg$ is the identity, so $\mathbf z_q=\mathbf z_e+\big(q_L(\mathbf z_e)-\mathbf z_e\big)=q_L(\mathbf z_e)$. (2) Differentiate $\mathbf z_q=\mathbf z_e+\sg[q_L(\mathbf z_e)-\mathbf z_e]$ with respect to the vectorization of $\mathbf z_e$. The first term contributes $\mathbf I$. The second term is a stop-gradient, whose backward Jacobian is $\mathbf 0$ by definition — this discards the row-wise quantizer's useless true Jacobian together with the $-\mathbf I$ inside the bracket. Hence $\partial\mathbf z_q/\partial\mathbf z_e=\mathbf I+\mathbf 0=\mathbf I$. For $\mathcal L=\mathcal L(\mathbf z_q)$ with no other dependence on $\mathbf z_e$, the chain rule then gives $\partial\mathcal L/\partial\mathbf z_e=(\partial\mathcal L/\partial\mathbf z_q)\mathbf I=\partial\mathcal L/\partial\mathbf z_q$. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="tip" label="Why it works">The estimator is biased — it ignores the quantization map's true derivative — but it points the encoder in a sane direction: "produce latents the decoder, fed their nearest code, can reconstruct." The bias is the price of a discrete waist.</MarginNote>
+<MarginNote variant="tip" label="Why it works">The STE ignores the quantizer's true derivative but gives the encoder a reconstruction signal: produce latents whose nearest codes let the decoder recover the input.</MarginNote>
 
 The STE moves the reconstruction gradient to the encoder, but it says nothing about *where the codes should sit*. That is the job of the loss.
 
@@ -160,11 +164,11 @@ $$
 \;+\; \underbrace{\norm{\sg[\mathbf z_e] - \mathbf Z_{\mathcal C}}_F^2}_{\text{codebook}}
 \;+\; \beta\,\underbrace{\norm{\mathbf z_e - \sg[\mathbf Z_{\mathcal C}]}_F^2}_{\text{commitment}},
 $$
-with **commitment weight** $\beta>0$. The codebook and commitment terms are the same summed rowwise squared distance $\norm{\mathbf z_e-\mathbf Z_{\mathcal C}}_F^2$ with the stop-gradient placed on opposite arguments.
+with **commitment weight** $\beta>0$. The codebook and commitment terms are the same summed row-wise squared distance $\norm{\mathbf z_e-\mathbf Z_{\mathcal C}}_F^2$ with the stop-gradient placed on opposite arguments.
 </Theorem>
 
 <Theorem kind="proposition" name="The VQ loss routes three gradients" id="prop-vq-gradient">
-Away from assignment boundaries—equivalently, holding the discrete assignments fixed locally—and at a point where the reconstruction loss composed with the decoder is differentiable with respect to $\mathbf z_q$ (or under the usual almost-everywhere derivative convention for piecewise-differentiable networks), the three terms of <XRef id="def-vq-loss" /> produce three separately routed gradient contributions:
+Away from assignment boundaries — equivalently, holding the discrete assignments fixed locally — and at a point where the reconstruction loss composed with the decoder is differentiable with respect to $\mathbf z_q$ (or under the usual almost-everywhere derivative convention for piecewise-differentiable networks), the three terms of <XRef id="def-vq-loss" /> produce three separately routed gradient contributions:
 1. **Reconstruction → encoder.** $\partial\mathcal L_{\mathrm{rec}}/\partial\mathbf z_e = \partial\mathcal L_{\mathrm{rec}}/\partial\mathbf z_q$, copied through the STE (<XRef id="thm-ste-identity" />); it also trains the decoder $\Psi$.
 2. **Codebook → codes.** If $S_k=\{t:k^\star(\mathbf z_e^{(t)})=k\}$, then the codebook term has
    $$
@@ -177,7 +181,7 @@ Away from assignment boundaries—equivalently, holding the discrete assignments
 
 <Theorem kind="proof">
 **Proof.**
-(1) is <XRef id="thm-ste-identity" /> applied to $\mathcal L_{\mathrm{rec}}$, since $\mathbf z_q$ feeds the decoder and the STE Jacobian to $\mathbf z_e$ is the identity; the decoder parameters receive the ordinary reconstruction gradient. (2) Expand the Frobenius norm as $\sum_t\norm{\sg[\mathbf z_e^{(t)}]-\mathbf Z_{\mathcal C}^{(t)}}^2$. In the backward pass each $\sg[\mathbf z_e^{(t)}]$ is constant, so differentiation gives $2(\mathbf Z_{\mathcal C}^{(t)}-\mathbf z_e^{(t)})$ for the assigned code and zero for the encoder row. If several rows share a code, those gradients sum on the one shared parameter. (3) Symmetrically, expanding $\beta\norm{\mathbf z_e-\sg[\mathbf Z_{\mathcal C}]}_F^2$ gives rowwise encoder gradient $2\beta(\mathbf z_e^{(t)}-\mathbf Z_{\mathcal C}^{(t)})$ and no codebook gradient. Reconstruction and commitment both update the encoder, but as distinct additive contributions; only the two stop-gradient distance terms isolate codebook from encoder. $\qquad\blacksquare$
+(1) is <XRef id="thm-ste-identity" /> applied to $\mathcal L_{\mathrm{rec}}$, since $\mathbf z_q$ feeds the decoder and the STE Jacobian to $\mathbf z_e$ is the identity; the decoder parameters receive the ordinary reconstruction gradient. (2) Expand the Frobenius norm as $\sum_t\norm{\sg[\mathbf z_e^{(t)}]-\mathbf Z_{\mathcal C}^{(t)}}^2$. In the backward pass each $\sg[\mathbf z_e^{(t)}]$ is constant, so differentiation gives $2(\mathbf Z_{\mathcal C}^{(t)}-\mathbf z_e^{(t)})$ for the assigned code and zero for the encoder row. If several rows share a code, those gradients sum on the one shared parameter. (3) Symmetrically, expanding $\beta\norm{\mathbf z_e-\sg[\mathbf Z_{\mathcal C}]}_F^2$ gives row-wise encoder gradient $2\beta(\mathbf z_e^{(t)}-\mathbf Z_{\mathcal C}^{(t)})$ and no codebook gradient. Reconstruction and commitment both update the encoder, but as distinct additive contributions; only the two stop-gradient distance terms isolate codebook from encoder. $\qquad\blacksquare$
 </Theorem>
 
 The codebook term is more than a regularizer — its minimizer has a name.
@@ -193,30 +197,32 @@ Alternating the assignment step ($i\mapsto k^\star(\mathbf z_e^{(i)})$, nearest 
 
 <Theorem kind="proof">
 **Proof.**
-For fixed assignments $S_k$, the objective separates over $k$, and for a nonempty cell the $k$-th block $\sum_{i\in S_k}\norm{\mathbf z_e^{(i)}-\mathbf e_k}^2$ is a sum of $|S_k|\ge 1$ convex quadratics in $\mathbf e_k$, with positive-definite Hessian $2|S_k|\mathbf I$. Its gradient is $\sum_{i\in S_k} 2(\mathbf e_k-\mathbf z_e^{(i)})$; setting it to zero gives $|S_k|\,\mathbf e_k=\sum_{i\in S_k}\mathbf z_e^{(i)}$, i.e. $\mathbf e_k^\star=\frac{1}{|S_k|}\sum_{i\in S_k}\mathbf z_e^{(i)}$, the centroid, which is the unique minimizer by strict convexity. This is the centroid (M-)step of Lloyd's algorithm; the Voronoi nearest-code rule of <XRef id="prop-voronoi" /> is its assignment (E-)step. A gradient step on the codebook term (clause 2 of <XRef id="prop-vq-gradient" />, $2(\mathbf e_k-\mathbf z_e^{(i)})$) moves $\mathbf e_k$ toward this centroid, so codebook learning is the stochastic/online form of k-means. $\qquad\blacksquare$
+For fixed assignments $S_k$, the objective separates over $k$, and for a nonempty cell the $k$-th block $\sum_{i\in S_k}\norm{\mathbf z_e^{(i)}-\mathbf e_k}^2$ is a sum of $|S_k|\ge 1$ convex quadratics in $\mathbf e_k$, with positive-definite Hessian $2|S_k|\mathbf I$. Its gradient is $\sum_{i\in S_k} 2(\mathbf e_k-\mathbf z_e^{(i)})$; setting it to zero gives $|S_k|\,\mathbf e_k=\sum_{i\in S_k}\mathbf z_e^{(i)}$, i.e. $\mathbf e_k^\star=\frac{1}{|S_k|}\sum_{i\in S_k}\mathbf z_e^{(i)}$, the centroid, which is the unique minimizer by strict convexity. This is the centroid (M-)step of Lloyd's algorithm; the Voronoi nearest-code rule of <XRef id="prop-voronoi" /> is its assignment (E-)step. A gradient step on the codebook term (clause 2 of <XRef id="prop-vq-gradient" />, $2(\mathbf e_k-\mathbf z_e^{(i)})$) moves $\mathbf e_k$ toward this centroid, so codebook learning is the stochastic online form of k-means. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="formula" label="EMA codebooks">In practice the centroid step is often run as an exponential moving average of assigned encoder outputs — a streaming Lloyd update — rather than through the codebook-loss gradient, which is the same fixed point.</MarginNote>
 
 <Figure
   src="/figures/voronoi-kmeans.svg"
-  caption="The codebook is a k-means clustering of the encoder's latents. Code vectors (large dots) partition the latent space into Voronoi cells; the quantizer assigns each encoder output (small dots) to its cell, and the codebook-loss minimizer sets each code to its cell's centroid — Lloyd's assignment and update steps. Rendered from TikZ via the figures pipeline."
+  alt="Code vectors and encoder outputs partitioned into Voronoi cells."
+  desc="Large dots mark code vectors and polygonal boundaries mark their Voronoi cells. Small encoder-output dots belong to the nearest cell. Arrows indicate updating each code toward the centroid of its assigned outputs."
+  caption="Code vectors define Voronoi cells in latent space. Quantization assigns each encoder output to a cell, and the codebook update moves each code toward the centroid of its assigned outputs."
   id="fig-voronoi-kmeans"
   width="58%"
 />
 
 ## Dual footing: image generation is autoregressive language modeling
 
-We can now state the chapter's headline. Once the codec $(\Phi,\operatorname{idx}_{\mathcal C},\mathcal E_{\mathcal C},\Psi)$ is fixed, an image *is* represented by a sequence of $L$ integers over an alphabet of size $K$. Generating images means modeling the distribution of those sequences — and that is the autoregressive language-modeling problem of the training chapter, with the text vocabulary replaced by the visual codebook. Nothing in the language-model construction refers to what a token *means*; only the size of the alphabet enters. So the entire apparatus transfers without a single new theorem.
+Once the codec $(\Phi,\operatorname{idx}_{\mathcal C},\mathcal E_{\mathcal C},\Psi)$ is fixed, an image is represented by a sequence of $L$ integers over an alphabet of size $K$. Image generation therefore models the distribution of those sequences with the autoregressive factorization of <XRef id="def-autoregressive-lm" />, using the visual codebook as its vocabulary. The model consumes indices; their visual meaning remains in the codec.
 
 <Theorem kind="theorem" name="VQ image generation is autoregressive LM over a visual vocabulary" id="thm-dual-footing">
-Fix the encoder and decoder of <XRef id="def-autoencoder" /> and the index/lookup maps of <XRef id="def-codebook" />, and let $\mathbf z = (z_1,\dots,z_L)\in\{1,\dots,K\}^{L}$ be the index sequence of an image. Modeling the **codec-induced code distribution** reduces exactly to autoregressive language modeling (<XRef id="def-autoregressive-lm" />) over the visual vocabulary $\mathcal V = \{1,\dots,K\}$, $|\mathcal V| = K$:
+Fix the encoder and decoder of <XRef id="def-autoencoder" /> and the index and lookup maps of <XRef id="def-codebook" />, and let $\mathbf z = (z_1,\dots,z_L)\in\{1,\dots,K\}^{L}$ be the index sequence of an image. Modeling the **codec-induced code distribution** reduces exactly to autoregressive language modeling (<XRef id="def-autoregressive-lm" />) over the visual vocabulary $\mathcal V = \{1,\dots,K\}$, $|\mathcal V| = K$:
 $$
 p_\theta(\mathbf z) = \prod_{t=1}^{L} p_\theta(z_t\mid z_{<t}),
 \qquad
 p_\theta(z_t\mid z_{<t}) = \softmax(\mathbf h_t\mathbf W_{\text{out}})_{z_t},
 $$
-trained by the cross-entropy loss of <XRef id="def-ce-loss" /> (whose expectation over the data minimizes $D_{\mathrm{KL}}(p_{\mathrm{data}}\,\|\,p_\theta)$, <XRef id="prop-ce-kl-training" />) with teacher forcing (<XRef id="def-teacher-forcing" />). Every theorem of the training chapter holds verbatim with $|\mathcal V|=K$; modality enters **only** through the fixed codec, which translates pixels to indices by $\operatorname{idx}_{\mathcal C}\circ\Phi$ and code vectors back to pixels by $\Psi$. To sample, use any tokenwise rule of <XRef id="def-token-decoding" /> to draw $\mathbf z$ autoregressively, form the latent grid $\mathbf z_q=\mathcal E_{\mathcal C}(\mathbf z)$, and decode $\hat x=\Psi(\mathbf z_q)$. This models the distribution of codec reconstructions; no prior can recover image distinctions discarded by the lossy codec.
+trained by the cross-entropy loss of <XRef id="def-ce-loss" /> (whose expectation over the data minimizes $D_{\mathrm{KL}}(p_{\mathrm{data}}\,\|\,p_\theta)$, <XRef id="prop-ce-kl-training" />) with teacher forcing (<XRef id="def-teacher-forcing" />). Results that depend only on a finite categorical alphabet apply with $|\mathcal V|=K$. Modality enters through the fixed codec, which translates pixels to indices by $\operatorname{idx}_{\mathcal C}\circ\Phi$ and code vectors back to pixels by $\Psi$. To sample, use a token-wise rule from <XRef id="def-token-decoding" /> to draw $\mathbf z$ autoregressively, form the latent grid $\mathbf z_q=\mathcal E_{\mathcal C}(\mathbf z)$, and decode $\hat x=\Psi(\mathbf z_q)$. This models the distribution of codec reconstructions; no prior can recover image distinctions discarded by the lossy codec.
 </Theorem>
 
 <Theorem kind="proof">
@@ -225,7 +231,7 @@ The fixed deterministic map $x\mapsto \mathbf z=(\operatorname{idx}_{\mathcal C}
 </Theorem>
 
 <Theorem kind="remark" name="What is genuinely new versus reused" id="rem-new-vs-reused">
-The reused part is everything inside the sequence model: <XRef id="thm-dual-footing" /> shows the transformer, its loss, and its sampler are the text apparatus untouched — this is the dual-footing thesis (<XRef id="rem-modality-blind" />) made exact for generation. The genuinely new mathematics is everything *around* the sequence: the quantizer and its Voronoi geometry (<XRef id="prop-voronoi" />), the straight-through estimator (<XRef id="thm-ste-identity" />) that makes the discrete waist trainable, and the k-means codebook (<XRef id="thm-codebook-kmeans" />). This is the precise sense in which "image generation as a language model" is both a real reduction and a real new construction — the codec is new, the language model is not. The same recipe with a convolutional/transformer codec and an autoregressive prior underlies VQ-VAE-2 and VQGAN <Cite key="razavi2019vqvae2" /><Cite key="esser2021vqgan" />; DALL·E <Cite key="ramesh2021dalle" /> keeps the tokenize-then-model pipeline but trains its discrete VAE with a Gumbel-softmax relaxation in place of the VQ/straight-through codec.
+The reused part is everything inside the sequence model: <XRef id="thm-dual-footing" /> shows the transformer, its loss, and its sampler are the text apparatus untouched — this is the dual-footing thesis (<XRef id="rem-modality-blind" />) made exact for generation. The genuinely new mathematics is everything *around* the sequence: the quantizer and its Voronoi geometry (<XRef id="prop-voronoi" />), the straight-through estimator (<XRef id="thm-ste-identity" />) that makes the discrete waist trainable, and the k-means codebook (<XRef id="thm-codebook-kmeans" />). This is the precise sense in which "image generation as a language model" is both a real reduction and a real new construction — the codec is new, the language model is not. The same recipe with a convolutional or transformer codec and an autoregressive prior underlies VQ-VAE-2 and VQGAN <Cite key="razavi2019vqvae2" /><Cite key="esser2021vqgan" />; DALL·E <Cite key="ramesh2021dalle" /> keeps the tokenize-then-model pipeline but trains its discrete VAE with a Gumbel-softmax relaxation in place of the vector-quantized straight-through codec.
 </Theorem>
 
 ## The rate of the code
@@ -251,23 +257,23 @@ Attempt each before expanding its solution.
 
 **Exercise 21.1 (Prove).** Prove that the quantizer $q$ of <XRef id="def-codebook" /> has $\partial q/\partial\mathbf z = \mathbf 0$ at every point interior to a Voronoi cell, and characterize the exceptional set. Why does this make end-to-end training impossible without the STE?
 
-<SolutionBox>
+<SolutionBox exercise="21.1">
 
-Fix $\mathbf z$ interior to $R_k$, so $\mathbf e_k$ is the strict nearest code on a neighborhood $U$ of $\mathbf z$. On $U$, $q\equiv\mathbf e_k$ is constant, hence every partial derivative is zero and $\partial q/\partial\mathbf z=\mathbf 0$ (<XRef id="prop-voronoi" />). The exceptional set is the Voronoi boundary where two or more nearest codes tie. It is **contained in** the finite union of pairwise bisector hyperplanes $\{\mathbf z:\norm{\mathbf z-\mathbf e_k}=\norm{\mathbf z-\mathbf e_j}\}$, so it has Lebesgue measure zero; a bisector point where some third code is strictly nearer need not be exceptional. Because the Jacobian is zero a.e., the true chain rule sends the reconstruction gradient through a zero rowwise quantizer Jacobian: the encoder receives no reconstruction gradient and cannot learn, which is exactly what the STE's identity Jacobian (<XRef id="thm-ste-identity" />) repairs. $\qquad\blacksquare$
+Fix $\mathbf z$ interior to $R_k$, so $\mathbf e_k$ is the strict nearest code on a neighborhood $U$ of $\mathbf z$. On $U$, $q\equiv\mathbf e_k$ is constant, hence every partial derivative is zero and $\partial q/\partial\mathbf z=\mathbf 0$ (<XRef id="prop-voronoi" />). The exceptional set is the Voronoi boundary where two or more nearest codes tie. It is **contained in** the finite union of pairwise bisector hyperplanes $\{\mathbf z:\norm{\mathbf z-\mathbf e_k}=\norm{\mathbf z-\mathbf e_j}\}$, so it has Lebesgue measure zero; a bisector point where some third code is strictly nearer need not be exceptional. Because the Jacobian is zero a.e., the true chain rule sends the reconstruction gradient through a zero row-wise quantizer Jacobian: the encoder receives no reconstruction gradient and cannot learn, which is exactly what the STE's identity Jacobian (<XRef id="thm-ste-identity" />) repairs. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 21.2 (Prove).** From the stop-gradient definition (<XRef id="def-ste" />), prove both clauses of <XRef id="thm-ste-identity" />: the forward pass returns $q_L(\mathbf z_e)$ and the backward Jacobian is $\mathbf I$. Then explain in one sentence why the estimator is biased.
 
-<SolutionBox>
+<SolutionBox exercise="21.2">
 
-Forward: $\sg$ is the identity, so $\mathbf z_q=\mathbf z_e+(q_L(\mathbf z_e)-\mathbf z_e)=q_L(\mathbf z_e)$. Backward: $\partial\mathbf z_q/\partial\mathbf z_e=\partial\mathbf z_e/\partial\mathbf z_e+\partial\,\sg[\cdot]/\partial\mathbf z_e=\mathbf I+\mathbf 0=\mathbf I$, since the stop-gradient term has zero Jacobian by definition. So $\partial\mathcal L/\partial\mathbf z_e=\partial\mathcal L/\partial\mathbf z_q$. It is biased because the *true* Jacobian of the forward rowwise quantizer $q_L$ is $\mathbf 0$ a.e. (<XRef id="prop-voronoi" />), not $\mathbf I$ — the STE substitutes a deliberately wrong but informative derivative. $\qquad\blacksquare$
+Forward: $\sg$ is the identity, so $\mathbf z_q=\mathbf z_e+(q_L(\mathbf z_e)-\mathbf z_e)=q_L(\mathbf z_e)$. Backward: $\partial\mathbf z_q/\partial\mathbf z_e=\partial\mathbf z_e/\partial\mathbf z_e+\partial\,\sg[\cdot]/\partial\mathbf z_e=\mathbf I+\mathbf 0=\mathbf I$, since the stop-gradient term has zero Jacobian by definition. So $\partial\mathcal L/\partial\mathbf z_e=\partial\mathcal L/\partial\mathbf z_q$. It is biased because the *true* Jacobian of the forward row-wise quantizer $q_L$ is $\mathbf 0$ a.e. (<XRef id="prop-voronoi" />), not $\mathbf I$ — the STE substitutes a deliberately wrong but informative derivative. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 21.3 (Derive).** Using the stop-gradient placement in <XRef id="def-vq-loss" />, derive the aggregate gradient for each code vector $\mathbf e_k$ and the commitment gradient for each encoder row $\mathbf z_e^{(t)}$, confirming <XRef id="prop-vq-gradient" />. Explain why omitting the commitment term ($\beta=0$) can let encoder outputs drift away from the codebook.
 
-<SolutionBox>
+<SolutionBox exercise="21.3">
 
 For fixed assignments $S_k$, the codebook term involving $\mathbf e_k$ is $\sum_{t\in S_k}\norm{\sg[\mathbf z_e^{(t)}]-\mathbf e_k}^2$. The stopped encoder rows are constants in backpropagation, so
 $$
@@ -282,7 +288,7 @@ For $t\in S_k$, the commitment summand is $\beta\norm{\mathbf z_e^{(t)}-\sg[\mat
 
 **Exercise 21.4 (Prove).** For each nonempty Voronoi cell, prove the codebook-loss minimizer is its centroid (<XRef id="thm-codebook-kmeans" />), and identify the assignment and update steps with the two phases of Lloyd's algorithm. What happens for an empty cell?
 
-<SolutionBox>
+<SolutionBox exercise="21.4">
 
 For fixed assignments and a **nonempty** $S_k$, the codebook objective $\sum_{i\in S_k}\norm{\mathbf z_e^{(i)}-\mathbf e_k}^2$ is strictly convex in $\mathbf e_k$, with positive-definite Hessian $2|S_k|\mathbf I$. Its gradient $\sum_{i\in S_k}2(\mathbf e_k-\mathbf z_e^{(i)})$ vanishes iff $\mathbf e_k=\frac{1}{|S_k|}\sum_{i\in S_k}\mathbf z_e^{(i)}$, the unique centroid minimizer. If $S_k=\varnothing$, the sum is $0$ for every $\mathbf e_k$: there is no unique minimizer and the expression $1/|S_k|$ is undefined, so an implementation must leave, reinitialize, or otherwise handle that code. The nearest-code assignment $i\mapsto k^\star(\mathbf z_e^{(i)})$ (<XRef id="prop-voronoi" />) and the nonempty-cell centroid update are Lloyd's assignment and update phases. $\qquad\blacksquare$
 
@@ -290,7 +296,7 @@ For fixed assignments and a **nonempty** $S_k$, the codebook objective $\sum_{i\
 
 **Exercise 21.5 (Compute).** A VQGAN-style codec emits $L = 16\times 16 = 256$ indices over a codebook of size $K = 8192 = 2^{13}$. (a) Bound the bits per image the code can carry (<XRef id="prop-rate" />). (b) Using <XRef id="thm-dual-footing" />, state what quantity an autoregressive prior over these codes is trained to minimize, and why a lower per-token cross-entropy means a better image model.
 
-<SolutionBox>
+<SolutionBox exercise="21.5">
 
 (a) By <XRef id="prop-rate" />, $H(\mathbf z)\le L\log_2 K = 256\cdot\log_2(2^{13}) = 256\cdot 13 = 3328$ bits per image (attained only by i.i.d. uniform codes; real codes carry fewer). (b) By <XRef id="thm-dual-footing" /> the prior is an autoregressive language model over $\mathcal V=\{1,\dots,8192\}$, trained to minimize the per-token cross-entropy $-\frac1L\sum_t\log p_\theta(z_t\mid z_{<t})$, whose *expectation over the data* equals the data entropy plus $D_{\mathrm{KL}}(p_{\mathrm{data}}\,\|\,p_\theta)$, up to the $1/L$ average (<XRef id="prop-ce-kl-training" />). Lower cross-entropy means the model assigns higher likelihood to the true code sequences — its samples $\mathbf z\sim p_\theta$ match the distribution of real images' codes more closely, so looking up $\mathbf z_q=\mathcal E_{\mathcal C}(\mathbf z)$ and decoding $\Psi(\mathbf z_q)$ yields more realistic images. The fidelity ceiling is still set by the codec's $3328$-bit rate (<XRef id="prop-rate" />); the prior only controls how well that budget is used. $\qquad\blacksquare$
 
@@ -298,7 +304,7 @@ For fixed assignments and a **nonempty** $S_k$, the codebook objective $\sum_{i\
 
 **Exercise 21.6 (Compute).** A two-row encoder grid is $\mathbf z_e=((0.1,0.2);(1.8,0.2))$ and the codebook is $\mathbf e_1=(0,0)$, $\mathbf e_2=(2,0)$. Trace the autoencoder of <XRef id="def-autoencoder" /> through the nearest-code index and lookup maps of <XRef id="def-codebook" />. If $\Psi$ sums the two rows and the target is $x=(1,1)$, compute $\hat x$ and squared reconstruction loss.
 
-<SolutionBox>
+<SolutionBox exercise="21.6">
 
 The first row is closer to $\mathbf e_1$ and the second to $\mathbf e_2$, so the index sequence is $(1,2)$ and
 $$

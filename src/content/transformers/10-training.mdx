@@ -3,10 +3,10 @@ title: "Training a Transformer"
 slug: training
 chapter: 10
 part: 3
-description: "The training objective from first principles: the cross-entropy / negative-log-likelihood loss as KL divergence to the data, the softmax-plus-cross-entropy logit gradient q - y, image captioning as the same loss with an enlarged conditioning set, teacher forcing and exposure bias, label smoothing as a uniform-KL penalty, and the warmup / inverse-square-root learning-rate schedule."
+description: "Derives transformer training from autoregressive likelihood through cross-entropy, its logit gradient, teacher forcing, label smoothing, learning-rate warmup, weight initialization, and conditional image captioning."
 last_verified: 2026-07-13
 rigor_level: rigorous
-prerequisites: [notation, attention]
+prerequisites: [notation, attention, architecture-composition, encoder-decoder-families]
 notation_introduced: ['p_\theta', 'p_{\text{data}}', '\mathcal L(\theta)', 'T', '\tilde{\mathbf y}', '\alpha', 't_{\text{warmup}}']
 theorems: ['def-autoregressive-lm', 'def-ce-loss', 'prop-ce-kl-training', 'prop-ce-logit-gradient', 'ex-captioning', 'def-teacher-forcing', 'def-label-smoothing', 'prop-label-smoothing-decomposition', 'def-lr-schedule', 'prop-warmup-rationale', 'def-xavier-init']
 los:
@@ -23,15 +23,13 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Training a Transformer
-
-**Where we are.** Earlier chapters built the transformer as a static map from a token sequence to a distribution over the next token. This chapter makes that map *learn*: we fix the scalar objective it descends — the cross-entropy / negative-log-likelihood loss — show it is exactly KL divergence to the data up to a parameter-free constant, derive the single subtraction gradient ($\mathbf q$ minus the target) that drives every update, and then treat the four adjustments that make the descent behave — teacher forcing (and the exposure bias it incurs), label smoothing (and its effect on the target distribution), the warmup / inverse-square-root learning-rate schedule, and weight initialization. We write $p_\theta$ for the model distribution with parameters $\theta$, $p_{\text{data}}$ for the data distribution, $T$ for sequence length (the same quantity as the standing $n$; we write $T$ where the literature's $1/T$ averaging is idiomatic), and $\mathbf W_{\text{out}}\in\R^{d\times\lvert\mathcal V\rvert}$ for the output projection from hidden states to vocabulary logits; the softmax, cross-entropy $H(\mathbf p,\mathbf q)$, and KL divergence $D_{\mathrm{KL}}(\mathbf p\,\|\,\mathbf q)$ are all fixed in the Notation chapter.
+**Where we are.** A causal architecture supplies every next-token conditional in one prefix-consistent evaluation (<XRef id="thm-one-pass" />). This chapter turns those conditionals into a training objective. We define autoregressive likelihood and cross-entropy, show that minimizing it also minimizes KL divergence to the data distribution up to a constant, and derive the softmax logit gradient. We then examine teacher forcing and exposure bias, label smoothing, the warmup and inverse-square-root learning-rate schedule, and weight initialization. Image captioning appears as the same conditional language-modeling loss with additional observed context. We use $T$ for sequence length and $p_\theta$ for the model distribution.
 
 ## Autoregressive language modeling
 
@@ -92,7 +90,7 @@ The positive constant $1/T$ rescales the gradient without changing its zeros or 
 
 The descent is driven entirely by one gradient, and it has a strikingly simple closed form at the logit level. Because the loss factors through softmax, the softmax Jacobian from the Notation chapter does the work, and a fortunate cancellation collapses the whole chain to a single subtraction.
 
-<MarginNote variant="tip" label="Self-explanation">Before reading the proof: the loss is $-\log q_{x_t}$, a function of one coordinate of $\mathbf q$. The softmax Jacobian (Notation chapter) has the form $q_i(\delta_{ij}-q_j)$. Which factor do you expect to cancel?</MarginNote>
+<MarginNote variant="tip" label="Self-explanation">The loss depends on one softmax coordinate. When its derivative meets the softmax Jacobian, which factor should cancel?</MarginNote>
 
 <Theorem kind="proposition" name="Gradient of cross-entropy with respect to logits" id="prop-ce-logit-gradient">
 Let $\mathbf z_t \defeq \mathbf h_t \mathbf W_{\text{out}}$ and $\mathbf q_t = \softmax(\mathbf z_t)$. For a one-hot target $\mathbf e_{x_t}$, the gradient of the per-token cross-entropy with respect to the logits is
@@ -123,7 +121,7 @@ $$
 
 <MarginNote variant="pattern" label="The training signal">$\nabla_{\mathbf z}\mathcal L = \mathbf q - \mathbf y$: push the correct logit up by $1-q_{x_t}$, push each wrong logit down by its own probability.</MarginNote>
 
-The form $\mathbf q_t - \mathbf e_{x_t}$ is distribution matching read off directly: the update pushes the correct-class logit up by an amount proportional to $1 - q_{t,x_t}$ and pushes every incorrect logit down in proportion to the probability it currently holds. The gradient vanishes exactly when $\mathbf q_t = \mathbf e_{x_t}$, i.e. when the model already places all mass on the right token. This same expression returns below: replacing the one-hot target $\mathbf e_{x_t}$ by any target distribution $\mathbf y$ leaves the gradient $\mathbf q_t - \mathbf y$ — the identical mechanism with a different target.
+The form $\mathbf q_t - \mathbf e_{x_t}$ is distribution matching read off directly: the update pushes the correct-class logit up by an amount proportional to $1 - q_{t,x_t}$ and pushes every incorrect logit down in proportion to the probability it currently holds. This logit gradient would vanish at $\mathbf q_t = \mathbf e_{x_t}$. Finite softmax logits make every coordinate of $\mathbf q_t$ strictly positive, however, so equality is reached only as a limiting distribution in which every correct-versus-incorrect logit gap diverges. This same expression returns below: replacing the one-hot target $\mathbf e_{x_t}$ by any target distribution $\mathbf y$ leaves the gradient $\mathbf q_t - \mathbf y$ — the identical mechanism with a different target.
 
 <MarginNote variant="cross-ref" label="From tokens to preferences">Chapter 11 lifts this derivative to a winner–loser completion-score gap whose logit is a policy–reference ratio, not a token score (<XRef id="prop-dpo-pair-gradient" />).</MarginNote>
 
@@ -154,12 +152,12 @@ During training, **teacher forcing** supplies the ground-truth token $x_t$ as th
 <MarginNote variant="cross-ref" label="Two licenses">One pass yielding all $T$ conditionals is the causality theorem <XRef id="thm-one-pass" /> — every causal mixer has it; that the pass is also *fast* is the $\Theta(1)$-depth column of <XRef id="prop-sequential-depth" />, which recurrences lack.</MarginNote>
 
 <Theorem kind="remark" name="Exposure bias">
-At inference there are no gold tokens: the model must generate autoregressively, feeding each generated token back as the next input. The inference chapter defines how greedy, temperature, top-$k$, and top-$p$ rules turn each logit row into that token (<XRef id="def-token-decoding" />). If generation departs from the data prefix at position $t$, every later prediction conditions on a prefix the model never saw during training — a train–test distribution mismatch known as **exposure bias**, and one that compounds with sequence length. Standard mitigations include scheduled sampling, which gradually substitutes model-generated tokens for gold tokens during training, and sequence-level objectives that score the rollout directly rather than each position in isolation.
+At inference there are no gold tokens: the model must generate autoregressively, feeding each generated token back as the next input. The Inference Optimizations chapter defines how greedy, temperature, top-$k$, and top-$p$ rules turn each logit row into that token (<XRef id="def-token-decoding" />). Once generation departs from a particular data prefix, later predictions condition on model-generated prefixes that need not follow the teacher-forced training-prefix distribution. This train–test distribution mismatch is known as **exposure bias**, and its effects can compound with sequence length. Standard mitigations include scheduled sampling, which gradually substitutes model-generated tokens for gold tokens during training, and sequence-level objectives that score the rollout directly rather than each position in isolation.
 </Theorem>
 
 ## Label smoothing
 
-The one-hot target asks the model for an impossible optimum: by <XRef id="prop-ce-logit-gradient" /> the loss keeps falling as $q_{x_t}\to 1$, which requires the correct logit to run off to $+\infty$. Label smoothing tempers this by moving a small share of the target mass off the correct class and spreading it uniformly, so the target the model chases is itself a proper distribution with finite optimal logits.
+The one-hot target asks a finite-logit softmax for an unattainable optimum: by <XRef id="prop-ce-logit-gradient" /> the loss keeps falling as $q_{x_t}\to 1$, which requires every correct-versus-incorrect logit gap to diverge. Label smoothing with $0<\alpha<1$ tempers this by moving a small share of the target mass off the correct class and spreading it uniformly, producing a full-support target distribution with finite optimal logit gaps.
 
 <Theorem kind="definition" name="Label smoothing" id="def-label-smoothing">
 **Label smoothing**<Sidenote>Introduced for image classification <Cite key="szegedy2016rethinking" />; its calibration effect analyzed by <Cite key="muller2019labelsmoothing" />.</Sidenote> replaces the hard one-hot target $\mathbf y = \mathbf e_{x_t}$ with a mixture of the one-hot vector and the uniform distribution,
@@ -255,7 +253,7 @@ $$
 holds the accumulated residual-stream variance at order one across depth. This depth-scaled initialization is the GPT-2 training recipe <Cite key="radford2019language" />; the original transformer paper prescribes no residual-depth scaling.
 </Theorem>
 
-These five choices are interlocking, not independent. The loss (<XRef id="prop-ce-kl-training" />) aligns the model with the data distribution; teacher forcing (<XRef id="def-teacher-forcing" />) makes that loss computable in parallel at the cost of exposure bias; label smoothing (<XRef id="prop-label-smoothing-decomposition" />) keeps the targets — and therefore the optimal logits — finite; warmup (<XRef id="prop-warmup-rationale" />) protects the optimizer while its statistics are unreliable; and scaled initialization (<XRef id="def-xavier-init" />) keeps the forward and backward signals at order one through depth. Removing any one degrades or destroys training: the trained transformer is a single coupled system, its architecture and its optimization co-designed.
+These choices address different parts of one coupled system. The loss (<XRef id="prop-ce-kl-training" />) aligns the model with the data distribution; teacher forcing (<XRef id="def-teacher-forcing" />) makes that loss computable in parallel at the cost of exposure bias; label smoothing, when used, keeps the target's optimal logit gaps finite (<XRef id="prop-label-smoothing-decomposition" />); warmup (<XRef id="prop-warmup-rationale" />) protects the optimizer while its statistics are unreliable; and variance-aware initialization (<XRef id="def-xavier-init" />) controls forward and backward signal scales through depth. They are design families rather than individually necessary ingredients: viable recipes may omit label smoothing or replace the schedule and initialization, but each substitution changes optimization tradeoffs that the recipe must control.
 
 ## Exercises
 
@@ -263,7 +261,7 @@ Attempt each before expanding its solution.
 
 **Exercise 10.1 (Prove).** Show that minimizing the cross-entropy loss $H(p_{\text{data}}, p_\theta)$ over $\theta$ is equivalent to minimizing $D_{\mathrm{KL}}(p_{\text{data}}\,\|\,p_\theta)$, and identify the term that is constant in $\theta$.
 
-<SolutionBox>
+<SolutionBox exercise="10.1">
 
 $H(p_{\text{data}}, p_\theta) = -\sum_x p_{\text{data}}(x)\log p_\theta(x)$. Add and subtract $\sum_x p_{\text{data}}(x)\log p_{\text{data}}(x)$:
 $$
@@ -275,7 +273,7 @@ The entropy $H(p_{\text{data}})$ is fixed by the data, so $\nabla_\theta H(p_{\t
 
 **Exercise 10.2 (Derive).** Starting from $\mathcal L_t = -\log q_{t,x_t}$ and the softmax Jacobian, derive the logit gradient $\nabla_{\mathbf z_t}\mathcal L_t = \mathbf q_t - \mathbf e_{x_t}$, and state how it changes for a general target distribution $\mathbf y$.
 
-<SolutionBox>
+<SolutionBox exercise="10.2">
 
 With $\mathcal L_t = -\log q_{t,x_t}$, only the $x_t$-th coordinate of $\mathbf q_t$ enters, so $\partial\mathcal L_t/\partial z_{t,k} = -q_{t,x_t}^{-1}\,\partial q_{t,x_t}/\partial z_{t,k}$. The softmax Jacobian gives $\partial q_{t,x_t}/\partial z_{t,k} = q_{t,x_t}([\mathbf e_{x_t}]_k - q_{t,k})$; the factor $q_{t,x_t}$ cancels, leaving $\partial\mathcal L_t/\partial z_{t,k} = q_{t,k} - [\mathbf e_{x_t}]_k$, i.e. $\nabla_{\mathbf z_t}\mathcal L_t = \mathbf q_t - \mathbf e_{x_t}$. For a general target $\mathbf y$ the same per-coordinate derivative weighted by $y_k$ gives $\mathbf q_t - \mathbf y$. $\qquad\blacksquare$
 
@@ -283,7 +281,7 @@ With $\mathcal L_t = -\log q_{t,x_t}$, only the $x_t$-th coordinate of $\mathbf 
 
 **Exercise 10.3 (Derive).** Using linearity of cross-entropy in its first argument, prove the label-smoothing decomposition $H(\tilde{\mathbf y},\mathbf q) = (1-\alpha)H(\mathbf e_{x_t},\mathbf q) + \alpha H(\mathbf u,\mathbf q)$, and explain why the second term is a confidence penalty.
 
-<SolutionBox>
+<SolutionBox exercise="10.3">
 
 Cross-entropy is linear in its first argument. With $\tilde{\mathbf y} = (1-\alpha)\mathbf e_{x_t} + \tfrac{\alpha}{\lvert\mathcal V\rvert}\mathbf 1$,
 $$
@@ -295,7 +293,7 @@ with $\mathbf u = \mathbf 1/\lvert\mathcal V\rvert$. Since $H(\mathbf u,\mathbf 
 
 **Exercise 10.4 (Compute).** For $\lvert\mathcal V\rvert = 5$, target token $x_t = 4$, and logits $\mathbf z = (2.0, 1.0, 0.5, 3.0, -1.0)$, compute the softmax $\mathbf q$, the standard cross-entropy $-\log q_4$, and the label-smoothed loss at $\alpha = 0.1$; confirm the smoothed loss exceeds the standard one.
 
-<SolutionBox>
+<SolutionBox exercise="10.4">
 
 With $\mathbf z = (2,1,0.5,3,-1)$, the exponentials $(7.389,2.718,1.649,20.086,0.368)$ sum to $\approx 32.21$, so $\mathbf q \approx (0.229,0.084,0.051,0.624,0.011)$. Standard CE: $-\log q_4 \approx 0.472$. The per-class $-\log q_k \approx (1.472,2.472,2.972,0.472,4.472)$ (computed from the exact softmax, not the rounded $\mathbf q$) have mean $\approx 2.372$, so the smoothed loss ($\alpha=0.1$) is $H(\tilde{\mathbf y},\mathbf q) \approx 0.9\cdot0.472 + 0.1\cdot2.372 \approx 0.662 > 0.472$: even a correct prediction is penalized for being peaked. $\qquad\blacksquare$
 
@@ -303,7 +301,7 @@ With $\mathbf z = (2,1,0.5,3,-1)$, the exponentials $(7.389,2.718,1.649,20.086,0
 
 **Exercise 10.5 (Construct).** Exhibit a one-token-vocabulary-of-three example with $\mathbf q = (0.80, 0.10, 0.10)$ and correct class $1$, give the standard logit gradient $\mathbf q - \mathbf e_1$ and the smoothed gradient $\mathbf q - \tilde{\mathbf y}$ at $\alpha = 0.1$, and verify the smoothed update is less aggressive on every coordinate.
 
-<SolutionBox>
+<SolutionBox exercise="10.5">
 
 With $\mathbf q = (0.80,0.10,0.10)$ and correct class $1$, the standard gradient is $\mathbf q - \mathbf e_1 = (-0.20,0.10,0.10)$. For $\lvert\mathcal V\rvert=3$, $\alpha=0.1$, $\tilde{\mathbf y} = (0.9333,0.0333,0.0333)$, so $\mathbf q - \tilde{\mathbf y} \approx (-0.1333,0.0667,0.0667)$. Every coordinate is smaller in magnitude ($0.133 < 0.20$; $0.067 < 0.10$): the correct logit is pushed up less and the incorrect logits down less — how label smoothing curbs overconfidence. $\qquad\blacksquare$
 

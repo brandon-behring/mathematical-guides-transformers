@@ -3,10 +3,10 @@ title: "Encoder Readouts, Contrastive Alignment, and Detection"
 slug: detection-encoders
 chapter: 12
 part: 3
-description: "Readouts and geometry for transformer encoders: pooled representations and classifier heads, the CLIP-style contrastive objective as temperature-scaled cross-entropy over in-batch candidates, the distinction between unconstrained-logit margins and normalized spherical embeddings, and score functions for out-of-distribution detection."
+description: "Builds encoder classifiers from pooling and linear readouts, derives contrastive alignment as cross-entropy over paired examples, and connects learned embedding geometry to out-of-distribution detection."
 last_verified: 2026-07-13
 rigor_level: rigorous
-prerequisites: [notation, input-representations, attention]
+prerequisites: [notation, input-representations, attention, architecture-composition, encoder-decoder-families, training]
 notation_introduced: ['\operatorname{pool}', '\mathbf r', '\tau', 'InfoNCE', 's(\cdot)']
 theorems: ['def-encoder-classifier', 'def-pooled-rep', 'def-contrastive', 'prop-contrastive-ce', 'prop-contrastive-alignment', 'rem-crossmodal-canonical', 'def-ood-score', 'prop-auroc-rank']
 los:
@@ -15,7 +15,7 @@ los:
   - id: lo-symmetric-contrastive-cross-entropy
     statement: "Define the symmetric contrastive objective and prove it is cross-entropy over in-batch pair indices with a temperature-scaled similarity logit."
   - id: lo-contrastive-geometry-and-temperature
-    statement: "Compare the unconstrained-logit contrastive infimum with the normalized-embedding optimum, derive the alignment/separation gradient directions, and identify the role of temperature."
+    statement: "Compare the unconstrained-logit contrastive infimum with the normalized-embedding optimum, derive the alignment and separation gradient directions, and identify the role of temperature."
   - id: lo-ood-ranking-and-auroc
     statement: "Define an embedding-geometry score function for out-of-distribution detection and prove AUROC equals the probability the score ranks an anomaly above an inlier."
   - id: lo-cross-modal-contrastive-alignment
@@ -23,19 +23,17 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Encoder Readouts, Contrastive Alignment, and Detection
-
-**Where we are.** Earlier chapters built the encoder as a sequence-to-sequence map whose every layer is bidirectional and whose attention rows are convex averages of value vectors (<XRef id="prop-row-stochastic-convex" />). This chapter turns that map into a *detector*: a function from a whole document to a single class label or anomaly score. Three pieces do the work, and each reuses machinery we already proved. First, a **pooling** rule collapses the encoder's contextual states into one document vector $\mathbf r$, on which a linear head and a softmax produce class probabilities — the same softmax and cross-entropy from the notation chapter, now over labels instead of vocabulary. Second, a **contrastive objective** trains $\mathbf r$ without labels by making it identify its true partner among a batch of candidates; we prove this is exactly a temperature-scaled softmax-plus-cross-entropy, so it inherits every property of <XRef id="def-softmax" /> and <XRef id="prop-ce-kl" />. Third, the geometry of the learned embedding gives a **score function** for out-of-distribution detection, whose threshold-free quality is captured by a single ranking probability. We write $\mathbf r$ for a pooled representation, $\tau$ for a temperature, and $s(\cdot)$ for a score; everything else is fixed in the notation chapter.
+**Where we are.** The encoder pattern turns a complete sequence into contextual states using bidirectional mixing (<XRef id="def-patterns" />). This chapter turns those states into decisions and comparable representations. First, pooling compresses them into one document vector, and a linear softmax head produces class probabilities. Second, a symmetric contrastive objective trains paired views by treating candidate similarities as classification logits; its gradients promote matched pairs over mismatches. Third, distances or fitted density geometry convert pooled representations into out-of-distribution (OOD) scores whose ranking quality can be measured without choosing a threshold. We use $\mathbf r$ for a pooled representation, $\tau$ for temperature, and $s$ for an anomaly score.
 
 ## The pooled representation
 
-The starting picture is the simplest possible detector. An encoder reads a sequence and emits one contextual vector per position; to decide *one* thing about the *whole* sequence we must compress those vectors into one. The compression is a fixed, parameter-light rule — read off a designated position, or average — and the only learned part of the decision is a linear map from that summary to class logits.
+The starting picture is the simplest possible detector. An encoder reads a sequence and emits one contextual vector per position; to decide *one* thing about the *whole* sequence we must compress those vectors into one. The pooling operation itself is fixed — read off a designated position, or average — while the encoder and linear classification head are learned. The designated-position variant may also add one learned input token.
 
 <Theorem kind="definition" name="Pooled document representation" id="def-pooled-rep">
 Let an encoder $Q:\R^{n\times d}\to\R^{n\times d}$ map an input sequence to contextual states $\mathbf H = Q(\mathbf X)$ with rows $\mathbf h_1,\dots,\mathbf h_n\in\R^{d}$. A **pooling** rule is a map $\operatorname{pool}:\R^{n\times d}\to\R^{d}$ producing a single **document representation** $\mathbf r \defeq \operatorname{pool}(\mathbf H)$. Two standard choices are
@@ -46,12 +44,12 @@ $$
 \mathbf r_{\textsf{mean}} = \frac{1}{n}\sum_{i=1}^{n}\mathbf h_i
 \quad(\text{the average of all positions}).
 $$
-In the first, a learned vector $\mathbf h_{\textsf{CLS}}$ is prepended to the input before the encoder runs, and $\mathbf r$ is read off that position's final state.<Sidenote>The designated-position convention is the one popularized for encoder classifiers <Cite key="devlin2019bert" />.</Sidenote>
+In the first, a learned input vector $\mathbf x_{\textsf{CLS}}$ is prepended before the encoder runs, and $\mathbf r=\mathbf h_1$ is read from that position's final contextual state.<Sidenote>The designated-position convention is the one popularized for encoder classifiers <Cite key="devlin2019bert" />.</Sidenote>
 </Theorem>
 
-<MarginNote variant="pattern" label="Pooling">Mean pooling is a row-stochastic average ($A_{ij}=1/n$), so $\mathbf r_{\textsf{mean}}$ lies in the convex hull of the token states — <XRef id="prop-row-stochastic-convex" /> again. The designated-position rule is *not* an average; the learned slot can carry information outside that hull.</MarginNote>
+<MarginNote variant="pattern" label="Pooling">Mean pooling is a row-stochastic average of the content-token states, so it lies in their convex hull (<XRef id="prop-row-stochastic-convex" />). A separately designated output slot need not lie in that hull.</MarginNote>
 
-The next picture is the decision itself. The pooled vector is a point in $\R^{d}$; a linear map sends it to one logit per class, and the softmax of those logits is the predicted label distribution. Nothing here is new — it is the vocabulary softmax of the notation chapter with the vocabulary replaced by the label set.
+The pooled vector is a point in $\R^{d}$. A linear map sends it to one logit per class, and a softmax produces the predicted label distribution. This is the vocabulary readout from the Notation chapter with labels replacing tokens.
 
 <Theorem kind="definition" name="Encoder-only classifier" id="def-encoder-classifier">
 An **encoder-only classifier** over $C$ classes is the composition
@@ -68,14 +66,16 @@ with a **classifier head** $\mathbf W_{\textsf{cls}}\in\R^{d\times C}$, bias $\m
 This readout classifies one pooled representation among $C$ fixed labels. DPO also uses a classification loss, but its two candidates are whole completions and its logit is their policy–reference score gap (<XRef id="thm-dpo-objective" />). The shared cross-entropy calculus does not make the learned objects interchangeable.
 
 <Theorem kind="remark" name="Bidirectionality is the design choice, not the formalism" id="rem-bidirectional">
-A detector reads a document that already exists, so there is no reason to forbid a position from attending to its right context: the causal mask of the generation setting is simply omitted, and the encoder is bidirectional. Formally this changes nothing in <XRef id="def-encoder-classifier" /> — the same pooling and head apply — but it is what lets a single position aggregate evidence from the entire sequence, which is exactly what a document-level decision needs.
+For an offline detector given a complete document, bidirectional mixing is available: omitting the generation setting's causal mask lets every position use right context. Formally this changes nothing in <XRef id="def-encoder-classifier" /> — the same pooling and head apply — and it often suits document-level decisions. It is not required, however: a causal encoder can classify from its final state or from pooled causal states when streaming or latency constraints matter.
 </Theorem>
 
-<MarginNote variant="cross-ref" label="The encoder pattern">This is the mixer-agnostic encoder pattern of <XRef id="def-patterns" />: unconstrained (bidirectional) mixing, product a representation — instantiable by attention, a bidirectional recurrence, or a bidirectional scan alike.</MarginNote>
+<MarginNote variant="cross-ref" label="The encoder pattern">The mixer-agnostic encoder pattern uses unconstrained, usually bidirectional mixing to produce a representation. Attention, bidirectional recurrences, and bidirectional scans can all instantiate it (<XRef id="def-patterns" />).</MarginNote>
 
 ## The contrastive objective
 
-Labeled detection data is often scarce, but *pairs* are cheap: any document and a second view of it — paired text under a second encoder, an augmentation, or, the canonical case, **the same content in another modality** (an image and its caption) — form a positive pair, and every other document in the batch is a negative. The picture to hold is a retrieval game. Lay $B$ representations on one side and their $B$ partners on the other; the objective asks each representation to pick its true partner out of the $B$ candidates by similarity. The crucial observation, which we will prove, is that "pick the true partner by similarity" is *literally* a softmax classification with the similarities as logits — so contrastive learning is the cross-entropy of the notation chapter wearing different clothes.
+Labeled detection data is often scarce, but paired views can be easier to obtain. A document and an augmentation, paired text, or the same content in another modality form a positive pair; other examples in the batch act as negatives.
+
+The objective is a retrieval game. Place $B$ representations beside their $B$ partners and ask each representation to select its match by similarity. Treating those similarities as logits makes contrastive learning an ordinary softmax classification problem over candidate indices.
 
 We first fix the similarity and its scale.
 
@@ -83,10 +83,10 @@ We first fix the similarity and its scale.
 For nonzero embeddings $\mathbf u,\mathbf v\in\R^{d}\setminus\{\mathbf0\}$, the **cosine similarity** is $\operatorname{sim}(\mathbf u,\mathbf v) \defeq \inner{\mathbf u}{\mathbf v}/(\norm{\mathbf u}\,\norm{\mathbf v})$. When the embeddings are $L^2$-normalized ($\norm{\mathbf u}=\norm{\mathbf v}=1$) this is the plain inner product $\inner{\mathbf u}{\mathbf v}\in[-1,1]$. A **temperature** $\tau>0$ rescales the cosine to the **similarity logit** $\operatorname{sim}(\mathbf u,\mathbf v)/\tau$, which is $\inner{\mathbf u}{\mathbf v}/\tau$ in the normalized case used below.
 </Theorem>
 
-<MarginNote variant="formula" label="Temperature">Small $\tau$ sharpens the candidate softmax toward the single nearest partner; large $\tau$ flattens it toward uniform — exactly the temperature limits of <XRef id="rem-softmax-temperature" />. Practice learns $\log(1/\tau)$ as a parameter.</MarginNote>
+<MarginNote variant="formula" label="Temperature">Small $\tau$ sharpens the candidate softmax toward the single nearest partner; large $\tau$ flattens it toward uniform — exactly the temperature limits of <XRef id="rem-softmax-temperature" />. Many systems, including CLIP, learn $\log(1/\tau)$ as a parameter.</MarginNote>
 
 <Theorem kind="definition" name="Symmetric contrastive objective (InfoNCE)" id="def-contrastive">
-Let a batch of $B$ matched pairs have $L^2$-normalized embeddings stacked rowwise as $\mathbf U,\mathbf V\in\R^{B\times d}$, with row $i$ of each the two views of example $i$. Form the **similarity matrix**
+Let a batch of $B$ matched pairs have $L^2$-normalized embeddings stacked row-wise as $\mathbf U,\mathbf V\in\R^{B\times d}$, with row $i$ of each the two views of example $i$. Form the **similarity matrix**
 $$
 \mathbf M = \frac{1}{\tau}\,\mathbf U\mathbf V^{\top}\in\R^{B\times B},
 \qquad
@@ -118,9 +118,9 @@ $$
 which is exactly the $i$-th summand of $\mathcal L_{\textsf{row}}$. Averaging over $i$ gives $\mathcal L_{\textsf{row}}$ as a mean cross-entropy. The transpose argument — read $\mathbf M$ columnwise, target $j$ on column $j$ — gives $\mathcal L_{\textsf{col}}$ identically, and $\mathcal L_{\textsf{con}}$ is their average. $\qquad\blacksquare$
 </Theorem>
 
-Because the objective is cross-entropy with softmax logits, every property of that machinery transfers verbatim. Translation invariance of the softmax (<XRef id="prop-softmax-translation-inv" />) says adding a constant to a whole row of $\mathbf M$ leaves $\mathcal L_{\textsf{row}}$ unchanged, so the row loss sees only the row gaps $M_{ii}-M_{ij}$. Transposing gives the corresponding statement for $\mathcal L_{\textsf{col}}$ and column gaps. The full symmetric objective contains both families; it is not invariant to an arbitrary row shift, because that same shift changes the column softmaxes (nor to an arbitrary column shift, by symmetry). The softmax Jacobian (<XRef id="prop-softmax-jacobian" />) governs the gradient: each directional loss pushes its matched logit up and every mismatched logit down, with the push on a negative proportional to the probability mass it currently steals — hard negatives receive the largest gradient.
+Each directional loss is an ordinary cross-entropy over one softmax row or column, so the corresponding softmax identities and Jacobian apply in that direction. Translation invariance (<XRef id="prop-softmax-translation-inv" />) says adding a constant to a whole row of $\mathbf M$ leaves $\mathcal L_{\textsf{row}}$ unchanged, so the row loss sees only the row gaps $M_{ii}-M_{ij}$. Transposing gives the corresponding statement for $\mathcal L_{\textsf{col}}$ and column gaps. The full symmetric objective couples both families: it is not invariant to an arbitrary row shift, because that shift changes the column softmaxes, nor to an arbitrary column shift, by symmetry. At the logit level, the softmax Jacobian (<XRef id="prop-softmax-jacobian" />) makes each directional loss push its matched logit up and every mismatched logit down, with the push on a negative proportional to the probability mass it currently steals — hard negatives receive the largest gradient.
 
-<MarginNote variant="tip" label="Self-explanation">Before reading the next proof: an unconstrained logit gap can diverge, but two unit vectors have inner product only in $[-1,1]$. What does that bounded range do to the zero-loss limit at fixed temperature?</MarginNote>
+<MarginNote variant="tip" label="Self-explanation">Unit-vector inner products stay in $[-1,1]$. At fixed temperature, what does that bound imply about reaching zero contrastive loss?</MarginNote>
 
 <Theorem kind="proposition" name="Unconstrained margins versus normalized contrastive geometry" id="prop-contrastive-alignment">
 Assume $B\ge2$ and fix $\tau>0$.
@@ -146,7 +146,7 @@ $$
 \qquad
 \frac{\partial\ell_i}{\partial M_{ij}}=p(j\mid i)>0\quad(j\ne i),
 $$
-which proves the directional alignment/separation pressure. Because changing one unit vector moves several entries of $\mathbf M$ at once, those coordinatewise preferences do not characterize the coupled global minimizer. The factor $1/\tau$ only converts a cosine gap $\delta$ into logit gap $\delta/\tau$; smaller $\tau$ makes a fixed feasible gap more decisive. $\qquad\blacksquare$
+which proves the directional alignment and separation pressure. Because changing one unit vector moves several entries of $\mathbf M$ at once, those coordinatewise preferences do not characterize the coupled global minimizer. The factor $1/\tau$ only converts a cosine gap $\delta$ into logit gap $\delta/\tau$; smaller $\tau$ makes a fixed feasible gap more decisive. $\qquad\blacksquare$
 </Theorem>
 
 <Theorem kind="remark" name="What contrastive geometry does — and does not — imply" id="rem-separation-geometry">
@@ -154,7 +154,11 @@ The proved geometric pressure is **instance-level**: matched views are favored o
 </Theorem>
 
 <Theorem kind="remark" name="Contrastive alignment is the canonical cross-modal objective" id="rem-crossmodal-canonical">
-Take the two views of <XRef id="def-contrastive" /> to be **two modalities**: $\mathbf U$ the pooled embeddings of images (a Vision Transformer, <XRef id="rem-vit" />) and $\mathbf V$ the pooled embeddings of their captions (a text encoder), each formed through the embedding interface (<XRef id="def-embedding-interface" />) and an encoder, each pooled to $\R^{d}$ by <XRef id="def-pooled-rep" />. Then the symmetric InfoNCE of <XRef id="prop-contrastive-ce" /> is **exactly** the CLIP image–text objective <Cite key="radford2021clip" />. Its alignment/separation gradients (<XRef id="prop-contrastive-alignment" />) train a **shared embedding space** in which matched image–caption pairs are favored over mismatches; the familiar picture of a dog neighboring the string "a dog" is the empirical geometry that successful optimization produces, not a theorem about every minimizer. This geometry directly supports zero-shot classification (<XRef id="def-zeroshot" />): score an image against text-prompt embeddings in the same retrieval game. Generative vision-language models take a separate route: a connector (<XRef id="def-connector" />) is learned to map vision features into a language model's space; contrastive pretraining may supply the vision tower, but its objective does not itself supply that projector. The contrastive head, the autoregressive head (<XRef id="def-autoregressive-lm" />), and cross-attention (<XRef id="def-cross-attention" />) are distinct interfaces around the modality-agnostic core; this chapter's objective is the cross-modal contrastive one.
+Take the two views of <XRef id="def-contrastive" /> to be **two modalities**: $\mathbf U$ contains pooled image embeddings from a Vision Transformer (<XRef id="rem-vit" />), and $\mathbf V$ contains pooled caption embeddings from a text encoder. Each passes through an embedding interface (<XRef id="def-embedding-interface" />), an encoder, and the pooling rule of <XRef id="def-pooled-rep" />. The symmetric InfoNCE objective of <XRef id="prop-contrastive-ce" /> is then the CLIP image–text objective <Cite key="radford2021clip" />.
+
+Its alignment and separation gradients (<XRef id="prop-contrastive-alignment" />) favor matched image–caption pairs over mismatches in a shared embedding space. The familiar proximity between a dog image and the text "a dog" is an empirical result of successful optimization, not a theorem about every minimizer. The same geometry supports zero-shot classification (<XRef id="def-zeroshot" />) by scoring an image against text-prompt embeddings.
+
+Generative vision–language models use a different interface: a connector (<XRef id="def-connector" />) maps vision features into a language model's space. Contrastive pretraining may supply the vision tower, but it does not supply that projector. Contrastive heads, autoregressive heads (<XRef id="def-autoregressive-lm" />), and cross-attention (<XRef id="def-cross-attention" />) remain distinct interfaces around a modality-agnostic core.
 </Theorem>
 
 ## Embedding geometry for out-of-distribution detection
@@ -164,12 +168,15 @@ The final picture leaves classification entirely. Suppose we have an embedding $
 <Theorem kind="definition" name="Embedding-geometry OOD score" id="def-ood-score">
 Let $\{\mathbf r^{(1)},\dots,\mathbf r^{(m)}\}\subset\R^{d}$ be inlier embeddings with mean $\boldsymbol\mu$ and (full-rank) covariance $\boldsymbol\Sigma$. An **out-of-distribution score** $s:\R^{d}\to\overline{\R}$, where $\overline{\R}\defeq\R\cup\{+\infty\}$, assigns each embedding $\mathbf r$ a value increasing in its outlyingness; an input is flagged anomalous when $s(\mathbf r)$ exceeds a threshold. Three standard score functions are
 $$
-s_{\textsf{NN}}(\mathbf r) = \min_{k}\norm{\mathbf r - \mathbf r^{(k)}}
-\quad(\text{nearest-inlier distance}),
-\qquad
-s_{\textsf{M}}(\mathbf r) = \big((\mathbf r-\boldsymbol\mu)\,\boldsymbol\Sigma^{-1}(\mathbf r-\boldsymbol\mu)^{\top}\big)^{1/2}
-\quad(\text{Mahalanobis distance}),
+\begin{aligned}
+s_{\textsf{NN}}(\mathbf r)
+&= \min_{k}\norm{\mathbf r - \mathbf r^{(k)}},\\
+s_{\textsf{M}}(\mathbf r)
+&= \big((\mathbf r-\boldsymbol\mu)\,\boldsymbol\Sigma^{-1}
+         (\mathbf r-\boldsymbol\mu)^{\top}\big)^{1/2}.
+\end{aligned}
 $$
+These are the nearest-inlier and Mahalanobis distances, respectively. The third score is
 $$
 s_{\textsf{nll}}(\mathbf r) = -\log \hat p(\mathbf r)
 \quad(\text{negative log-density under a model } \hat p \text{ fit to the inliers}).
@@ -177,7 +184,7 @@ $$
 For the density score, use the extended-real convention $-\log 0=+\infty$.
 </Theorem>
 
-<MarginNote variant="formula" label="Mahalanobis = whitened distance">$s_{\textsf{M}}$ is the Euclidean distance after whitening by $\boldsymbol\Sigma^{-1/2}$: it is the Euclidean score in coordinates where the inlier cloud is isotropic, so it accounts for the cluster's shape, not just its center.</MarginNote>
+<MarginNote variant="formula" label="Mahalanobis = whitened distance">$s_{\textsf{M}}$ is Euclidean distance after whitening by $\boldsymbol\Sigma^{-1/2}$, so it accounts for the inlier cloud's covariance rather than only its center.</MarginNote>
 
 <Theorem kind="remark" name="Parametric equivalence and a nonparametric analogue" id="rem-scores-unified">
 All three scores ask "how unlike the inliers is this point?", but only two are monotone reparametrizations under the stated model. If the inliers are fit by a single Gaussian $\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$, then the negative log-density is $s_{\textsf{nll}}(\mathbf r) = \tfrac12 s_{\textsf{M}}(\mathbf r)^2 + \text{const}$, so thresholding $s_{\textsf{nll}}$ and thresholding $s_{\textsf{M}}$ produce identical decisions and rankings. The nearest-inlier score $s_{\textsf{NN}}$ is instead a distinct nonparametric analogue: it measures distance to the finite reference sample, makes no Gaussian assumption, and generally need not rank points as Mahalanobis distance or a fitted negative log-density does. A learned embedding can make any of these scores discriminative by concentrating inliers, but that geometry is an empirical outcome subject to <XRef id="rem-separation-geometry" />, not an equivalence among the scores.
@@ -190,7 +197,7 @@ Let $S^{+} = s(\mathbf r)$ for a random anomaly ("positive") and $S^{-} = s(\mat
 $$
 \operatorname{AUROC}(s) \defeq \Pr[\,S^{+} > S^{-}\,] + \tfrac12\Pr[\,S^{+} = S^{-}\,].
 $$
-It lies in $[0,1]$; $\operatorname{AUROC} = 1$ means the score ranks every anomaly above every inlier, and $\operatorname{AUROC} = \tfrac12$ is chance.
+It lies in $[0,1]$; $\operatorname{AUROC} = 1$ means that an independent random anomaly outranks an independent random inlier almost surely, and $\operatorname{AUROC} = \tfrac12$ is chance.
 </Theorem>
 
 <Theorem kind="proposition" name="AUROC equals the rank statistic" id="prop-auroc-rank">
@@ -205,11 +212,11 @@ the Mann–Whitney statistic. It is invariant under any strictly increasing repa
 
 <Theorem kind="proof">
 **Proof.**
-Estimate the probabilities in <XRef id="def-auroc" /> by their empirical frequencies over the $n_{+}n_{-}$ independent cross pairs $(a_p,b_q)$. The event $S^{+}>S^{-}$ has empirical frequency $\frac{1}{n_+n_-}\sum_{p,q}\mathbf 1\{a_p>b_q\}$, and the tie event contributes $\frac{1}{n_+n_-}\sum_{p,q}\mathbf 1\{a_p=b_q\}$ with weight $\tfrac12$ exactly as in the definition; summing gives the displayed statistic. For the invariance claim, let $\phi$ be strictly increasing. Then $a_p>b_q \iff \phi(a_p)>\phi(b_q)$ and $a_p=b_q\iff\phi(a_p)=\phi(b_q)$, so every indicator in the double sum is unchanged and so is $\widehat{\operatorname{AUROC}}$. No comparison references a cutoff, so the statistic is threshold-free. $\qquad\blacksquare$
+Estimate the probabilities in <XRef id="def-auroc" /> by their empirical frequencies over all $n_{+}n_{-}$ cross pairs $(a_p,b_q)$. The pairwise indicators share observations and therefore are not mutually independent, but their normalized count is the empirical Mann–Whitney statistic. The event $S^{+}>S^{-}$ has empirical frequency $\frac{1}{n_+n_-}\sum_{p,q}\mathbf 1\{a_p>b_q\}$, and the tie event contributes $\frac{1}{n_+n_-}\sum_{p,q}\mathbf 1\{a_p=b_q\}$ with weight $\tfrac12$ exactly as in the definition; summing gives the displayed statistic. For the invariance claim, let $\phi$ be strictly increasing. Then $a_p>b_q \iff \phi(a_p)>\phi(b_q)$ and $a_p=b_q\iff\phi(a_p)=\phi(b_q)$, so every indicator in the double sum is unchanged and so is $\widehat{\operatorname{AUROC}}$. No comparison references a cutoff, so the statistic is threshold-free. $\qquad\blacksquare$
 </Theorem>
 
 <Theorem kind="remark" name="Threshold-free ranking is not a deployment guarantee" id="rem-auroc-caveat">
-AUROC measures only the *ordering* a score induces, averaged over all thresholds; a deployed detector commits to one threshold and therefore to a specific false-positive/false-negative tradeoff, which a single ranking number does not pin down. Two further gaps are routine in detection reports. An average AUROC over evaluation slices can hide a catastrophic worst slice — the relevant quantity for a deployment is often $\min$ over slices, not the mean. And a high AUROC on a held-out distribution close to training is weaker evidence than the same number under a genuine distribution shift (a new content domain, or anomalies from a generator unseen in training). The honest reading of a strong benchmark AUROC is "the score ranks well under the tested shifts," not "the detector is robust."
+AUROC measures only the *ordering* a score induces, averaged over all thresholds; a deployed detector commits to one threshold and therefore to a specific false-positive and false-negative tradeoff, which a single ranking number does not pin down. Two further gaps are routine in detection reports. An average AUROC over evaluation slices can hide a catastrophic worst slice — the relevant quantity for a deployment is often $\min$ over slices, not the mean. And a high AUROC on a held-out distribution close to training is weaker evidence than the same number under a genuine distribution shift (a new content domain, or anomalies from a generator unseen in training). The honest reading of a strong benchmark AUROC is "the score ranks well under the tested shifts," not "the detector is robust."
 </Theorem>
 
 ## Exercises
@@ -218,7 +225,7 @@ Attempt each before expanding its solution.
 
 **Exercise 12.1 (Prove).** Show that mean pooling $\mathbf r_{\textsf{mean}} = \tfrac1n\sum_i \mathbf h_i$ is the action of a row-stochastic matrix on $\mathbf H$, and conclude $\mathbf r_{\textsf{mean}}$ lies in the convex hull of the contextual states $\{\mathbf h_i\}$. In what sense does the prepended designated-position rule of <XRef id="def-pooled-rep" /> escape confinement — being itself one of the states, $\mathbf r_{\textsf{CLS}}$ trivially lies in the full hull, so what hull need it *not* lie in?
 
-<SolutionBox>
+<SolutionBox exercise="12.1">
 
 Mean pooling is $\mathbf r_{\textsf{mean}} = \mathbf a\mathbf H$ with $\mathbf a = \tfrac1n\mathbf 1^\top$, a $1\times n$ row-stochastic vector, so $\mathbf r_{\textsf{mean}} = \sum_j \tfrac1n\mathbf h_j$ lies in the convex hull of the token states (<XRef id="prop-row-stochastic-convex" />). The prepended designated-position representation $\mathbf r_{\textsf{CLS}}$ need not lie in the hull of the *averaged token states* $\{\mathbf h_j\}_{j\ge 2}$, because $\mathbf h_{\textsf{CLS}}$ is a learned input vector, not one of the $\mathbf h_j$ averaged: the encoder writes into that slot through attention and the residual path, so it need not be any convex mixture of the token states. $\qquad\blacksquare$
 
@@ -226,7 +233,7 @@ Mean pooling is $\mathbf r_{\textsf{mean}} = \mathbf a\mathbf H$ with $\mathbf a
 
 **Exercise 12.2 (Derive).** Starting from <XRef id="prop-contrastive-ce" />, write the gradient of the per-row loss $-\log p(i\mid i)$ with respect to the logit row $\mathbf M_{i,:}$ using the softmax Jacobian (<XRef id="prop-softmax-jacobian" />). Show the matched logit $M_{ii}$ is pushed up and each mismatched $M_{ij}$ is pushed down in proportion to $p(j\mid i)$, and explain why this makes hard negatives dominate the update.
 
-<SolutionBox>
+<SolutionBox exercise="12.2">
 
 With $p_j = \softmax(\mathbf M_{i,:})_j$ and $L_i = -\log p_i$, the loss is the cross-entropy of $\mathbf e_i$ against $\softmax(\mathbf M_{i,:})$, so by the softmax Jacobian (<XRef id="prop-softmax-jacobian" />), $\partial L_i/\partial M_{ij} = p_j - \delta_{ij}$: the matched logit $M_{ii}$ has gradient $p_i - 1 < 0$ (descent raises it), each mismatched $M_{ij}$ has gradient $p_j > 0$ (descent lowers it). A hard negative — large current similarity, hence large $p_j$ — receives the largest downward push, so the update is dominated by the negatives the model currently confuses with the true partner. $\qquad\blacksquare$
 
@@ -234,7 +241,7 @@ With $p_j = \softmax(\mathbf M_{i,:})_j$ and $L_i = -\log p_i$, the loss is the 
 
 **Exercise 12.3 (Prove).** Using translation invariance of the softmax (<XRef id="prop-softmax-translation-inv" />), show that adding any constant $c$ to an entire row of the similarity matrix $\mathbf M$ leaves $\mathcal L_{\textsf{row}}$ unchanged, and conclude that the *row* loss depends on the similarities only through the row gaps $M_{ii} - M_{ij}$. Why does the symmetric $\mathcal L_{\textsf{con}}$ additionally depend on the column gaps $M_{jj} - M_{ij}$?
 
-<SolutionBox>
+<SolutionBox exercise="12.3">
 
 Adding $c$ to row $i$ replaces $\mathbf M_{i,:}$ by $\mathbf M_{i,:} + c\mathbf 1$; by translation invariance (<XRef id="prop-softmax-translation-inv" />) the softmax row is unchanged, so $p(i\mid i)$ and $\mathcal L_{\textsf{row}}$ are unchanged. Equivalently $p(i\mid i) = \big(1 + \sum_{j\ne i} e^{M_{ij}-M_{ii}}\big)^{-1}$ depends on the logits only through the row gaps $M_{ii}-M_{ij}$. The symmetric $\mathcal L_{\textsf{con}}$ also averages $\mathcal L_{\textsf{col}}$, whose column softmaxes are *not* invariant to a row shift; by the transposed argument it contributes the column gaps $M_{jj}-M_{ij}$. $\qquad\blacksquare$
 
@@ -242,15 +249,15 @@ Adding $c$ to row $i$ replaces $\mathbf M_{i,:}$ by $\mathbf M_{i,:} + c\mathbf 
 
 **Exercise 12.4 (Compute).** Inliers are fit by $\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$. Show $s_{\textsf{nll}}(\mathbf r) = \tfrac12 s_{\textsf{M}}(\mathbf r)^2 + \text{const}$, and conclude that thresholding the negative log-density and thresholding the Mahalanobis distance give identical decisions (hence identical AUROC by <XRef id="prop-auroc-rank" />).
 
-<SolutionBox>
+<SolutionBox exercise="12.4">
 
-For $\mathbf r\sim\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$, $-\log\hat p(\mathbf r) = \tfrac12(\mathbf r-\boldsymbol\mu)\boldsymbol\Sigma^{-1}(\mathbf r-\boldsymbol\mu)^\top + \tfrac{d}{2}\log(2\pi) + \tfrac12\log|\boldsymbol\Sigma| = \tfrac12 s_{\textsf{M}}(\mathbf r)^2 + \text{const}$, where $s_{\textsf{M}}^2$ is the squared Mahalanobis distance. Since $u\mapsto\tfrac12 u^2 + \text{const}$ is strictly increasing on $u\ge0$, the neg-log-density is a strictly increasing reparametrization of $s_{\textsf{M}}$, so thresholding either gives identical accept/reject sets and identical AUROC. $\qquad\blacksquare$
+For $\mathbf r\sim\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$, $-\log\hat p(\mathbf r) = \tfrac12(\mathbf r-\boldsymbol\mu)\boldsymbol\Sigma^{-1}(\mathbf r-\boldsymbol\mu)^\top + \tfrac{d}{2}\log(2\pi) + \tfrac12\log|\boldsymbol\Sigma| = \tfrac12 s_{\textsf{M}}(\mathbf r)^2 + \text{const}$, where $s_{\textsf{M}}^2$ is the squared Mahalanobis distance. Since $u\mapsto\tfrac12 u^2 + \text{const}$ is strictly increasing on $u\ge0$, the neg-log-density is a strictly increasing reparametrization of $s_{\textsf{M}}$, so thresholding either gives identical acceptance and rejection sets and identical AUROC. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 12.5 (Construct).** Exhibit scores for $4$ anomalies and $4$ inliers with empirical $\widehat{\operatorname{AUROC}} = 1$, then shift one inlier's score so that $\widehat{\operatorname{AUROC}} = \tfrac34$ while the *mean* anomaly score still exceeds the mean inlier score. Explain what this shows about reporting a mean score gap versus AUROC.
 
-<SolutionBox>
+<SolutionBox exercise="12.5">
 
 Take 4 anomaly scores $\{5,6,7,8\}$ (mean $6.5$) and 4 inlier scores $\{1,2,3,4\}$ (mean $2.5$): every one of the $16$ cross-pairs has anomaly $>$ inlier, so $\widehat{\operatorname{AUROC}} = 16/16 = 1$, with mean gap $+4$. Now shift one inlier's score, $4 \to 12$: inliers $\{1,2,3,12\}$ (mean $4.5$). The mean gap stays positive ($6.5 - 4.5 = +2.0$), but ranking degrades: the inliers at $1,2,3$ lose to all $4$ anomalies ($12$ correctly-ranked pairs) while the shifted inlier at $12$ beats all $4$ anomalies ($4$ misranked pairs), so $\widehat{\operatorname{AUROC}} = 12/16 = 0.75 < 1$. A single badly-placed inlier flips many pairwise comparisons while barely moving the mean — the mean gap is a first-moment summary, AUROC is the pairwise ranking. Report AUROC (or a worst-slice metric), not a mean-score difference. $\qquad\blacksquare$
 

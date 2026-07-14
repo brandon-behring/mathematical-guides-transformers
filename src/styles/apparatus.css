@@ -3,6 +3,12 @@
   max-width: 64rem;
 }
 
+/* Intrinsic table sizing can exceed a narrow theorem body by its borders even
+ * when every cell wraps. Keep the table box inside its actual container. */
+main .prose table {
+  max-width: 100%;
+}
+
 .quick-reference table {
   font-size: 0.9rem;
 }
@@ -40,10 +46,40 @@
   margin-block-start: 0.4rem;
 }
 
+/* Fixed reading controls must not cover a deep-linked heading or semantic
+ * target on narrow screens. This applies the same offset book-wide. */
+main [id] {
+  scroll-margin-top: 5rem;
+}
+
 @media print {
-  /* The scaffold emits inline citations with class="cite"; suppressing their
-   * redundant route URLs keeps the reference text readable in the PDF. */
-  .print-edition .cite::after {
+  /* The scaffold's screen layout floats sidenotes into a negative right
+   * margin. The print edition uses the full page-content width, so keep notes
+   * in flow instead of letting them cross the MediaBox. */
+  .print-edition .sidenote {
+    display: block;
+    float: none;
+    clear: both;
+    width: auto;
+    max-width: 100%;
+    margin: 0.35em 0 0.6em 1.25em;
+    padding-left: 0.55em;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Scroll affordances are screen-only. Their gradient shadows otherwise
+   * print as gray bars beside display equations. */
+  .print-edition .katex-display {
+    overflow: visible;
+    background-image: none !important;
+  }
+
+  /* Keep links clickable without printing long route strings beside every
+   * in-book cross-reference or citation. */
+  .print-edition .cite::after,
+  .print-edition a[href^="/transformers/"]::after,
+  .print-edition a[href^="#"]::after {
     content: none !important;
   }
 
@@ -125,9 +161,18 @@
     page-break-inside: avoid;
   }
 
+  /* The notation index contains several page-length tables. Let those tables
+   * fragment between atomic rows so their section headings and introductions
+   * are not stranded on otherwise empty pages. */
+  .quick-reference h3 + table,
+  .quick-reference h3 + p + table {
+    break-inside: auto;
+    page-break-inside: auto;
+    line-height: 1.35;
+  }
+
   .quick-reference .notation-print-break {
-    break-before: page;
-    page-break-before: always;
+    display: none;
   }
 
   .quick-reference p:has(+ table) {

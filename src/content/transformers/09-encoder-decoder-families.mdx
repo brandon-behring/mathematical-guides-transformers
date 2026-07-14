@@ -3,7 +3,7 @@ title: "Encoders and Decoders Across Architecture Families"
 slug: encoder-decoder-families
 chapter: 9
 part: 3
-description: "Causality abstracted from attention: the sequence mixer and prefix-consistency, which standard mixers are causal and why causality survives composition, the encoder/decoder/encoder-decoder patterns instantiated across the attention, RNN, and SSM families, the one-pass training theorem and the sequential-depth comparison, bidirectional scans and masked language modeling with explicit conditional tables no joint realizes, and the prefix-reuse proposition that makes the KV-cache correct."
+description: "Unifies causal and bidirectional sequence mixers across attention, recurrent, and state-space families, explaining one-pass training, sequential depth, masked objectives, conditioning routes, and exact prefix reuse."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, recurrent-networks, state-space-models, attention, architecture-composition]
@@ -13,24 +13,22 @@ los:
   - id: lo-mixer-causality
     statement: "Define the sequence mixer and causality as prefix-consistency, prove which standard mixers are causal, and prove causality is closed under composition, position-wise maps, and residual connections."
   - id: lo-architecture-pattern-instantiations
-    statement: "Define the encoder, decoder, and encoder-decoder patterns over an abstract mixer and identify their transformer, RNN, and SSM instantiations."
+    statement: "Define the encoder, decoder, and encoder–decoder patterns over an abstract mixer and identify their transformer, RNN, and SSM instantiations."
   - id: lo-causal-one-pass-depth
     statement: "Prove that a causal stack yields all n next-token conditionals in one evaluation, and compare the sequential depth of the RNN, SSM, and attention mixers."
   - id: lo-bidirectional-and-prefix-objectives
-    statement: "Define the bidirectional scan, masked language modeling, and the prefix LM; construct explicit conditional tables no joint distribution realizes; and prove the prefix-reuse proposition that makes the KV-cache correct."
+    statement: "Define the bidirectional scan, masked language modeling, and the prefix LM; construct explicit conditional tables no joint distribution realizes; and prove the prefix-reuse proposition that makes the KV cache correct."
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Encoders and Decoders Across Architecture Families
-
-**Where we are.** The architecture-composition chapter organized transformer architectures by two binary switches — is self-attention causal, and is cross-attention present (<XRef id="rem-three-archs" />). The intervening chapter used the decoder-only prompt stream to construct in-context lookup, copying, and a controlled regression update (<XRef id="def-in-context-learning" />). We now return to the two architecture switches and abstract both beyond attention. We define the **sequence mixer** and state causality as one functional equation, **prefix-consistency**, proving which standard mixers satisfy it and that it survives composition, position-wise maps, and residual connections. We then define the **encoder**, **decoder**, and **encoder–decoder** patterns over an arbitrary mixer and exhibit the $3\times 3$ lattice their instantiations form across the attention, RNN, and SSM families. The payoff theorems follow: a causal stack yields all $n$ next-token conditionals from **one evaluation** — the license behind teacher forcing — while the families separate in the **sequential depth** of that evaluation: $\Theta(n)$ vs $\Theta(\log n)$ vs $\Theta(1)$. Turning the causal switch off, we define the **bidirectional scan** and **masked language modeling**, and construct explicit two-token conditional tables no joint distribution realizes — the precise sense in which an encoder-only model is not a generative model. Finally we prove the **prefix-reuse** proposition that makes the KV-cache correct, and close by assembling four proved ingredients into the case for the decoder-only corner of the lattice. Throughout, $n$, $d$, and the block conventions are as fixed earlier; $\mathbf X_{1:m}\in\R^{m\times d}$ denotes the first $m$ rows of $\mathbf X$.
+**Where we are.** The Architecture Composition chapter classified transformer stacks by causal self-attention and cross-attention (<XRef id="rem-three-archs" />). We now separate those choices from attention itself. A sequence mixer is causal when extending an input cannot change earlier outputs; this prefix-consistency property survives composition, position-wise maps, and residual connections. Using it, we define encoder, decoder, and encoder–decoder patterns across attention, recurrent, and state-space mixers. The same framework explains one-pass evaluation for teacher forcing, differences in sequential depth, bidirectional masked objectives, and exact prefix reuse during decoding. It also distinguishes three routes for conditional generation and clarifies why no architecture cell is universally best.
 
 ## The sequence mixer and prefix-consistency
 
@@ -60,10 +58,10 @@ Equivalently, extending the input never rewrites earlier outputs, and each outpu
 
 The definition quantifies over *all* prefixes at *all* lengths, packaging two facts at once — per-row dependence on the past only, and consistency of the rule across lengths — and it is exactly the property the one-pass and prefix-reuse results below consume. We now sort the standard mixers against it.
 
-<MarginNote variant="tip" label="Self-explanation">Before the proof: from which input rows can output row $i$ of *masked* attention gather information — through the weights, and through the values? And which single entry of the *unmasked* weight matrix already dooms prefix-consistency?</MarginNote>
+<MarginNote variant="tip" label="Self-explanation">Which input rows can masked attention use for output row $i$? Which entry of an unmasked attention matrix violates prefix-consistency?</MarginNote>
 
 <Theorem kind="proposition" name="Which mixers are causal" id="prop-causal-instances">
-1. Causal (masked) self-attention (<XRef id="def-causal-mask" />), with position-wise query/key/value/output projections, is a causal mixer.
+1. Causal (masked) self-attention (<XRef id="def-causal-mask" />), with position-wise query, key, value, and output projections, is a causal mixer.
 2. The recurrent layer of <XRef id="def-rnn" /> and the discrete state-space recurrence $\statevec_t = \discA\statevec_{t-1} + \discB\mathbf x_t$, $\mathbf y_t = \outputmat\statevec_t$ (<XRef id="def-ssm" />, <XRef id="thm-zoh" />) are causal mixers.
 3. Unmasked self-attention (<XRef id="def-attention" />) is **not** causal. Witness: $d = d_k = d_v = 1$, identity projections, $\mathbf X = (0, c)^\top$ with $c\neq 0$.
 </Theorem>
@@ -114,11 +112,11 @@ Only the bare chain rule is needed here. For a fixed sequence length $n$,
 $$
 p_\theta(x_{1:n}) = \prod_{t=1}^{n} p_\theta(x_t\mid x_{<t}),
 $$
-and, conversely, any family of normalized next-token conditionals defines a normalized joint through this product (sum successively over $x_n,x_{n-1},\dots,x_1$). The training chapter will package this identity into the full autoregressive-language-model definition and objective; here the identity itself is enough to characterize the decoder pattern.
+and, conversely, any family of normalized next-token conditionals defines a normalized joint through this product (sum successively over $x_n,x_{n-1},\dots,x_1$). The Training chapter will package this identity into the full autoregressive-language-model definition and objective; here the identity itself is enough to characterize the decoder pattern.
 
 <Theorem kind="definition" name="Encoder, decoder, and encoder–decoder patterns" id="def-patterns">
 Fix a mixer family and stack its blocks as in <XRef id="prop-causal-closure" />.
-1. The **encoder pattern** is a stack whose mixers are unconstrained — typically bidirectional, so each output row may depend on the whole input. Its product is the full representation $\mathbf H\in\R^{n\times d}$, consumed by a head or by another stack.
+1. The **encoder pattern** is a stack whose mixers are unconstrained — typically bidirectional, so each output row may depend on the whole input. Its output is the full representation $\mathbf H\in\R^{n\times d}$, consumed by a head or by another stack.
 2. The **decoder pattern** is a stack whose every mixer is causal, with a position-wise readout turning row $t$ into a next-token conditional $p_\theta(\,\cdot\mid x_{1:t})$; these conditionals compose into the chain-rule joint displayed above.
 3. The **encoder–decoder pattern** pairs an encoder producing $\mathbf H$ with a causal decoder whose blocks additionally apply a **conditioning channel**: a map that lets each decoder row consult all of $\mathbf H$ but no future decoder rows — the requirement being that for fixed $\mathbf H$ the dressed decoder remains a causal mixer in the decoder sequence. Cross-attention achieves this position-wise (for fixed $\mathbf H$ it acts within a decoder row, covered by <XRef id="prop-causal-closure" />); channels that route $\mathbf H$ through the decoder's own state — an initial state set from $\mathbf H$, or additive attention queried by the decoder state — are causal directly, consulting only settled decoder rows.
 </Theorem>
@@ -141,11 +139,13 @@ We verify column by column. **Attention.** Masked self-attention is causal (<XRe
 
 <MarginNote variant="pattern" label="Two orthogonal axes">Pattern (causal switch + conditioning switch) and mixer family are independent coordinates: every named model is one cell of the lattice.</MarginNote>
 
-The lattice classifies an architecture, not its pretraining objective. UL2 makes this separation explicit: its mixture combines regular span corruption, sequential/prefix-language-model denoising, and extreme span corruption without treating any one objective as synonymous with an encoder, decoder, or encoder–decoder topology <Cite key="tay2022ul2" />.
+The lattice classifies an architecture, not its pretraining objective. UL2 makes this separation explicit: its mixture combines regular span corruption, sequential prefix-language-model denoising, and extreme span corruption without treating any one objective as synonymous with an encoder, decoder, or encoder–decoder topology <Cite key="tay2022ul2" />.
 
 <Figure
   src="/figures/architecture-lattice.svg"
-  caption="The architecture lattice. Rows: encoder, decoder, and encoder-decoder patterns (the two switches of Architecture Composition, now mixer-agnostic). Columns: attention, RNN, and SSM mixer families. Each named model occupies one cell; the pattern axis and the family axis vary independently."
+  alt="A three-by-three grid crosses three architecture patterns with three sequence-mixer families."
+  desc="Rows show encoder, decoder, and encoder–decoder patterns. Columns show attention, recurrent, and state-space mixers. Each cell names a representative model or construction, demonstrating that pattern and mixer family vary independently."
+  caption="The architecture lattice crosses three conditioning patterns with three mixer families. Each model occupies one cell, so architecture pattern and mixer choice are independent design axes."
   id="fig-architecture-lattice"
   width="72%"
 />
@@ -222,10 +222,10 @@ $$
 \mathbf z_t=m\!\left([\,\overrightarrow{\mathbf h}_t;\ \overleftarrow{\mathbf h}_t\,]\right),
 \qquad \text{readout }\rho(\mathbf z_t),
 $$
-for a position-wise merge $m$ and any subsequent position-wise readout $\rho$.<Sidenote>Introduced for RNNs by <Cite key="schuster1997bidirectional" />; the same reversal applies verbatim to a linear state-space recurrence.</Sidenote> The construction is noncausal at row $t$ when varying $x_{t+1:n}$ changes $\overleftarrow{\mathbf h}_t$ **and** the composed merge/readout $\rho\circ m$ separates at least two such backward states. A nondegenerate backward recurrence alone is not sufficient if the merge or readout ignores its backward coordinates. Attention needs no second scan — omitting the mask already lets every row read every position, subject to the same readout-separation qualification when one claims a changed final prediction.
+for a position-wise merge $m$ and any subsequent position-wise readout $\rho$.<Sidenote>Introduced for RNNs by <Cite key="schuster1997bidirectional" />; the same reversal applies verbatim to a linear state-space recurrence.</Sidenote> The construction is noncausal at row $t$ when varying $x_{t+1:n}$ changes $\overleftarrow{\mathbf h}_t$ **and** the composed merge and readout $\rho\circ m$ separates at least two such backward states. A nondegenerate backward recurrence alone is not sufficient if the merge or readout ignores its backward coordinates. Attention needs no second scan — omitting the mask already lets every row read every position, subject to the same readout-separation qualification when one claims a changed final prediction.
 </Theorem>
 
-A genuinely bidirectional encoder satisfying that future-state/readout separation therefore forfeits <XRef id="thm-one-pass" />: its rows cannot define next-token conditionals, so it cannot be trained as a language model in the autoregressive sense. What it *can* do is predict a position from both sides, and the standard objective does exactly that on a corrupted input.
+A genuinely bidirectional encoder satisfying that separation between future-dependent states and the readout therefore forfeits <XRef id="thm-one-pass" />: its rows cannot define next-token conditionals, so it cannot be trained as a language model in the autoregressive sense. What it *can* do is predict a position from both sides, and the standard objective does exactly that on a corrupted input.
 
 <Theorem kind="definition" name="Masked language modeling" id="def-mlm">
 Fix a corruption rule: sample a mask set $\mathcal M\subset\{1,\dots,n\}$ and replace each $x_t$, $t\in\mathcal M$, by a reserved mask symbol, producing $\tilde x$. **Masked language modeling** trains a bidirectional stack with a position-wise readout to maximize
@@ -286,7 +286,7 @@ Let a decoder stack be built from causal layers as in <XRef id="prop-causal-clos
 $$
 \mathbf H^{(\ell)}(x_{1:n})_{1:t} \;=\; \mathbf H^{(\ell)}(x_{1:t}).
 $$
-Consequently every quantity that is a function of the prefix activations alone — position-wise persisted attention state, including materialized key/value rows or a latent plus auxiliary rows, and prefix-aggregating state such as an RNN/SSM state after $t$ tokens — retains, at every later decode step, exactly the value a full recomputation would produce; step $n+1$ must compute only the new position's reusable state. In particular the KV-cache (<XRef id="def-kv-cache" />) is **correct**: its persisted rows, and every deterministic key/value or attention quantity derived from them, equal the uncached evaluation, so cached and uncached decoding emit identical distributions.
+Consequently every quantity that is a function of the prefix activations alone — position-wise persisted attention state, including materialized key and value rows or a latent plus auxiliary rows, and prefix-aggregating state such as an RNN or SSM state after $t$ tokens — retains, at every later decode step, exactly the value a full recomputation would produce; step $n+1$ must compute only the new position's reusable state. In particular the KV cache (<XRef id="def-kv-cache" />) is **correct**: its persisted rows, and every deterministic key, value, or attention quantity derived from them, equal the uncached evaluation, so cached and uncached decoding emit identical distributions.
 </Theorem>
 
 <Theorem kind="proof">
@@ -299,7 +299,7 @@ $$
 $$
 the first equality by prefix-consistency of the layer, the second by the induction hypothesis.
 
-**Step 2 (cached quantities are frozen).** Let $\mathbf z_j$ denote any per-position state persisted by an attention layer: a materialized key/value row, a compressed latent, or auxiliary positional state. It is a deterministic position-wise function of $(\mathbf H^{(\ell)}_j,j)$; by Step 1 and the fixed index $j$, $\mathbf z_j$ has the same value in every evaluation whose length is $\ge j$. Every deterministic key or value derived from $\mathbf z_j$ is therefore identical as well. The recurrent state after $t$ tokens is a function of $\mathbf H^{(\ell-1)}(\,\cdot\,)_{1:t}$, fixed by the same argument.
+**Step 2 (cached quantities are frozen).** Let $\mathbf z_j$ denote any per-position state persisted by an attention layer: a materialized key or value row, a compressed latent, or auxiliary positional state. It is a deterministic position-wise function of $(\mathbf H^{(\ell)}_j,j)$; by Step 1 and the fixed index $j$, $\mathbf z_j$ has the same value in every evaluation whose length is $\ge j$. Every deterministic key or value derived from $\mathbf z_j$ is therefore identical as well. The recurrent state after $t$ tokens is a function of $\mathbf H^{(\ell-1)}(\,\cdot\,)_{1:t}$, fixed by the same argument.
 
 **Step 3 (cached decoding is exact).** At decode step $n+1$, the layer reuses $\mathbf z_{1:n}$ and computes the new position's state and query fresh. By Steps 1–2, the reused rows equal a full recomputation; by the same layer induction, the current query equals its uncached counterpart. Every deterministic attention computation combining that query with $\mathbf z_{1:n}$ therefore agrees with the uncached evaluation, so the layer output and final distribution agree. For a materialized-head cache, <XRef id="prop-decode-cost" /> prices the resulting compute saving; a compressed-latent architecture has different arithmetic, but the equality argument is unchanged. $\qquad\blacksquare$
 </Theorem>
@@ -323,7 +323,14 @@ All conditional generation computes one object — a family of next-token condit
 </Theorem>
 
 <Theorem kind="remark" name="Why decoder-only, assembled from proved parts" id="rem-decoder-only">
-Four proved properties make the decoder-only pattern attractive for general-purpose generation; they do **not** establish universal optimality. **(1) Exact, fully supervised factorization:** the chain rule makes the causal conditionals compose into a genuine joint with every position supervised, as shown at the start of this section, where MLM supervises only the masked subset and learns conditionals with no coherence guarantee (<XRef id="ex-incompatible-conditionals" />). **(2) One-pass training:** all $n$ conditionals come from a single evaluation (<XRef id="thm-one-pass" />). **(3) Exact cached decoding:** prefix reuse makes generation incremental at no cost in correctness (<XRef id="prop-prefix-reuse" />, priced by <XRef id="prop-decode-cost" />). **(4) Closure:** causality survives arbitrary depth and dressing (<XRef id="prop-causal-closure" />), so (1)–(3) persist at arbitrary stack depth. In Wang et al.'s controlled comparison, a causal decoder-only model with autoregressive pretraining was strongest after purely unsupervised pretraining, whereas noncausal visibility with masked-language-model pretraining was best after multitask fine-tuning <Cite key="wang2022architecture" />. As a counterexample to any universal decoder-only ranking, AlexaTM 20B combined denoising and causal-language-model objectives in a multilingual sequence-to-sequence model and reported more efficient few-shot learning than the decoder-only models evaluated in that work <Cite key="soltan2022alexatm" />. The lattice therefore has no globally best cell: the best route depends on the objective, adaptation regime, and task.
+Four proved properties make the decoder-only pattern attractive for general-purpose generation; they do **not** establish universal optimality.
+
+1. **Exact, fully supervised factorization.** The chain rule makes the causal conditionals compose into a genuine joint with every position supervised. MLM instead supervises only the masked subset and learns conditionals with no coherence guarantee (<XRef id="ex-incompatible-conditionals" />).
+2. **One-pass training.** All $n$ conditionals come from a single evaluation (<XRef id="thm-one-pass" />).
+3. **Exact cached decoding.** Prefix reuse makes generation incremental at no cost in correctness (<XRef id="prop-prefix-reuse" />, priced by <XRef id="prop-decode-cost" />).
+4. **Closure.** Causality survives arbitrary depth and dressing (<XRef id="prop-causal-closure" />), so the first three properties persist at arbitrary stack depth.
+
+In Wang et al.'s controlled comparison, a causal decoder-only model with autoregressive pretraining was strongest after purely unsupervised pretraining, whereas noncausal visibility with masked-language-model pretraining was best after multitask fine-tuning <Cite key="wang2022architecture" />. As a counterexample to any universal decoder-only ranking, AlexaTM 20B combined denoising and causal-language-model objectives in a multilingual sequence-to-sequence model and reported more efficient few-shot learning than the decoder-only models evaluated in that work <Cite key="soltan2022alexatm" />. The lattice therefore has no globally best cell: the best route depends on the objective, adaptation regime, and task.
 </Theorem>
 
 ## Exercises
@@ -332,7 +339,7 @@ Attempt each before expanding its solution.
 
 **Exercise 9.1 (Prove).** Prove the three closure claims of <XRef id="prop-causal-closure" /> — composition, position-wise maps, residual connections — and conclude that a full pre-norm decoder block (masked self-attention, layer norms, FFN, two residual connections) is a causal mixer.
 
-<SolutionBox>
+<SolutionBox exercise="9.1">
 
 **Composition:** $(G_n\circ F_n)(\mathbf X)_{1:m} = G_n(F_n(\mathbf X))_{1:m} = G_m(F_n(\mathbf X)_{1:m}) = G_m(F_m(\mathbf X_{1:m}))$, using causality of $G$ on the input $F_n(\mathbf X)$, then causality of $F$. **Position-wise:** row $t$ of $\Psi_n(\mathbf X)$ is $\psi(\mathbf X_t)$, so restriction commutes with $\Psi$. **Residual:** restriction is linear, so $(\mathbf X + F_n(\mathbf X))_{1:m} = \mathbf X_{1:m} + F_m(\mathbf X_{1:m})$. A pre-norm block is $\mathbf X\mapsto \mathbf Z = \mathbf X + \operatorname{MHA}^{\text{causal}}(\operatorname{LN}(\mathbf X))$ followed by $\mathbf Z\mapsto \mathbf Z + \operatorname{FFN}(\operatorname{LN}(\mathbf Z))$: layer norm and the FFN act within a row (position-wise), masked attention is causal (<XRef id="prop-causal-instances" />), and the two sublayers compose — every constituent is covered by one of the three claims, so the block, and by induction any stack of such blocks, is causal. $\qquad\blacksquare$
 
@@ -340,7 +347,7 @@ Attempt each before expanding its solution.
 
 **Exercise 9.2 (Prove).** With $d = d_k = d_v = 1$, identity projections, and $\mathbf X = (0, c)^\top$, prove that unmasked attention gives $F_2(\mathbf X)_1 = c/2$ while $F_1(\mathbf X_{1:1})_1 = 0$, and verify that adding the causal mask restores prefix-consistency on this input.
 
-<SolutionBox>
+<SolutionBox exercise="9.2">
 
 On $\mathbf X_{1:1} = (0)$: one logit $0\cdot 0 = 0$, one weight $1$, output $v_1 = 0$. On $\mathbf X = (0,c)^\top$: row $1$'s logits are $(0\cdot 0,\ 0\cdot c) = (0,0)$, so the softmax weights are $(\tfrac12,\tfrac12)$ and $F_2(\mathbf X)_1 = \tfrac12(0) + \tfrac12(c) = c/2 \neq 0$ for $c\neq 0$ — prefix-consistency fails at $m=1$. With the causal mask, row $1$'s logit at $j=2$ is $-\infty$, which exponentiates to $0$: the weight row becomes $(1, 0)$, so $F_2^{\text{causal}}(\mathbf X)_1 = v_1 = 0 = F_1(\mathbf X_{1:1})_1$. The mask deletes exactly the two channels through which the future entered: the weight on $j=2$ and, with it, the value row $v_2$. $\qquad\blacksquare$
 
@@ -348,15 +355,15 @@ On $\mathbf X_{1:1} = (0)$: one logit $0\cdot 0 = 0$, one weight $1$, output $v_
 
 **Exercise 9.3 (Compute).** For $n = 2^{20}$, compute the sequential depth of one RNN layer, one LTI SSM layer under the parallel scan, and one attention layer, per <XRef id="prop-sequential-depth" />; give the RNN-to-SSM depth ratio.
 
-<SolutionBox>
+<SolutionBox exercise="9.3">
 
-RNN: the recursion is a dependence chain of length $n = 2^{20} = 1{,}048{,}576$ stages. SSM: $\lceil\log_2 2^{20}\rceil = 20$ parallel scan rounds (plus one position-wise readout stage). Attention: a fixed constant — the three projections, $\mathbf Q\mathbf K^\top$, the row softmax, the product with $\mathbf V$, and the output projection — independent of $n$. Depth ratio RNN/SSM $= 1{,}048{,}576/20 = 52{,}428.8 \approx 5.2\times 10^4$. The work per pass tells a different story (attention's constant depth costs $\Theta(n^2 d)$ arithmetic, <XRef id="prop-complexity" />): depth and work are separate currencies. $\qquad\blacksquare$
+RNN: the recursion is a dependence chain of length $n = 2^{20} = 1{,}048{,}576$ stages. SSM: $\lceil\log_2 2^{20}\rceil = 20$ parallel scan rounds (plus one position-wise readout stage). Attention: a fixed constant — the three projections, $\mathbf Q\mathbf K^\top$, the row-wise softmax, the product with $\mathbf V$, and the output projection — independent of $n$. The RNN-to-SSM depth ratio is $1{,}048{,}576/20 = 52{,}428.8 \approx 5.2\times 10^4$. The work per pass tells a different story (attention's constant depth costs $\Theta(n^2 d)$ arithmetic, <XRef id="prop-complexity" />): depth and work are separate currencies. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 9.4 (Construct).** Decide whether the tables $p_1(x_1{=}\mathtt a\mid x_2{=}\mathtt a) = 2/3$, $p_1(x_1{=}\mathtt a\mid x_2{=}\mathtt b) = 1/3$ and $p_2(x_2{=}\mathtt a\mid x_1{=}\mathtt a) = 2/3$, $p_2(x_2{=}\mathtt a\mid x_1{=}\mathtt b) = 1/3$ are compatible, and construct the joint if so.
 
-<SolutionBox>
+<SolutionBox exercise="9.4">
 
 Run the ratio constraints of <XRef id="ex-incompatible-conditionals" />. From $p_2$: $p_{\mathtt{aa}} = 2p_{\mathtt{ab}}$ (row $\mathtt a$) and $p_{\mathtt{bb}} = 2p_{\mathtt{ba}}$ (row $\mathtt b$). From $p_1$: $p_{\mathtt{aa}} = 2p_{\mathtt{ba}}$ (column $\mathtt a$) and $p_{\mathtt{bb}} = 2p_{\mathtt{ab}}$ (column $\mathtt b$). The four equations are consistent: they force $p_{\mathtt{ab}} = p_{\mathtt{ba}}$ and $p_{\mathtt{aa}} = p_{\mathtt{bb}} = 2p_{\mathtt{ab}}$. (Equivalently, both tables give odds ratio $2\cdot 2 = 4$.) Setting $p_{\mathtt{ba}} = q$: the joint is $(2q, q, q, 2q)$ with sum $6q = 1$, so $q = 1/6$ and
 $$
@@ -366,25 +373,25 @@ Check: $p_1(\mathtt a\mid\mathtt a) = \tfrac{1/3}{1/3+1/6} = \tfrac{2}{3}$, $p_1
 
 </SolutionBox>
 
-**Exercise 9.5 (Prove).** Prove that the one-pass identity of <XRef id="thm-one-pass" /> fails for a bidirectional stack: show that under either the unmasked-attention witness with a readout that separates the changed rows, or a nondegenerate bidirectional scan whose merge/readout separates the changed backward states, the row-$t$ readout on $x_{1:n}$ is a nonconstant function of $x_{t+1}$, and explain what a teacher-forced loss at position $t$ would then be scoring.
+**Exercise 9.5 (Prove).** Prove that the one-pass identity of <XRef id="thm-one-pass" /> fails for a bidirectional stack: show that under either the unmasked-attention witness with a readout that separates the changed rows, or a nondegenerate bidirectional scan whose merge and readout separate the changed backward states, the row-$t$ readout on $x_{1:n}$ is a nonconstant function of $x_{t+1}$, and explain what a teacher-forced loss at position $t$ would then be scoring.
 
-<SolutionBox>
+<SolutionBox exercise="9.5">
 
-Unmasked attention: by <XRef id="prop-causal-instances" />, with identity projections and $\mathbf X = (0,c)^\top$, row $1$ of the length-$2$ evaluation is $c/2$, which varies with the second token. If the position-wise readout separates two of those row values (for example, the two-logit map $z\mapsto(z,0)$), its output is therefore a nonconstant function of $x_2$ and cannot equal $p_\theta(\,\cdot\mid x_1)$, a function of $x_1$ alone. Without that separation condition a constant readout would erase the witness, so changed hidden rows alone would not prove changed predictions. Bidirectional scan: row $t$ includes $\overleftarrow{\mathbf h}_t$, whose recursion consumes $\mathbf x_n,\dots,\mathbf x_{t+1},\mathbf x_t$; nondegeneracy makes varying $x_{t+1}$ move the backward state, and the stated merge/readout separation makes that movement change the output. In either case a teacher-forced "loss" at $t$ scores a quantity that has already read $x_{t+1}$ — the model can drive the loss down by copying the visible target rather than predicting the next-token conditional in the chain-rule joint. $\qquad\blacksquare$
+Unmasked attention: by <XRef id="prop-causal-instances" />, with identity projections and $\mathbf X = (0,c)^\top$, row $1$ of the length-$2$ evaluation is $c/2$, which varies with the second token. If the position-wise readout separates two of those row values (for example, the two-logit map $z\mapsto(z,0)$), its output is therefore a nonconstant function of $x_2$ and cannot equal $p_\theta(\,\cdot\mid x_1)$, a function of $x_1$ alone. Without that separation condition a constant readout would erase the witness, so changed hidden rows alone would not prove changed predictions. Bidirectional scan: row $t$ includes $\overleftarrow{\mathbf h}_t$, whose recursion consumes $\mathbf x_n,\dots,\mathbf x_{t+1},\mathbf x_t$; nondegeneracy makes varying $x_{t+1}$ move the backward state, and the stated separation by the merge and readout makes that movement change the output. In either case a teacher-forced "loss" at $t$ scores a quantity that has already read $x_{t+1}$ — the model can drive the loss down by copying the visible target rather than predicting the next-token conditional in the chain-rule joint. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 9.6 (Identify).** Place each of the following in the lattice of <XRef id="prop-instantiations" />, naming its pattern and mixer and the property licensing the placement: (a) BERT; (b) an RNN language model; (c) T5; (d) a bidirectional SSM scan with a linear probe on its rows; (e) a single stack under the prefix-LM mask of <XRef id="def-prefix-lm" />.
 
-<SolutionBox>
+<SolutionBox exercise="9.6">
 
-(a) Encoder $\times$ attention: unmasked self-attention, bidirectional by construction; product is the representation $\mathbf H$. (b) Decoder $\times$ RNN: the recursion is causal (<XRef id="prop-causal-instances" />), readout position-wise. (c) Encoder–decoder $\times$ attention: bidirectional encoder plus causal decoder joined by cross-attention, the position-wise channel of <XRef id="def-patterns" />. (d) Encoder $\times$ SSM: the bidirectional scan (<XRef id="def-bidirectional-scan" />) forfeits causality, and the probe consumes representations — the lattice's ninth-cell column with its encoder row. (e) None of the three rows exactly: the prefix-LM mask is encoder-like on positions $i < s$ and causal on the suffix — the within-stack interpolation of <XRef id="def-prefix-lm" />, showing the rows of the lattice are corners of a design space, not a partition of it. $\qquad\blacksquare$
+(a) Encoder $\times$ attention: unmasked self-attention, bidirectional by construction; the output is the representation $\mathbf H$. (b) Decoder $\times$ RNN: the recursion is causal (<XRef id="prop-causal-instances" />), readout position-wise. (c) Encoder–decoder $\times$ attention: bidirectional encoder plus causal decoder joined by cross-attention, the position-wise channel of <XRef id="def-patterns" />. (d) Encoder $\times$ SSM: the bidirectional scan (<XRef id="def-bidirectional-scan" />) forfeits causality, and the probe consumes representations — the lattice's ninth-cell column with its encoder row. (e) None of the three rows exactly: the prefix-LM mask is encoder-like on positions $i < s$ and causal on the suffix — the within-stack interpolation of <XRef id="def-prefix-lm" />, showing the rows of the lattice are corners of a design space, not a partition of it. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 9.7 (Derive).** For the prefix-LM mask of <XRef id="def-prefix-lm" />, verify that $M^{(s)}_{ij} = 0$ iff $j\le\max(i,s)$ gives bidirectional reading within the prefix and causal reading on the suffix, and derive from <XRef id="prop-prefix-reuse" /> that cached decoding of the suffix is exact once the prefix rows are computed.
 
-<SolutionBox>
+<SolutionBox exercise="9.7">
 
 Case $i\le s$: $\max(i,s) = s$, so position $i$ reads exactly $j\le s$ — every prefix position reads every other prefix position (bidirectional within the prefix) and no suffix position. Case $i > s$: $\max(i,s) = i$, so position $i$ reads $j\le i$ — the whole prefix plus its own past (causal on the suffix). For fixed prefix content, view the stack as a map from suffix rows to suffix outputs: appending a suffix token adds a row that no earlier position can read ($j\le\max(i,s)$ excludes $j > i$ for $i>s$, and $j>s$ for $i\le s$), so the map is prefix-consistent in the suffix indices. The induction of <XRef id="prop-prefix-reuse" /> then applies with "prefix" meaning "the $s$ context rows plus the settled suffix rows": all cached keys and values — the prefix's, computed once, and the suffix's, appended step by step — equal what full recomputation would produce, so cached suffix decoding emits identical distributions. $\qquad\blacksquare$
 

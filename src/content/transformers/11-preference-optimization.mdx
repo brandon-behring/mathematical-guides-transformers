@@ -3,7 +3,7 @@ title: "Preference Optimization: RLHF and DPO"
 slug: preference-optimization
 chapter: 11
 part: 3
-description: "Pairwise preference data, the canonical reward-model-and-PPO RLHF pipeline, the Gibbs-form optimum of a KL-regularized reward objective, reward–policy inversion, the DPO log-ratio classification loss and gradient, and the assumptions behind its population same-optimum interpretation."
+description: "Derives preference optimization from pairwise judgments, compares reward-model-based RLHF with DPO, and states when their idealized population objectives share an optimum."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, training]
@@ -21,21 +21,19 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import MarginNote from '../../components/MarginNote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import Figure from '../../components/Figure.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Preference Optimization: RLHF and DPO
-
-**Where we are.** Chapter 10 trained a model by asking which token occurred. Instruction-following adds a different signal: for one prompt, a person or another judge may prefer one complete response to another without supplying a tokenwise target or a numerical reward. This chapter turns that comparison into mathematics. We first define pairwise preference data and the Bradley–Terry likelihood used to fit an explicit reward model. We then solve a KL-regularized reward objective exactly, invert its optimal policy back into a reward difference, and substitute that difference into the preference likelihood to obtain Direct Preference Optimization (DPO). The final proposition states the assumptions under which the two idealized population optima coincide. It does **not** identify DPO with PPO, finite-data training, or a guarantee that the preference signal is correctly specified.
+**Where we are.** Cross-entropy training learns from observed target tokens. Preference data instead orders two completions for the same prompt without assigning either a numerical reward. We define these comparisons and the Bradley–Terry likelihood used to fit a reward model. We then solve a KL-regularized reward objective, invert its optimal policy into reward differences, and substitute them into the preference likelihood to derive Direct Preference Optimization (DPO). The closing result states when idealized population optima coincide. It does not equate DPO with Proximal Policy Optimization (PPO), often used in reinforcement learning from human feedback (RLHF), or guarantee that finite preference data describe desired behavior.
 
 <Figure
   src="/figures/preference-optimization-paths.svg"
-  alt="Two training paths from same-prompt preference pairs and a frozen baseline policy. Canonical RLHF fits a reward and updates with sampled responses, while DPO directly classifies relative policy change."
-  desc="A left–right comparison with shared inputs above it. The left canonical-RLHF column fits a scalar reward, samples from the evolving policy, and applies a PPO policy update for reward minus reference drift. The right DPO column compares policy change relative to the reference, applies a binary winner–loser loss, and directly updates the policy. A qualification says the later DPO derivation uses the KL-regularized optimum and Bradley–Terry and is not a reduction of PPO."
-  caption="Canonical RLHF and DPO use the same kind of preference record but move it through different training loops. DPO removes the separate reward-model and online-rollout stages from preference fine-tuning; it does not remove preference-data collection or reduce PPO algebraically."
+  alt="Preference pairs enter either a reward-model-and-PPO pipeline or a direct DPO update."
+  desc="Shared preference pairs and a frozen reference policy feed two columns. The RLHF column fits a scalar reward, samples responses, and applies PPO. The DPO column compares policy changes relative to the reference and applies a binary winner–loser loss. A bottom note states that DPO is derived from the KL-regularized optimum and Bradley–Terry model, not by reducing PPO."
+  caption="RLHF and DPO consume the same preference records through different training loops. DPO removes the separate reward-model and online-rollout stages, but not preference-data collection."
   id="fig-preference-optimization-paths"
   width="94%"
 />
@@ -416,7 +414,7 @@ Canonical RLHF fits an explicit reward model and then uses policy-generated resp
 </Theorem>
 
 <Theorem kind="remark" name="The preference-optimization frontier" id="rem-preference-frontier">
-DPO is one point in a broader design space. ORPO presents a reference-model-free, monolithic odds-ratio objective <Cite key="hong2024orpo" />; $\Psi$PO supplies a general pairwise-preference objective whose instances include IPO <Cite key="azar2023ipo" />; and KTO develops human-aware losses that can learn from a binary desirable/undesirable signal rather than paired responses <Cite key="ethayarajh2024kto" />. These descriptions orient the methods. They do not establish equation-level equivalence, benchmark rankings, or a universal winner.
+DPO is one point in a broader design space. ORPO presents a reference-model-free, monolithic odds-ratio objective <Cite key="hong2024orpo" />; $\Psi$PO supplies a general pairwise-preference objective whose instances include IPO <Cite key="azar2023ipo" />; and KTO develops human-aware losses that can learn from a binary desirable-or-undesirable signal rather than paired responses <Cite key="ethayarajh2024kto" />. These descriptions orient the methods. They do not establish equation-level equivalence, benchmark rankings, or a universal winner.
 </Theorem>
 
 ## Exercises
@@ -426,7 +424,7 @@ Attempt each before expanding its solution.
 **Exercise 11.1 (Prove).** Starting from the definition of $D_{\mathrm{KL}}(\pi\,\|\,\pi_r)$, derive the exact identity
 $J_x(\pi_r)-J_x(\pi)=\beta_{\mathrm{KL}}D_{\mathrm{KL}}(\pi\,\|\,\pi_r)$ and explain why it proves uniqueness.
 
-<SolutionBox>
+<SolutionBox exercise="11.1">
 
 Substitute
 $\pi_r(y)=\pi_{\mathrm{ref}}(y)e^{r(y)/\beta_{\mathrm{KL}}}/Z_r$
@@ -453,7 +451,7 @@ At $\pi=\pi_r$ the divergence vanishes, so subtraction yields the requested gap.
 **Exercise 11.2 (Compute).** Transfer the full trace to
 $\pi_{\mathrm{ref}}=(1/2,1/2)$, $r=(\log4,0)$, and $\beta_{\mathrm{KL}}=1/2$: compute $Z_r$, $\pi_r$, the probability of $A\succ B$, the DPO loss for that observed winner, and both pair-score derivatives.
 
-<SolutionBox>
+<SolutionBox exercise="11.2">
 
 The unnormalized weights are
 $((1/2)e^{2\log4},(1/2)e^0)=(8,1/2)$, so $Z_r=17/2$ and
@@ -473,7 +471,7 @@ $$
 
 **Exercise 11.3 (Derive).** Substitute the absolute reward–policy inversion into the Bradley–Terry probability for $(x,y_w,y_\ell)$ and derive <XRef id="thm-dpo-objective" />. Then explain exactly why the same cancellation is invalid for two responses attached to different prompts.
 
-<SolutionBox>
+<SolutionBox exercise="11.3">
 
 For either completion,
 $$
@@ -495,7 +493,7 @@ $(\pi_{\mathrm{ref}}(y_w\mid x),\pi_{\mathrm{ref}}(y_\ell\mid x))=(0.9,0.1)$,
 $(\pi_\theta(y_w\mid x),\pi_\theta(y_\ell\mid x))=(0.8,0.2)$, and $\beta_{\mathrm{KL}}=1$.
 Compute the raw policy odds, DPO gap, preference probability, loss, and pair-score derivatives. Explain why omitting the reference terms reverses the reading.
 
-<SolutionBox>
+<SolutionBox exercise="11.4">
 
 The raw policy odds favor the winner $0.8/0.2=4{:}1$. Relative to the reference,
 $$
@@ -520,7 +518,7 @@ The policy still favors $y_w$ absolutely, but less strongly than the reference's
 
 **Exercise 11.5 (Construct).** On four responses with uniform reference, comparisons observe only edges $A\!-\!B$ and $C\!-\!D$. Construct two different policies with the same score gaps on both observed edges. Then give a separate zero-reference-support example for which the DPO log ratio is undefined.
 
-<SolutionBox>
+<SolutionBox exercise="11.5">
 
 Use unnormalized implicit score vectors
 $$
@@ -530,7 +528,7 @@ $$
 $$
 and set $\pi_i\propto\pi_{\mathrm{ref},i}e^{s_i}$, with the analogous normalization for $\mathbf s'$. Both have observed gaps
 $s_A-s_B=s'_A-s'_B=1$ and
-$s_C-s_D=s'_C-s'_D=1$, so every observed Bradley–Terry/DPO probability agrees. They assign different mass to the disconnected components because the second vector shifts $C,D$ together by $2$. Thus the population policy is not identified without a connecting edge.
+$s_C-s_D=s'_C-s'_D=1$, so every observed Bradley–Terry and DPO probability agrees. They assign different mass to the disconnected components because the second vector shifts $C,D$ together by $2$. Thus the population policy is not identified without a connecting edge.
 
 For support failure, take a compared completion $y_w$ with
 $\pi_{\mathrm{ref}}(y_w\mid x)=0$ but $\pi_\theta(y_w\mid x)>0$. Then
@@ -541,7 +539,7 @@ is undefined (formally $+\infty$), and the forward-KL reward optimum cannot plac
 
 **Exercise 11.6 (Compare).** Compare canonical reward-model-plus-PPO RLHF with DPO along four axes: the learned objects, when policy sampling occurs, the role of the reference, and what the idealized same-optimum theorem does **not** imply. Rewrite the claim “DPO is PPO with the reward model canceled out” at the evidence level proved in this chapter.
 
-<SolutionBox>
+<SolutionBox exercise="11.6">
 
 Canonical RLHF first learns an explicit $r_\phi$ from comparisons and then updates a policy using responses sampled from the evolving policy; PPO is one optimizer for the learned-reward-minus-KL objective. DPO learns the policy directly from a fixed preference-pair dataset, evaluates each completion under a frozen reference, and needs no online policy rollout or explicit reward model in that fine-tuning loop. Both use a reference anchor, but only the ideal KL objective displays a literal forward-KL penalty; the empirical DPO pair loss does not guarantee a prescribed realized KL.
 

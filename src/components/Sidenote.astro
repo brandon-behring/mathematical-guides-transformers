@@ -1,0 +1,24 @@
+---
+/**
+ * Guide-local sidenote wrapper.
+ *
+ * It preserves the scaffold's marker and layout classes while deriving a
+ * concise accessible name from the authored note. The scaffold component's
+ * unnamed role="note" regions are otherwise indistinguishable in landmark
+ * navigation and in tagged-PDF structure.
+ */
+const rendered = await Astro.slots.render('default');
+const plain = rendered
+  .replace(/<annotation\b[^>]*>[\s\S]*?<\/annotation>/gi, ' ')
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/&[a-zA-Z0-9#]+;/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+const clipped = plain.length > 96
+  ? `${plain.slice(0, 93).replace(/\s+\S*$/, '')}…`
+  : plain;
+const accessibleName = clipped ? `Sidenote: ${clipped}` : 'Sidenote';
+---
+
+<sup class="sidenote-marker" aria-hidden="true"></sup>
+<span class="sidenote" role="note" aria-label={accessibleName} set:html={rendered} />

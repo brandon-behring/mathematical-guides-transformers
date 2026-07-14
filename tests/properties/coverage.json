@@ -29,17 +29,17 @@
     {
       "id": "def-cost-eq",
       "test": "tests/properties/test_roofline.py",
-      "statementSha256": "8c3b545ad276d1af947632491ed0a5672c0938000a00af4e4f8fb6129a6eb1c1"
+      "statementSha256": "a796c2d5285d9a5e041b57c935eabe45f14ac545e846dff9a71a9093761b86ee"
     },
     {
       "id": "prop-memory-bound",
       "test": "tests/properties/test_roofline.py",
-      "statementSha256": "4e782c18f7c494821deb363cd3611ad1770aaf95bab994c28b3cba1d3c974797"
+      "statementSha256": "0e9974776c5b4cb11559dcb0d0b9e87d595721ebe8f62f9aae4eaadc58f9bb16"
     },
     {
       "id": "rem-prefill-decode",
       "test": "tests/properties/test_roofline.py",
-      "statementSha256": "9fa934b8e970938ccb78c868b61a496d760485602e21834678fdae7287e7f478"
+      "statementSha256": "c405bfd2e15f8ab4503a6dbda8d77d43e22c0435bbaa31d635afba93ec27ccf6"
     },
     {
       "id": "rem-softmax-temperature",
@@ -49,32 +49,32 @@
     {
       "id": "def-token-decoding",
       "test": "tests/properties/test_decoding.py",
-      "statementSha256": "378003766bf48c908654380ffee314817ffdf34f481651f628cce98a65687306"
+      "statementSha256": "e9d8b2151de10af2ce3e74398fd2658bc840dab5aa5575c844fac480a22a91f8"
     },
     {
       "id": "prop-truncated-sampling",
       "test": "tests/properties/test_decoding.py",
-      "statementSha256": "6336ad37a04278229fcc2ba891eead1912ddca3093b94a1fa3aaa01cee2b2d52"
+      "statementSha256": "baf8a8cceb878c50ddf408736b0cc6bf02dfc37ea2ff7047279ae89ad5eb2288"
     },
     {
       "id": "prop-ln-jacobian",
       "test": "tests/properties/test_normalization.py",
-      "statementSha256": "c219ab1386d3f48b82de455c0b2f8da9817670c4e7088ae8ed2139aa34d49cd4"
+      "statementSha256": "2d1cb4c5783f3ffd23e41695daf436473f20e3d19100205f4f20eeab7261413c"
     },
     {
       "id": "rem-rmsnorm",
       "test": "tests/properties/test_normalization.py",
-      "statementSha256": "041cc70d602d52bb53ee0408188658bc2a3f0e8746a6ec99520c78a6a27a9ea2"
+      "statementSha256": "c76b778aeb06122f44c58fd83fcd079e11cf20e8efbe5dea7ebff48faa95cbdf"
     },
     {
       "id": "prop-kv-cache",
       "test": "tests/properties/test_kv_cache.py",
-      "statementSha256": "3afad84b69cbb8f355f1375d0459d21a2034dddf92025805ff007a03084e70e8"
+      "statementSha256": "959bd355f358ad83f2e802fc9cacb7fbd3960346838b59413f03dcac5b51c2c9"
     },
     {
       "id": "prop-kv-memory",
       "test": "tests/properties/test_kv_cache.py",
-      "statementSha256": "3d0c5708511227256c3f106cec40e1b877218364450b533bfa8389ed9c4a408c"
+      "statementSha256": "a13470581756cfec5f9df27b42ca9325ba908c5444268d4969864f62b179cd27"
     },
     {
       "id": "rem-kv-selection-exactness",
@@ -89,12 +89,12 @@
     {
       "id": "prop-moe-router-gradient",
       "test": "tests/properties/test_moe_cost.py",
-      "statementSha256": "bae1103abbb8d7bdcef0c1b95e01b249721301902aca4058abb0763475aa3cab"
+      "statementSha256": "d9c37c9463f75c6c50cf25a32e2dd4b6c911a262e65289099d8551be3400af39"
     },
     {
       "id": "def-moe-routing-objective",
       "test": "tests/properties/test_moe_cost.py",
-      "statementSha256": "40f27c2592d43b7d88ba66c9160e43fc227e4caf2c78d6212a670d44bd62bf6d"
+      "statementSha256": "1e2f3d7d9968bb15ed765fb2e2687b203cb631a2db5b304041b75c477652b85a"
     },
     {
       "id": "def-moe-capacity",
@@ -159,7 +159,7 @@
     {
       "id": "def-nsa-branches",
       "test": "tests/properties/test_sparse_attention.py",
-      "statementSha256": "8274316a4b4067d31fdafb791ce85e376088fbf2d16da5134892ea80cbaaad12"
+      "statementSha256": "2b44fd93d1af0f436a36e237bddf3998a34de0665a7dda307db46df61191e8fb"
     },
     {
       "id": "prop-nsa-work",
@@ -169,7 +169,7 @@
     {
       "id": "prop-chunked",
       "test": "tests/properties/test_ssd_chunking.py",
-      "statementSha256": "738adfb305e7228c18fed2f8a97950084a1e7ee2d5a5b90a68e7e35e571980cf"
+      "statementSha256": "14d0667ece3b09a7f502a591b7d0b1071d72a734298af3917a19b8732ccb5908"
     },
     {
       "id": "def-bradley-terry-preference",
@@ -237,6 +237,11 @@
       "statementSha256": "fd843812641d0bb0f1a801c59594b080144a4b7403e338a6e87c3cfd17c96973"
     },
     {
+      "id": "def-attention",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "98a74cbfcf8ddf2d64695c32874683cd863884aee1c36c9f66bb0f64172cbac0"
+    },
+    {
       "id": "def-causal-mask",
       "test": "tests/properties/test_proof_audit_foundations.py",
       "statementSha256": "2ad54d9e59bbeed68325210d5107c913f9ccc778bfe7878c4d27ebccd7538153"
@@ -279,7 +284,7 @@
     {
       "id": "prop-complexity",
       "test": "tests/properties/test_proof_audit_foundations.py",
-      "statementSha256": "a6f8c115adc6a8b137058e51b09dfd8ec982dca0a51fb4351e6b9b982018a581"
+      "statementSha256": "2a42ae993384119259c499c5600aaf03371f197d6ba91d9b1fe577294704840e"
     },
     {
       "id": "prop-scan",
@@ -304,7 +309,7 @@
     {
       "id": "thm-pe-rotation",
       "test": "tests/properties/test_proof_audit_foundations.py",
-      "statementSha256": "6f4104635966318ddf4b19f0119d041651ab457bdd5ad2dee10870e42032c3be"
+      "statementSha256": "0202cc868742ef13c41436cdbf808c78b9631211799b2af2a1a3ccbef5892af6"
     },
     {
       "id": "thm-rope-relative",
@@ -314,7 +319,7 @@
     {
       "id": "thm-universal-approx",
       "test": "tests/properties/test_proof_audit_foundations.py",
-      "statementSha256": "5877d7660d544150699054fe1bedb722cf8bfc0e8f084ba4a2264699c0eeb55a"
+      "statementSha256": "d885acb61bc19f5664873a8f9fe82afdc210f6de0893c5df75f2eb813fcd9231"
     },
     {
       "id": "thm-variance-preservation",
@@ -324,12 +329,12 @@
     {
       "id": "def-affine-quant",
       "test": "tests/properties/test_proof_audit_optimization.py",
-      "statementSha256": "e87930eed2bd1c0cdc70d449fead3fc0ff4d3bd392f3ebf5ca5ad8c244a0c13d"
+      "statementSha256": "627265ccdd9700cc23d55fec25f59b7aadfb88fd09b09c0fde89284f5d2bf20d"
     },
     {
       "id": "def-bidirectional-scan",
       "test": "tests/properties/test_proof_audit_optimization.py",
-      "statementSha256": "c29465b395111a81232906a5dfb2311bdb8b58808dd1d733096389d954e06e12"
+      "statementSha256": "ab0323d02222e280cd658b1846e1fea00f82aeed14f6201485e516a1291b0723"
     },
     {
       "id": "def-cosine-temp",
@@ -344,12 +349,12 @@
     {
       "id": "def-ood-score",
       "test": "tests/properties/test_proof_audit_optimization.py",
-      "statementSha256": "d32ec01253ce078d3fd01b528aaf254ff290a8adb5188174c4dc427a7dc71884"
+      "statementSha256": "a9b0b1eaff5ebcb8cd65a55637649b67e9b2e43dce045ba9b63f7c24ec07708e"
     },
     {
       "id": "def-spec-decode",
       "test": "tests/properties/test_proof_audit_optimization.py",
-      "statementSha256": "cec1d0e789dc0cbfc82b3d855f955c4325b21c8d6c1929d5d718ad5bb152c44f"
+      "statementSha256": "2d77fb59e7dac3075b1cbf436e58e8281840812d14034cba39ca04829920f840"
     },
     {
       "id": "prop-ce-kl-training",
@@ -369,17 +374,17 @@
     {
       "id": "prop-spec-speedup",
       "test": "tests/properties/test_proof_audit_optimization.py",
-      "statementSha256": "270f4fe1b0a38673fdda8894b1886936009171069e3373e783b3db85cee40587"
+      "statementSha256": "9df0ead3ab14f678d5cd7a40d0332c39678d0e4d314c4147842c759dd5273cc8"
     },
     {
       "id": "prop-zero-memory",
       "test": "tests/properties/test_proof_audit_optimization.py",
-      "statementSha256": "c1b4985e8ecbf21da28b082d2aa7f11f4399a64157a8dd3c136b03ab8b105d38"
+      "statementSha256": "34addd3bd2a0dcca708d0ac377b76619639ea8fd44540affeaa9ffe4577a2e9e"
     },
     {
       "id": "rem-bf16",
       "test": "tests/properties/test_proof_audit_optimization.py",
-      "statementSha256": "68df134f445361b1d787bbd77838cbde538e68f8609fd63a6fbf9614e2c6cc11"
+      "statementSha256": "171d00fd3bfc87ba8a27b3b50a7eba96e6330c2abbe4624186cf198586a4a7ff"
     },
     {
       "id": "thm-checkpointing",
@@ -389,22 +394,22 @@
     {
       "id": "thm-online-softmax-exact",
       "test": "tests/properties/test_proof_audit_optimization.py",
-      "statementSha256": "3de294f90bcedcd3f80ca7829052de0df357dea45f48313ea2fb4fbe5778e89e"
+      "statementSha256": "c16bbb6cc1a14368d9f37afbb7f5a1d0e794155d815b33c54383b72a39fda009"
     },
     {
       "id": "def-mixed-mask",
       "test": "tests/properties/test_proof_audit_multimodal.py",
-      "statementSha256": "e1fa8893667420861976e3a86f2e767af0bce882ce07a160646fbcf741fc60a5"
+      "statementSha256": "797bba1c8a7f5756993ce96d85ae647d52fe32b6016a4f5120f2fc413c292ece"
     },
     {
       "id": "def-resampler",
       "test": "tests/properties/test_proof_audit_multimodal.py",
-      "statementSha256": "5078044bd8c85104a555b9ab2f18b31fde7ebb80eee8f1a0c20604e287eb16a9"
+      "statementSha256": "7eb961a488d5ec3a9fb38b760890f7b3c00cfc3b6e22290bec5be6946f199625"
     },
     {
       "id": "def-retrieval",
       "test": "tests/properties/test_proof_audit_multimodal.py",
-      "statementSha256": "c6ef29ab7682db183efe955c961f87ca570d124fb54913aeddfb58e6bb68baf2"
+      "statementSha256": "229024abde3901e568fb10b5efe05f53e7892651d4fe6fa28531d8d8a385e24c"
     },
     {
       "id": "prop-connector-data-processing-bound",
@@ -422,6 +427,11 @@
       "statementSha256": "9050838dfbc59e6192edb8d97b88724d3fcf7cfec8aa21eacd6e69f62a9e58dc"
     },
     {
+      "id": "prop-merged-vocab",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "c67168a6cb6f489ec95bd98d34bc571c846d1313a5dbcd8d9c45d79ff7a0e963"
+    },
+    {
       "id": "prop-perplexity-kl",
       "test": "tests/properties/test_proof_audit_multimodal.py",
       "statementSha256": "5f1e8c67d6f5811396e2d8aae70eb0abaa54eaa27b07cd176cf1d94e9e7cc0d2"
@@ -429,7 +439,7 @@
     {
       "id": "prop-recall-accuracy",
       "test": "tests/properties/test_proof_audit_multimodal.py",
-      "statementSha256": "81c46dfae6298c7b20748d2e792bfea06a219f5ca521f35284788a66bc35bfd4"
+      "statementSha256": "86eab9a46208c96cf4ffd1da07547ffd2bec94d74312a2793cfca0ed0c1c6060"
     },
     {
       "id": "prop-resampler-convex",
@@ -439,7 +449,7 @@
     {
       "id": "prop-resampler-cost",
       "test": "tests/properties/test_proof_audit_multimodal.py",
-      "statementSha256": "70534d4bd23b5d50047ae6e9e60f065793ef45822d3fa5bc8b33478af64b0164"
+      "statementSha256": "2b635d2e704c9b01388848b23b4979940d0c057b111103c96fad6f171286b995"
     },
     {
       "id": "prop-selective-scan",
@@ -449,7 +459,7 @@
     {
       "id": "prop-vq-gradient",
       "test": "tests/properties/test_proof_audit_multimodal.py",
-      "statementSha256": "5c50bf1bcbfa3f9ffb1b72f204601ed6ef38c9b0330f17c28e0551383357e13c"
+      "statementSha256": "ebefe2323a560b60a15d526055acf38c8367e56600e2380d6198dcf7969d6c6e"
     },
     {
       "id": "thm-codebook-kmeans",
@@ -457,9 +467,14 @@
       "statementSha256": "87a14ca0db0c48b0e33ec99b89292b81491775f1c2610a189f1eaca2b59c71c1"
     },
     {
+      "id": "thm-ste-identity",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "3d2db5b1f0870a3d63c459411d03e84af0f4b19ce2c5fef3f4b431591132f9ad"
+    },
+    {
       "id": "thm-semiseparable",
       "test": "tests/properties/test_proof_audit_multimodal.py",
-      "statementSha256": "3359bb4323d03e81829aaa77c851ed3f6c9636d4718f8c21b8180322f04b0ab1"
+      "statementSha256": "d4c4070c2d579ad7b1a997a1e9c8fc306762e64d030fe2728bbc1b1636681ae6"
     }
   ]
 }

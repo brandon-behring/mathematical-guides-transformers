@@ -3,7 +3,7 @@
 Every formal coverage target named below appears literally in this file:
 prop-softmax-jacobian, def-cross-entropy, def-kl, prop-ce-kl, def-bpe,
 prop-bpe-merge-accounting, thm-pe-rotation, thm-pe-2d-shift, def-rope,
-thm-rope-relative, rem-rope-complex, prop-scan, def-causal-mask,
+thm-rope-relative, rem-rope-complex, prop-scan, def-attention, def-causal-mask,
 thm-variance-preservation, def-residual, def-cross-attention,
 def-decoder-block, prop-complexity, and thm-universal-approx.
 """
@@ -27,6 +27,7 @@ COVERAGE_TARGET_IDS = (
     "thm-rope-relative",
     "rem-rope-complex",
     "prop-scan",
+    "def-attention",
     "def-causal-mask",
     "thm-variance-preservation",
     "def-residual",
@@ -188,6 +189,41 @@ def causal_softmax_row(
         for column, value in enumerate(logits)
     )
     return stable_softmax(masked)
+
+
+def scaled_dot_product_attention(
+    queries: tuple[tuple[float, ...], ...],
+    keys: tuple[tuple[float, ...], ...],
+    values: tuple[tuple[float, ...], ...],
+    *,
+    causal: bool = False,
+) -> tuple[tuple[tuple[float, ...], ...], tuple[tuple[float, ...], ...]]:
+    """Evaluate the small dense attention construction used in Chapter 4."""
+    if not queries or not keys or len(keys) != len(values):
+        raise ValueError("attention needs nonempty aligned key and value rows")
+    key_width = len(keys[0])
+    if key_width == 0 or any(len(row) != key_width for row in (*queries, *keys)):
+        raise ValueError("query and key widths must agree and be positive")
+    value_width = len(values[0])
+    if value_width == 0 or any(len(row) != value_width for row in values):
+        raise ValueError("value rows must have one common positive width")
+
+    weight_rows: list[tuple[float, ...]] = []
+    output_rows: list[tuple[float, ...]] = []
+    scale = math.sqrt(key_width)
+    for query_index, query in enumerate(queries):
+        logits = tuple(dot(query, key) / scale for key in keys)
+        allowed = logits[: query_index + 1] if causal else logits
+        allowed_weights = stable_softmax(allowed)
+        weights = allowed_weights + (0.0,) * (len(keys) - len(allowed_weights))
+        weight_rows.append(weights)
+        output_rows.append(
+            tuple(
+                sum(weight * value[column] for weight, value in zip(weights, values, strict=True))
+                for column in range(value_width)
+            )
+        )
+    return tuple(weight_rows), tuple(output_rows)
 
 
 def rademacher_dot_variance(dimension: int, scaled: bool) -> float:
@@ -370,6 +406,35 @@ class FoundationProofAuditTests(unittest.TestCase):
         dimension = 4
         self.assertAlmostEqual(rademacher_dot_variance(dimension, False), dimension)
         self.assertAlmostEqual(rademacher_dot_variance(dimension, True), 1.0)
+
+    def test_two_token_attention_trace_and_causal_variant(self):
+        """def-attention reproduces the Chapter 4 trace before and after masking."""
+        identity = ((1.0, 0.0), (0.0, 1.0))
+        values = ((2.0, 0.0), (0.0, 4.0))
+        exponential = math.exp(1 / math.sqrt(2))
+        alpha = exponential / (exponential + 1)
+        beta = 1 - alpha
+
+        weights, output = scaled_dot_product_attention(identity, identity, values)
+        expected_weights = ((alpha, beta), (beta, alpha))
+        expected_output = ((2 * alpha, 4 * beta), (2 * beta, 4 * alpha))
+        for actual_row, expected_row in zip(weights, expected_weights, strict=True):
+            for actual, expected in zip(actual_row, expected_row, strict=True):
+                self.assertAlmostEqual(actual, expected)
+            self.assertAlmostEqual(sum(actual_row), 1.0)
+        for actual_row, expected_row in zip(output, expected_output, strict=True):
+            for actual, expected in zip(actual_row, expected_row, strict=True):
+                self.assertAlmostEqual(actual, expected)
+
+        causal_weights, causal_output = scaled_dot_product_attention(
+            identity, identity, values, causal=True
+        )
+        self.assertEqual(causal_weights[0], (1.0, 0.0))
+        self.assertEqual(causal_output[0], (2.0, 0.0))
+        for actual, expected in zip(causal_weights[1], (beta, alpha), strict=True):
+            self.assertAlmostEqual(actual, expected)
+        for actual, expected in zip(causal_output[1], (2 * beta, 4 * alpha), strict=True):
+            self.assertAlmostEqual(actual, expected)
 
     def test_causal_mask_is_a_finite_limit_with_nonempty_support(self):
         """def-causal-mask suppresses future entries without an empty row."""

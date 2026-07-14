@@ -9,30 +9,32 @@ This pull-out card is a compact lookup, not a second source of truth. The Notati
 | Object | Shape | Reading |
 |---|---|---|
 | embedded sequence $\mathbf X$ | $n\times d$ | one sequence element per row |
-| projected $\mathbf Q,\mathbf K,\mathbf V$ | $n\times d_k$, $n\times d_k$, $n\times d_v$ per head | query/key/value rows |
+| projected $\mathbf Q,\mathbf K,\mathbf V$ | $n\times d_k$, $n\times d_k$, $n\times d_v$ per head | query, key, and value rows |
 | attention weights $\mathbf A$ | $n\times n$ | row-stochastic after masking and softmax |
 | one-head context $\operatorname{head}_r$ | $n\times d_v$ | pre-$\mathbf W^O$ attention output |
 | $\operatorname{Concat}(\operatorname{head}_1,\dots,\operatorname{head}_h)$ | $n\times(hd_v)$ | input to $\mathbf W^O$ |
-| multi-head output | $n\times d$ | post-$\mathbf W^O$ block input/output width |
+| multi-head output | $n\times d$ | post-$\mathbf W^O$ block input and output width |
 
 ## Core equations
 
 | Object | Canonical form |
 |---|---|
-| BPE merge accounting | $N_{t+1}=N_t-r_t$, $V_{t+1}=V_t+1$; minimum packed fixed-width ID budget $B_t=N_t\lceil\log_2 V_t\rceil$ |
+| byte-pair encoding (BPE) merge accounting | $N_{t+1}=N_t-r_t$, $V_{t+1}=V_t+1$; minimum packed fixed-width ID budget $B_t=N_t\lceil\log_2 V_t\rceil$ |
 | attention | $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)=\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k}+\mathbf M)\mathbf V$ |
 | associative lookup | if target $t$ leads $m-1$ distractors by $\delta_{\mathrm{ret}}>0$ and $\norm{\mathbf v_i}\le M$, then $\alpha_t\ge[1+(m-1)e^{-\delta_{\mathrm{ret}}}]^{-1}$ and $\norm{\mathbf y-\mathbf v_t}\le 2M(m-1)e^{-\delta_{\mathrm{ret}}}/[1+(m-1)e^{-\delta_{\mathrm{ret}}}]$ |
 | controlled one-step regression (unnormalized linear attention) | $\mathbf x_\star^\top\mathbf w_1=\mathbf x_\star^\top\mathbf w_0-\frac{\eta}{n}\sum_i(\mathbf x_\star^\top\mathbf x_i)(\mathbf x_i^\top\mathbf w_0-y_i)$ |
 | pre-norm residual | $\mathbf y=\mathbf x+f(\operatorname{LN}(\mathbf x))$ |
 | autoregressive factorization | $p_\theta(\mathbf x)=\prod_t p_\theta(x_t\mid x_{<t})$ |
-| KL-regularized reward optimum | $\pi_r(y\mid x)=\pi_{\mathrm{ref}}(y\mid x)e^{r(x,y)/\beta_{\mathrm{KL}}}/Z_r(x)$ and $J_x(\pi_r)-J_x(\pi)=\beta_{\mathrm{KL}}D_{\mathrm{KL}}(\pi\,\|\,\pi_r)$ |
-| DPO pair loss | $\Delta_\theta=\log\frac{\pi_\theta(y_w\mid x)}{\pi_{\mathrm{ref}}(y_w\mid x)}-\log\frac{\pi_\theta(y_\ell\mid x)}{\pi_{\mathrm{ref}}(y_\ell\mid x)}$, $\ell_{\mathrm{DPO}}=-\log\sigma_{\mathrm{sig}}(\beta_{\mathrm{KL}}\Delta_\theta)$ |
+| reward optimum with Kullback–Leibler (KL) regularization | $\pi_r(y\mid x)=\pi_{\mathrm{ref}}(y\mid x)e^{r(x,y)/\beta_{\mathrm{KL}}}/Z_r(x)$ and $J_x(\pi_r)-J_x(\pi)=\beta_{\mathrm{KL}}D_{\mathrm{KL}}(\pi\,\|\,\pi_r)$ |
+| Direct Preference Optimization (DPO) pair loss | $\Delta_\theta=\log\frac{\pi_\theta(y_w\mid x)}{\pi_{\mathrm{ref}}(y_w\mid x)}-\log\frac{\pi_\theta(y_\ell\mid x)}{\pi_{\mathrm{ref}}(y_\ell\mid x)}$, $\ell_{\mathrm{DPO}}=-\log\sigma_{\mathrm{sig}}(\beta_{\mathrm{KL}}\Delta_\theta)$ |
 | scaling-law surrogate | $\widehat L(N,D)=E+AN^{-\alpha}+BD^{-\beta}$ under proxy budget $\widehat C(N,D)=\kappa ND=C$ |
 | compute-optimal allocation | $\alpha A(N^\star)^{-\alpha}=\beta B(D^\star)^{-\beta}$; $N^\star\propto C^{\beta/(\alpha+\beta)}$, $D^\star\propto C^{\alpha/(\alpha+\beta)}$, and $\widehat L(N^\star,D^\star)-E\propto C^{-\alpha\beta/(\alpha+\beta)}$ |
-| roofline lower bound | $T_{\text{token}}\ge\max(\Phi/F,\,\beta/\mathcal B)$ |
-| materialized KV memory | $M_{\text{KV}}=nb\sum_{\ell=1}^{N}d_{\text{cache},\ell}$ |
-| MoE accounting | resident $E\mu_{\text{FFN}}$; activated $Tk\Phi_{\text{FFN}}$; ideal traffic $A_B\mu_{\text{FFN}}$ |
-| sparse-attention work | score/value work follows $m_{\mathcal E}=\sum_i\lvert S_i\rvert$, not $n^2$, only when omitted pairs are never formed |
+| roofline lower bound | $T_{\text{roof}}\defeq\max(\Phi/F,\,\beta/\mathcal B)$ and $T_{\text{token}}\ge T_{\text{roof}}$ |
+| persisted key–value (KV) attention-state memory | $M_{\text{KV}}=nb\sum_{\ell=1}^{N}d_{\text{cache},\ell}$ |
+| mixture-of-experts (MoE) accounting | resident $E\mu_{\text{FFN}}$; no-drop activated $Tk\Phi_{\text{FFN}}$; ideal traffic $A_B\mu_{\text{FFN}}$ |
+| sparse-attention work | score and value work follows $m_{\mathcal E}=\sum_i\lvert S_i\rvert$, not $n^2$, only when omitted pairs are never formed |
+
+**Local symbol note.** In the roofline row, $\beta$ is the bytes read per step; in the scaling-law rows, $\beta$ is the fitted data exponent. In the persisted-state row, $b$ is the bytes per stored element. The scaling-law $E$ is a loss floor, whereas the MoE $E$ counts experts. The index below records each scoped reuse.
 
 ## Exactness vocabulary
 

@@ -11,6 +11,16 @@ import {
   researchPortfolioStyle,
   defineStyle,
 } from '@brandon_m_behring/book-scaffold-astro';
+import rehypeTableCaptions from './src/lib/rehype-table-captions.mjs';
+
+const guidePolishStyles = {
+  name: 'guide-polish-styles',
+  hooks: {
+    'astro:config:setup': ({ injectScript }) => {
+      injectScript('page-ssr', "import '/src/styles/apparatus.css';");
+    },
+  },
+};
 
 const mathematicalGuidesFamilyStyle = defineStyle({
   name: 'mathematical-guides-family',
@@ -34,15 +44,19 @@ const mathematicalGuidesFamilyStyle = defineStyle({
 
 export default await defineBookConfig({
   styles: [researchPortfolioStyle, mathematicalGuidesFamilyStyle],
+  extraIntegrations: [guidePolishStyles],
+  markdown: { rehypePlugins: [rehypeTableCaptions] },
   routes: { glossary: true, print: false },
   apparatusRoutes: ['glossary', 'quick-reference'],
   base: '/transformers/',
   title: 'Transformer Mathematics',
+  subtitle: 'A formal guide to sequence models',
   description:
-    'From recurrent networks and state space models through attention and transformers to hybrid architectures and vision-language models — a rigorous Definition–Theorem–Proof treatment.',
+    'From recurrent networks and state-space models through attention and transformers to hybrid architectures and vision–language models — a rigorous Definition–Theorem–Proof treatment.',
   // SSM semantic macros in \mathbf typography (consumer wins over the
-  // scaffold-injected ssmMacros; \stepsize (Δ) and \scanop (⊕) inherit —
-  // typography-neutral). See scaffold issue #177 for the ssmMacros export.
+  // scaffold-injected ssmMacros). The consumer also pins \scanop to the guide's
+  // documented bullet glyph; \stepsize (Δ) remains typography-neutral. See
+  // scaffold issue #177 for the ssmMacros export.
   katexMacros: {
     '\\statevec': '\\mathbf{h}',
     '\\statemat': '\\mathbf{A}',
@@ -51,5 +65,6 @@ export default await defineBookConfig({
     '\\feedmat': '\\mathbf{D}',
     '\\discA': '\\bar{\\mathbf{A}}',
     '\\discB': '\\bar{\\mathbf{B}}',
+    '\\scanop': '\\bullet',
   },
 });

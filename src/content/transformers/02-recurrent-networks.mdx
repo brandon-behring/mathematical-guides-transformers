@@ -3,7 +3,7 @@ title: "Recurrent Networks and the Seq2Seq Lineage"
 slug: recurrent-networks
 chapter: 2
 part: 2
-description: "The sequence model before attention: the recurrent state and its unrolled computation graph, the backpropagation-through-time gradient as a sum over time of chain-rule products, the geometric vanishing/exploding gradient bound, the LSTM/GRU gated additive remedy and the constant error carousel, the seq2seq encoder-decoder with its fixed-vector bottleneck, and Bahdanau's additive attention as the birth of content addressing."
+description: "Develops recurrent sequence models, their gradients and gated remedies, then follows encoder–decoder recurrence to the content-addressing mechanism that becomes attention."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, input-representations]
@@ -15,23 +15,21 @@ los:
   - id: lo-backpropagation-through-time
     statement: "Derive the backpropagation-through-time gradient as a sum over time of chain-rule products, and derive the backward recurrence that computes it in one pass."
   - id: lo-recurrent-gradient-regimes
-    statement: "Prove the geometric gradient bound for the unrolled recurrence, identify the vanishing and exploding regimes, and explain how the LSTM/GRU gated additive path evades the bound."
+    statement: "Prove the geometric gradient bound for the unrolled recurrence, identify the vanishing and exploding regimes, and explain how the LSTM and GRU gated additive path evades the bound."
   - id: lo-seq2seq-bottleneck-and-attention
-    statement: "Construct the sequence-to-sequence encoder-decoder, prove its fixed-vector bottleneck by a pigeonhole count, and construct additive attention as the remedy."
+    statement: "Construct the sequence-to-sequence encoder–decoder, prove its fixed-vector bottleneck by a pigeonhole count, and construct additive attention as the remedy."
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Recurrent Networks and the Seq2Seq Lineage
-
-**Where we are.** The notation chapter fixed the toolkit and the previous chapter built the inputs: any modality becomes a sequence of vectors in $\R^{n\times d}$. This chapter opens the guide's account of what to *do* with that sequence, and it begins where the field began — with recurrence. We define the recurrent network and unroll it into a depth-$n$ computation graph with tied weights; derive its training gradient, backpropagation through time, as a sum over time of chain-rule products; prove the geometric bound on those products that makes long-range gradients vanish or explode; construct the gated remedies, the LSTM and the GRU, and prove that their additive cell path — the constant error carousel — escapes the bound; assemble recurrent networks into the sequence-to-sequence encoder–decoder and prove that its fixed-vector interface is a genuine bottleneck, by a pigeonhole count; and construct the mechanism invented to dissolve that bottleneck, additive attention. That last construction is the hinge of the whole guide: softmax content addressing is born here, *inside* a recurrent model, and the chapters that follow ask what survives when the recurrence is taken away.
+**Where we are.** The previous chapter turned raw inputs into a sequence of vectors; this chapter begins the story of how a model processes that sequence. We define a recurrent network and unroll it into a tied-weight computation graph, derive backpropagation through time, and prove why long chains can make gradients vanish or explode. LSTM and GRU gates then supply an additive memory path that mitigates that failure. Finally, recurrent encoder–decoder models expose a second limitation: every input must pass through one fixed-size context vector. Additive attention removes that bottleneck and introduces the score–normalize–average pattern that the transformer will keep after discarding recurrence.
 
 ## The recurrent state
 
@@ -59,7 +57,9 @@ in which every layer shares the same parameters $(\mathbf W_h, \mathbf W_x, \mat
 
 <Figure
   src="/figures/unrolled-rnn.svg"
-  caption="Unrolling the recurrence. Left: the cyclic view — one cell with a self-loop. Right: the unrolled view — a depth-n feed-forward graph in which every step applies the same tied weights, and the only path from x_1 to h_n is through every intermediate state. Rendered from TikZ via the figures pipeline."
+  alt="A recurrent cell shown as both a self-loop and an unrolled chain across sequence positions."
+  desc="The left panel contains one recurrent cell with a feedback arrow. The right panel expands the same cell into a left-to-right chain whose repeated copies share parameters and pass state between adjacent positions."
+  caption="Unrolling reveals a computation whose depth grows with sequence length while every step shares one parameter set. Information from the first input reaches the final state only through every intermediate state."
   id="fig-unrolled-rnn"
   width="80%"
 />
@@ -273,7 +273,7 @@ $$
 <Sidenote>Introduced by <Cite key="cho2014gru" />, in the same work that introduced the RNN encoder–decoder of the next section.</Sidenote>
 </Theorem>
 
-The GRU update is an *entrywise convex combination*: each coordinate of $\mathbf h_t$ lies between the corresponding coordinates of $\mathbf h_{t-1}$ and $\tilde{\mathbf h}_t$ — the convex-combination tool of the notation chapter (<XRef id="prop-row-stochastic-convex" />) reappearing with weights $(z, 1 - z)$ per coordinate. Its carousel is Exercise 2.4: along the direct path the one-step gain is $\operatorname{diag}(\mathbf z_t)$, so $\mathbf z_t \approx \mathbf 1$ holds the state — and the gradient — almost unchanged. This convex-interpolation form is worth remembering; it returns near the end of the arc as the exact scalar reduction of a selective state space update.
+The GRU update is an *entrywise convex combination*: each coordinate of $\mathbf h_t$ lies between the corresponding coordinates of $\mathbf h_{t-1}$ and $\tilde{\mathbf h}_t$ — the convex-combination tool of the Notation chapter (<XRef id="prop-row-stochastic-convex" />) reappearing with weights $(z, 1 - z)$ per coordinate. Its carousel is Exercise 2.4: along the direct path the one-step gain is $\operatorname{diag}(\mathbf z_t)$, so $\mathbf z_t \approx \mathbf 1$ holds the state — and the gradient — almost unchanged. This convex-interpolation form is worth remembering; it returns near the end of the arc as the exact scalar reduction of a selective state-space update.
 
 In Chung et al.'s sequence-modeling experiments, the gated GRU and LSTM both outperformed a tanh recurrent unit, and the GRU performed comparably to the LSTM <Cite key="chung2014empirical" />. That is a scoped empirical comparison, not an equivalence theorem between the cells.
 
@@ -311,7 +311,9 @@ Here $y_0$ is a distinguished start symbol, and generation halts at a distinguis
 
 <Figure
   src="/figures/seq2seq-bottleneck.svg"
-  caption="The seq2seq bottleneck. Every path from the input sequence to every decoder step passes through the single fixed-dimensional full context state c_ctx = σ_n: an hourglass whose neck does not widen as n grows. Rendered from TikZ via the figures pipeline."
+  alt="An encoder and decoder joined through a single narrow context-vector bottleneck."
+  desc="A many-step encoder narrows into one fixed-width context node, which then fans out through the decoder steps. Every path from any input position to any output position crosses that one node."
+  caption="The recurrent encoder–decoder forms an hourglass: every input-to-output path crosses one fixed-width context vector, so the interface does not grow with the input sequence."
   id="fig-seq2seq-bottleneck"
   width="75%"
 />
@@ -370,7 +372,7 @@ Attempt each before expanding its solution.
 
 **Exercise 2.1 (Compute).** Write out the unrolled two-step expression for $h_2$ from <XRef id="def-rnn" />, identifying the tied occurrences of $(w_h, w_x, b)$. Then rerun the trace of <XRef id="ex-scalar-trace" /> with $w_h = 0.8$, $w_x = 1$, $b = 0$, $h_0 = 0$, $\varphi = \tanh$, and inputs $x_1 = 0.5$, $x_2 = -0.5$: compute $h_1$, $h_2$, and $\partial h_2/\partial h_0$, and verify the bound of <XRef id="thm-gradient-bound" />.
 
-<SolutionBox>
+<SolutionBox exercise="2.1">
 
 **Unrolling.** $h_2 = \varphi\big(w_h\,\varphi(w_h h_0 + w_x x_1 + b) + w_x x_2 + b\big)$: the same triple $(w_h, w_x, b)$ appears at both depths — a depth-$2$ feed-forward network with tied weights, per <XRef id="def-rnn" />.
 
@@ -387,7 +389,7 @@ The bound gives $(\gamma\,\sigma_{\max})^2 = (1\cdot 0.8)^2 = 0.64 \ge 0.49488$ 
 
 **Exercise 2.2 (Derive).** From <XRef id="thm-bptt" />(ii), derive the backward recurrence of part (iii) — $\mathbf g_t = \nabla_{\mathbf h_t} L_t + \mathbf W_h^\top\operatorname{diag}(\varphi'(\mathbf a_{t+1}))\,\mathbf g_{t+1}$ — and show that the full gradient computation costs $O\!\big(n\,d_s(d_s + d)\big)$ arithmetic, i.e. one backward pass, not one pass per pair $(s,t)$.
 
-<SolutionBox>
+<SolutionBox exercise="2.2">
 
 Define $\mathbf g_s \defeq \sum_{t\ge s} (\partial\mathbf h_t/\partial\mathbf h_s)^\top \nabla_{\mathbf h_t} L_t$, the inner sum of (ii) without the leading diagonal factor. Split off $t = s$ (where the Jacobian is $\mathbf I$) and factor every remaining term through the first hop $\partial\mathbf h_{s+1}/\partial\mathbf h_s = \operatorname{diag}(\varphi'(\mathbf a_{s+1}))\mathbf W_h$:
 $$
@@ -400,7 +402,7 @@ Each backward step costs one matrix–vector product and a diagonal scaling, $O(
 
 **Exercise 2.3 (Prove).** Prove $\norm{\operatorname{diag}(\mathbf v)}_2 = \max_i\lvert v_i\rvert$, complete the second inequality of <XRef id="thm-gradient-bound" />, and conclude that a logistic-sigmoid RNN ($\varphi = \sigma$) has vanishing gradients whenever $\sigma_{\max}(\mathbf W_h) < 4$.
 
-<SolutionBox>
+<SolutionBox exercise="2.3">
 
 For any $\mathbf x$, $\norm{\operatorname{diag}(\mathbf v)\mathbf x}^2 = \sum_i v_i^2 x_i^2 \le (\max_i v_i^2)\norm{\mathbf x}^2$, and the standard basis vector at a maximizing index attains equality, so $\norm{\operatorname{diag}(\mathbf v)}_2 = \max_i\lvert v_i\rvert$. Then, by submultiplicativity and transpose invariance of the spectral norm,
 $$
@@ -412,7 +414,7 @@ and the product over $s = t+1,\dots,T$ gives $(\gamma\sigma_{\max}(\mathbf W_h))
 
 **Exercise 2.4 (Prove).** For the GRU (<XRef id="def-gru" />): show that $\mathbf h_t$ is an entrywise convex combination of $\mathbf h_{t-1}$ and $\tilde{\mathbf h}_t$; show that along the direct path (gates and candidate held fixed) the one-step Jacobian is $\operatorname{diag}(\mathbf z_t)$; and conclude the GRU's analogue of <XRef id="prop-cec" />.
 
-<SolutionBox>
+<SolutionBox exercise="2.4">
 
 Coordinatewise, $[\mathbf h_t]_i = [\mathbf z_t]_i[\mathbf h_{t-1}]_i + (1 - [\mathbf z_t]_i)[\tilde{\mathbf h}_t]_i$ with $[\mathbf z_t]_i = \sigma(\cdot)\in(0,1)$: nonnegative weights summing to one, hence a convex combination per coordinate, so $[\mathbf h_t]_i$ lies between $[\mathbf h_{t-1}]_i$ and $[\tilde{\mathbf h}_t]_i$. Holding $\mathbf z_t$ and $\tilde{\mathbf h}_t$ fixed, the update is affine in $\mathbf h_{t-1}$ with linear part $\mathbf h\mapsto\mathbf z_t\odot\mathbf h$, whose matrix is $\operatorname{diag}(\mathbf z_t)$. Composing across a gap, the direct-path Jacobian is $\operatorname{diag}\big(\bigodot_{s}\mathbf z_s\big)$ — diagonal, weight-free, and $\varphi'$-free, with entries approaching $1$ as $\mathbf z_s\to\mathbf 1$ (the "copy" setting). This is the GRU's constant error carousel: one gate plays both the forget and input roles, with $\mathbf f = \mathbf z$ tied to $\mathbf i = \mathbf 1 - \mathbf z$. $\qquad\blacksquare$
 
@@ -420,7 +422,7 @@ Coordinatewise, $[\mathbf h_t]_i = [\mathbf z_t]_i[\mathbf h_{t-1}]_i + (1 - [\m
 
 **Exercise 2.5 (Count).** A seq2seq model has full context dimension $d_{\mathrm{ctx}} = 512$ and stores its context in fp16 ($b = 16$) over a vocabulary of size $\lvert\mathcal V\rvert = 2^{16}$. Count the distinct representable contexts and the input sequences of length $n$, and find the smallest $n$ at which <XRef id="prop-seq2seq-fixed-vector-bottleneck" /> forces a collision.
 
-<SolutionBox>
+<SolutionBox exercise="2.5">
 
 The context takes at most $2^{b d_{\mathrm{ctx}}} = 2^{16\cdot 512} = 2^{8192}$ values; there are $\lvert\mathcal V\rvert^n = 2^{16n}$ inputs of length $n$. A collision is forced when $16n > 8192$, i.e. $n > 512$: at $n = 513$, two distinct 513-token inputs must share a context vector, and the decoder must emit identical distributions for them. (The threshold $n = b\,d_{\mathrm{ctx}}/\log_2\lvert\mathcal V\rvert = 512$ tokens is small by modern standards — and the practical failure precedes the counting failure by a wide margin.) $\qquad\blacksquare$
 
@@ -428,7 +430,7 @@ The context takes at most $2^{b d_{\mathrm{ctx}}} = 2^{16\cdot 512} = 2^{8192}$ 
 
 **Exercise 2.6 (Compute).** At some decoder step the alignment scores against $n = 3$ scalar encoder states $h_1 = 2$, $h_2 = 0$, $h_3 = -1$ come out as $e = (2, 0, -1)$. Compute the attention weights $\alpha$ (numerically stably) and the context $c = \sum_j \alpha_j h_j$, and verify the convex-combination property of <XRef id="prop-row-stochastic-convex" />.
 
-<SolutionBox>
+<SolutionBox exercise="2.6">
 
 Subtract the maximum score $2$ before exponentiating (exact by translation invariance, <XRef id="prop-softmax-translation-inv" />): $e - 2\mathbf 1 = (0, -2, -3)$ exponentiates to $(1, e^{-2}, e^{-3}) \approx (1, 0.1353, 0.0498)$ with sum $\approx 1.1851$, so
 $$
