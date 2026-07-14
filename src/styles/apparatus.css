@@ -73,10 +73,28 @@
     page-break-inside: avoid;
   }
 
+  /* Fallback break hints for an ungrouped prompt and collapsed answer row. */
+  .print-edition p:has(+ .solution-box) {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Treat every figure and its caption as one print unit. */
+  .print-edition figure.figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-edition #fig-hybrid-interleave > svg {
+    width: 68% !important;
+  }
+
   /* Collapsed exercise answers are navigation rows, not full callouts. Their
    * tighter print rhythm keeps the prompt and disclosure row from separating
    * merely because several exercises share a page. */
   .print-edition .solution-box {
+    break-before: avoid;
+    page-break-before: avoid;
     padding-block: 0.25em;
     margin-block: 0.3em;
   }
@@ -85,8 +103,8 @@
     margin-block: 0;
   }
 
-  /* Authors may opt a prompt and its collapsed answer row into one atomic
-   * print group when a page boundary would otherwise strand either one. */
+  /* The print-HTML transform groups every exercise prompt and its collapsed
+   * answer row so Paged.js cannot strand either side of the pair. */
   .print-edition .exercise-solution-pair {
     break-inside: avoid;
     page-break-inside: avoid;

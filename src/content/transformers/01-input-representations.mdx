@@ -13,7 +13,7 @@ los:
   - id: lo-token-and-positional-embeddings
     statement: "Define the token embedding map and the positional encoding functions, sinusoidal and rotary."
   - id: lo-bpe-tokenization
-    statement: "Specify a reversible normalized-text tokenizer, construct its byte-pair merge stage, trace the frequency-weighted merge rule, and derive its exact vocabulary-size, sequence-length, and fixed-width ID accounting."
+    statement: "Define a reversible normalized-text tokenizer, construct its byte-pair merge stage, trace the frequency-weighted merge rule, and derive its exact vocabulary-size, sequence-length, and fixed-width ID accounting."
   - id: lo-sinusoidal-position-properties
     statement: "Derive a guaranteed collision-free window for sinusoidal positional encodings and prove that a positional shift is a fixed linear transformation."
   - id: lo-rope-relative-position
@@ -21,7 +21,7 @@ los:
   - id: lo-positional-encoding-computation
     statement: "Compute positional encodings for small examples and verify the rotation property numerically."
   - id: lo-patch-and-codebook-embeddings
-    statement: "Generalize token embedding to a modality-agnostic embedding interface, instantiate it as patch and codebook embeddings, and prove patch embedding equals a strided convolution."
+    statement: "Define a modality-agnostic embedding interface, construct its patch and codebook instances, and prove patch embedding equals a strided convolution."
   - id: lo-factorized-2d-position
     statement: "Construct factorized 2D positional encodings and prove they inherit the relative-position shift law from the 1D theorem."
 ---
@@ -53,7 +53,7 @@ The **token embedding** is a matrix $\mathbf E \in \R^{\lvert\mathcal V\rvert \t
 $$
 \mathbf e_t \defeq \mathbf E[x_t, :] \in \R^{d},
 $$
-the $x_t$-th row of $\mathbf E$. Equivalently, $\mathbf e_t = \mathbf e_{x_t}^\top \mathbf E$, where $\mathbf e_{x_t}$ is the one-hot vector with a $1$ in position $x_t$. The embedded sequence is the matrix $\hat{\mathbf X} = (\mathbf e_1; \mathbf e_2; \dots; \mathbf e_n) \in \R^{n \times d}$, one row per token.
+the $x_t$-th row of $\mathbf E$. Equivalently, $\mathbf e_t = \mathbf e_{x_t}\mathbf E$, where $\mathbf e_{x_t}$ is the one-hot row vector with a $1$ in position $x_t$. The embedded sequence is the matrix $\hat{\mathbf X} = (\mathbf e_1; \mathbf e_2; \dots; \mathbf e_n) \in \R^{n \times d}$, one row per token.
 </Theorem>
 
 <MarginNote variant="pattern" label="Lookup = matrix product">A one-hot row times $\mathbf E$ selects a row of $\mathbf E$. The embedding is a linear lookup — no nonlinearity is involved.</MarginNote>
@@ -94,7 +94,7 @@ c_t(a,b)\defeq
 \sum_{j=1}^{|s_t(w)|-1}
 \mathbf 1\!\left\{(s_{t,j},s_{t,j+1})=(a,b)\right\}.
 $$
-Choose a maximizing pair under a fixed deterministic tie rule, introduce a **fresh atomic piece** whose displayed surface form is the concatenation $ab$ and whose ordered children are $(a,b)$, and replace every **non-overlapping** occurrence of $(a,b)$ in every $s_t(w)$ by that new piece, scanning left to right. A pair may include $\mathtt{EOW}$, but counts and replacements remain inside each word sequence and never connect distinct words. Repeating for $M$ rounds produces an ordered merge list and the final piece vocabulary $\mathcal P_M$. To tokenize a new word, start from its characters plus $\mathtt{EOW}$ and apply those learned merges in order; the surviving pieces are mapped to token indices. This stage preserves the canonically pretokenized word-and-boundary stream; it does not by itself remember arbitrary raw whitespace that pretokenization removed. This character-pair adaptation, frequency-weighted word dictionary, end-of-word marker, and ordered test-time merge procedure follow <Cite key="sennrich2016subword" />.
+If every pair has score $0$ — equivalently, no adjacent pair remains in the weighted corpus — the algorithm stops. Otherwise choose a maximizing **positive-score** pair under a fixed deterministic tie rule, introduce a **fresh atomic piece** whose displayed surface form is the concatenation $ab$ and whose ordered children are $(a,b)$, and replace every **non-overlapping** occurrence of $(a,b)$ in every $s_t(w)$ by that new piece, scanning left to right. A pair may include $\mathtt{EOW}$, but counts and replacements remain inside each word sequence and never connect distinct words. Repeat until the requested merge budget is exhausted or no positive-score pair remains; let $M$ denote the number of admissible rounds actually completed. These rounds produce an ordered merge list and the final piece vocabulary $\mathcal P_M$. To tokenize a new word, start from its characters plus $\mathtt{EOW}$ and apply those learned merges in order; the surviving pieces are mapped to token indices. This stage preserves the canonically pretokenized word-and-boundary stream; it does not by itself remember arbitrary raw whitespace that pretokenization removed. This character-pair adaptation, frequency-weighted word dictionary, end-of-word marker, and ordered test-time merge procedure follow <Cite key="sennrich2016subword" />.
 </Theorem>
 
 <MarginNote variant="warning" label="Score is not always decrement">$c_t(a,b)$ counts adjacent positions, which may overlap. In $a,a,a$, the pair $(a,a)$ scores $2$ but only one non-overlapping replacement is possible. The accounting below therefore uses the number actually replaced.</MarginNote>
@@ -109,7 +109,7 @@ Choose a maximizing pair under a fixed deterministic tie rule, introduce a **fre
 />
 
 <Theorem kind="proposition" name="BPE merge accounting and base-stream invariance" id="prop-bpe-merge-accounting">
-Let $\mathcal P_t$ be the piece vocabulary after $t$ merges, $V_t\defeq|\mathcal P_t|\ge2$, and
+Suppose $t=0,\dots,M-1$ are the admissible rounds completed by <XRef id="def-bpe" />. Let $\mathcal P_t$ be the piece vocabulary after $t$ merges, $V_t\defeq|\mathcal P_t|\ge2$, and
 $$
 N_t\defeq\sum_{(w,f_w)\in\mathcal D} f_w|s_t(w)|
 $$
@@ -117,6 +117,7 @@ the number of symbol positions in the frequency-weighted training corpus. Let $q
 $$
 r_t\defeq\sum_{(w,f_w)\in\mathcal D}f_wq_t(w).
 $$
+The selected pair has positive score in every admissible round, so at least one non-overlapping occurrence is replaced and $r_t\ge1$.
 Then
 $$
 N_{t+1}=N_t-r_t,
@@ -136,6 +137,8 @@ shortening the sequence alone does not guarantee that inequality when the vocabu
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
+
 For each word type, every one of its $q_t(w)$ non-overlapping replacements consumes two adjacent positions and emits one. Weighting that decrement by $f_w$ and summing gives $N_{t+1}=N_t-r_t$. The round adds one fresh atomic piece and removes no existing piece, so $V_{t+1}=V_t+1$. Iterating both recurrences gives the formulas at $M$. The minimum uniform width capable of distinguishing $V_t$ binary IDs is $\lceil\log_2V_t\rceil$ bits; packing $N_t$ such IDs at that width proves the formula for $B_t$ and the displayed comparison. For the final clause, the new piece stores the ordered children it replaced. Expanding it restores $a,b$ at every replacement; induction over the merge rounds restores the initial base-symbol stream exactly. If that stream losslessly represented normalized text, $\operatorname{detok}$ still recovers it; if an upstream step had already erased distinctions, the merge invariant cannot recover them. $\qquad\blacksquare$
 </Theorem>
 
@@ -175,15 +178,15 @@ A **modality** is a pair $(\mathcal U, \Emb)$ of a **unit space** $\mathcal U$ a
 $$
 \hat{\mathbf X} \defeq \big(\Emb(u_1);\,\Emb(u_2);\,\dots;\,\Emb(u_n)\big)\in\R^{n\times d}.
 $$
-The transformer core acts on $\hat{\mathbf X}$ alone; the modality is confined to the choice of $(\mathcal U,\Emb)$. Token embedding (<XRef id="def-token-embedding" />) is the instance $\mathcal U=\mathcal V$, $\Emb(x)=\mathbf E[x,:]=\mathbf e_x^\top\mathbf E$.
+The transformer core acts on $\hat{\mathbf X}$ alone; the modality is confined to the choice of $(\mathcal U,\Emb)$. Token embedding (<XRef id="def-token-embedding" />) is the instance $\mathcal U=\mathcal V$, $\Emb(x)=\mathbf E[x,:]=\mathbf e_x\mathbf E$.
 </Theorem>
 
-<MarginNote variant="pattern" label="One linear form">Token lookup is patch projection on a one-hot input: $\mathbf e_x^\top\mathbf E$ versus $\operatorname{vec}(\mathbf u)^\top\mathbf W_{\text{patch}}$ — the same map, a dense input in place of a one-hot.</MarginNote>
+<MarginNote variant="pattern" label="One linear form">Token lookup is patch projection on a one-hot input: $\mathbf e_x\mathbf E$ versus $\operatorname{vec}(\mathbf u)\mathbf W_{\text{patch}}$ — the same row-vector map, a dense input in place of a one-hot.</MarginNote>
 
 <Theorem kind="definition" name="Patch embedding (ViT front-end)" id="def-patch-embedding">
 An image $\mathbf I\in\R^{H\times W\times c}$ with $p\mid H$ and $p\mid W$ is partitioned into a grid of $H_p\times W_p$ non-overlapping $p\times p$ patches, $H_p=H/p$, $W_p=W/p$, giving $n=H_pW_p$ units. The unit space is $\mathcal U=\R^{p\times p\times c}$ and the embedding is a linear projection of the flattened patch,
 $$
-\Emb(\mathbf u_{ab}) \defeq \operatorname{vec}(\mathbf u_{ab})^\top\,\mathbf W_{\text{patch}},
+\Emb(\mathbf u_{ab}) \defeq \operatorname{vec}(\mathbf u_{ab})\,\mathbf W_{\text{patch}},
 \qquad \mathbf W_{\text{patch}}\in\R^{p^2c\times d},
 $$
 for grid coordinate $(a,b)$; the $n$ patch vectors, in raster order, form $\hat{\mathbf X}\in\R^{n\times d}$.<Sidenote>The Vision Transformer front-end <Cite key="dosovitskiy2021vit" />.</Sidenote>
@@ -192,7 +195,7 @@ for grid coordinate $(a,b)$; the $n$ patch vectors, in raster order, form $\hat{
 <Theorem kind="definition" name="Codebook (discrete visual) embedding" id="def-codebook-embedding">
 A **codebook** is a matrix $\mathbf C\in\R^{K\times d}$ of $K$ learned codes. With unit space $\mathcal U=\{1,\dots,K\}$, the embedding is the row lookup
 $$
-\Emb(z) \defeq \mathbf C[z,:] = \mathbf e_z^\top\mathbf C,
+\Emb(z) \defeq \mathbf C[z,:] = \mathbf e_z\mathbf C,
 $$
 **algebraically identical** to the token lookup of <XRef id="def-token-embedding" />, with $\mathbf C$ in the role of $\mathbf E$. Image tokens produced by a learned discrete autoencoder (a later chapter) are embedded by exactly the text pathway.<Sidenote>Discrete visual tokens via vector quantization <Cite key="vandenoord2017vqvae" />.</Sidenote>
 </Theorem>
@@ -216,7 +219,7 @@ Two facts assemble the claim: the windows tile the image, and one window is one 
 $$
 \langle \mathbf K[:,:,:,j],\,\mathbf u_{ab}\rangle_F = \sum_{r,s,e}\mathbf K[r,s,e,j]\,\mathbf u_{ab}[r,s,e].
 $$
-By construction $\mathbf K[:,:,:,j]$ is the reshape of column $j$ of $\mathbf W_{\text{patch}}$, and the reshape and $\operatorname{vec}$ share an index order, so this sum equals $\operatorname{vec}(\mathbf u_{ab})^\top\mathbf W_{\text{patch}}[:,j] = \Emb(\mathbf u_{ab})_j$. The windows tile the image, so the maps agree on every patch. $\qquad\blacksquare$
+By construction $\mathbf K[:,:,:,j]$ is the reshape of column $j$ of $\mathbf W_{\text{patch}}$, and the reshape and $\operatorname{vec}$ share an index order, so this sum equals $\operatorname{vec}(\mathbf u_{ab})\mathbf W_{\text{patch}}[:,j] = \Emb(\mathbf u_{ab})_j$. The windows tile the image, so the maps agree on every patch. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="tip" label="Why it's not new">Patchification is the degenerate convolution where stride equals kernel: the windows do not overlap, so the one shared linear map $\mathbf W_{\text{patch}}$ is applied to each patch independently, with no cross-patch mixing.</MarginNote>
@@ -262,7 +265,8 @@ We now prove the two properties. The first — that a positional shift acts as a
 <Theorem kind="theorem" name="Relative position is a fixed rotation" id="thm-pe-rotation">
 For any fixed offset $k \in \Z$ there is a block-diagonal matrix $\mathbf M_k \in \R^{d\times d}$, depending on $k$ but not on $t$, such that
 $$
-\operatorname{PE}(t + k) = \operatorname{PE}(t)\,\mathbf M_k^\top \qquad \text{for all } t.
+\operatorname{PE}(t + k) = \operatorname{PE}(t)\,\mathbf M_k^\top
+\qquad \text{for every }t\in\Z_{\ge0}\text{ with }t+k\in\Z_{\ge0}.
 $$
 Here $\mathbf M_k = \operatorname{diag}\!\big(\mathbf R_0(k), \mathbf R_1(k), \dots, \mathbf R_{d/2-1}(k)\big)$, and each $2\times 2$ block is the rotation
 $$
@@ -299,7 +303,7 @@ $$
 
 <MarginNote variant="pattern" label="Relative, not absolute">$\mathbf M_k$ depends only on the offset $k$, not on $t$ — which is exactly what makes sinusoidal PE encode *relative* position.</MarginNote>
 
-A consequence used by attention: the inner product $\operatorname{PE}(t)\cdot\operatorname{PE}(t+k)$ depends only on $k$, not on $t$. Each pair contributes $\sin(\omega_i t)\sin(\omega_i(t+k)) + \cos(\omega_i t)\cos(\omega_i(t+k)) = \cos(\omega_i k)$ by the same addition identity, so the model can read relative position off a linear function of the encodings, with no explicit subtraction of positions.
+A consequence used by attention: whenever $t,t+k\in\Z_{\ge0}$, the inner product $\operatorname{PE}(t)\cdot\operatorname{PE}(t+k)$ depends only on $k$, not on $t$. Each pair contributes $\sin(\omega_i t)\sin(\omega_i(t+k)) + \cos(\omega_i t)\cos(\omega_i(t+k)) = \cos(\omega_i k)$ by the same addition identity, so the model can read relative position off a linear function of the encodings, with no explicit subtraction of positions.
 
 <Theorem kind="theorem" name="Collision-free window" id="thm-pe-collision">
 For any two distinct positions $t \ne t'$ with
@@ -330,7 +334,7 @@ This is a *guaranteed* lower bound from one pair, not the exact period of the fu
 A one-dimensional sequence index generalizes to a grid coordinate $(a,b)$ with no new abstraction. Images need it: the patch embedding of <XRef id="def-patch-embedding" /> lays patches out in raster order, but a patch's neighbors above and below are as relevant as those left and right. We spend half the channels on the row and half on the column, and the relative-position law of <XRef id="thm-pe-rotation" /> holds on each half.
 
 <Theorem kind="definition" name="Axial (factorized) 2D sinusoidal PE" id="def-pe-2d">
-For a patch at grid coordinate $(a,b)$ and $d$ divisible by $4$, split the channels into a row half and a column half, each carrying the 1D sinusoidal encoding of <XRef id="def-sinusoidal-pe" /> on $d/2$ channels:
+For a patch at grid coordinate $(a,b)\in\Z_{\ge0}^2$ and $d$ divisible by $4$, split the channels into a row half and a column half, each carrying the 1D sinusoidal encoding of <XRef id="def-sinusoidal-pe" /> on $d/2$ channels:
 $$
 \operatorname{PE}_{\text{2D}}(a,b) \defeq \big(\,\operatorname{PE}(a),\ \operatorname{PE}(b)\,\big)\in\R^{d},
 $$
@@ -340,7 +344,7 @@ where each half uses the frequencies $\omega_i = 10000^{-2i/(d/2)}$ for $i=0,\do
 <MarginNote variant="pattern" label="Reuse, not re-derive">2D position is two copies of <XRef id="thm-pe-rotation" /> on orthogonal channel blocks — no new machinery.</MarginNote>
 
 <Theorem kind="theorem" name="Factorized 2D shift is a fixed block rotation" id="thm-pe-2d-shift">
-For any grid offset $(k,l)\in\Z^2$ there is a block-diagonal orthogonal matrix $\mathbf M_{k,l}=\operatorname{diag}\!\big(\mathbf M^{\text{row}}_k,\,\mathbf M^{\text{col}}_l\big)\in\R^{d\times d}$, independent of $(a,b)$, with
+For any grid offset $(k,l)\in\Z^2$ there is a block-diagonal orthogonal matrix $\mathbf M_{k,l}=\operatorname{diag}\!\big(\mathbf M^{\text{row}}_k,\,\mathbf M^{\text{col}}_l\big)\in\R^{d\times d}$, independent of $(a,b)$, such that whenever $a,b,a+k,b+l\in\Z_{\ge0}$,
 $$
 \operatorname{PE}_{\text{2D}}(a+k,\,b+l) = \operatorname{PE}_{\text{2D}}(a,b)\,\mathbf M_{k,l}^\top.
 $$
@@ -351,6 +355,8 @@ $$
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
+
 Concatenation makes the two halves act independently. Applying <XRef id="thm-pe-rotation" /> to the row half gives $\operatorname{PE}(a+k)=\operatorname{PE}(a)\,(\mathbf M^{\text{row}}_k)^\top$ and to the column half $\operatorname{PE}(b+l)=\operatorname{PE}(b)\,(\mathbf M^{\text{col}}_l)^\top$, each $\mathbf M$ being the block-diagonal rotation of its offset. Stacking the two independent blocks yields the block-diagonal $\mathbf M_{k,l}$, which depends only on $(k,l)$. For the inner product, the corollary of <XRef id="thm-pe-rotation" /> makes each frequency pair contribute $\cos(\omega_i\cdot\text{offset})$; summing over the row half and the column half gives the stated closed form. $\qquad\blacksquare$
 </Theorem>
 
@@ -375,7 +381,7 @@ Queries, keys, and each 2D rotation pair are **columns** in this subsection, so 
 </NotationOverride>
 
 <Theorem kind="definition" name="Rotary position embedding" id="def-rope">
-Given a query $\mathbf q \in \R^{d}$ at position $m$ and a key $\mathbf k \in \R^{d}$ at position $t$, RoPE applies a position-dependent rotation to each $2$D subspace before the dot product:
+Let $d$ be even. Given a query $\mathbf q \in \R^{d}$ at position $m\in\Z_{\ge0}$ and a key $\mathbf k \in \R^{d}$ at position $t\in\Z_{\ge0}$, RoPE applies a position-dependent rotation to each $2$D subspace before the dot product:
 $$
 f(\mathbf q, m) \defeq \mathbf\Theta(m)\,\mathbf q,
 \qquad
@@ -417,7 +423,11 @@ $$
 </Theorem>
 
 <Theorem kind="remark" name="Complex-number viewpoint" id="rem-rope-complex">
-RoPE is cleanest in $\mathbb C^{\,d/2}$. Pair adjacent coordinates into $z_i = x_{2i} + \mathrm i\, x_{2i+1}$; the rotation $\mathbf R(\theta_i t)$ becomes multiplication by $e^{\mathrm i\theta_i t}$, so $f(\mathbf q, m)_i = q_i\, e^{\mathrm i\theta_i m}$ and $f(\mathbf k, t)_i = k_i\, e^{\mathrm i\theta_i t}$. The (Hermitian) dot product is then $\sum_i \overline{q_i}\,k_i\, e^{\mathrm i\theta_i(t-m)}$, manifestly a function of $t - m$. This is also how RoPE is implemented: an entrywise complex multiply costs $O(d)$, not the $O(d^2)$ of a dense matrix product.
+RoPE is cleanest in $\mathbb C^{\,d/2}$. Pair adjacent coordinates into $z_i = x_{2i} + \mathrm i\, x_{2i+1}$; the rotation $\mathbf R(\theta_i t)$ becomes multiplication by $e^{\mathrm i\theta_i t}$, so $f(\mathbf q, m)_i = q_i\, e^{\mathrm i\theta_i m}$ and $f(\mathbf k, t)_i = k_i\, e^{\mathrm i\theta_i t}$. The complex Hermitian inner product is $\sum_i \overline{q_i}\,k_i\, e^{\mathrm i\theta_i(t-m)}$, while the original real-vector Euclidean dot product is its real part,
+$$
+\operatorname{Re}\sum_i \overline{q_i}\,k_i\,e^{\mathrm i\theta_i(t-m)}.
+$$
+Both are manifestly functions of $t-m$. This is also how RoPE is implemented: an entrywise complex multiply costs $O(d)$, not the $O(d^2)$ of a dense matrix product.
 </Theorem>
 
 <Theorem kind="remark" name="Sinusoidal PE versus RoPE" id="rem-pe-vs-rope">
@@ -477,7 +487,7 @@ exactly the first pair of $\operatorname{PE}(1)$. This verifies $\operatorname{P
 
 </SolutionBox>
 
-**Exercise 1.3 (Prove).** Show that the inner product $\operatorname{PE}(t)\cdot\operatorname{PE}(t+k)$ depends only on the offset $k$, not on $t$, and give its closed form as a sum over frequency pairs.
+**Exercise 1.3 (Prove).** For $t,t+k\in\Z_{\ge0}$, show that the inner product $\operatorname{PE}(t)\cdot\operatorname{PE}(t+k)$ depends only on the offset $k$, not on $t$, and give its closed form as a sum over frequency pairs.
 
 <SolutionBox>
 
@@ -511,9 +521,9 @@ Each diagonal block of $\mathbf\Theta(\cdot)$ is $\mathbf R(\theta_i\,\cdot)$. B
 
 Set the flattened-patch dimension to the vocabulary size, $p^2 c = \lvert\mathcal V\rvert$, and take $\mathbf W_{\text{patch}} = \mathbf E\in\R^{\lvert\mathcal V\rvert\times d}$. For token $x$, feed the patch whose flattening is the one-hot $\mathbf e_x$ (a "pixel" array that is $1$ at flat index $x$ and $0$ elsewhere). Then, by <XRef id="def-patch-embedding" />,
 $$
-\Emb(\mathbf u) = \operatorname{vec}(\mathbf u)^\top\mathbf W_{\text{patch}} = \mathbf e_x^\top\mathbf E = \mathbf E[x,:],
+\Emb(\mathbf u) = \operatorname{vec}(\mathbf u)\mathbf W_{\text{patch}} = \mathbf e_x\mathbf E = \mathbf E[x,:],
 $$
-the token embedding of <XRef id="def-token-embedding" />. Token lookup is thus patch projection restricted to one-hot inputs; a general image patch is a *dense* input to the very same linear map $\operatorname{vec}(\cdot)^\top\mathbf W$. $\qquad\blacksquare$
+the token embedding of <XRef id="def-token-embedding" />. Token lookup is thus patch projection restricted to one-hot inputs; a general image patch is a *dense* input to the very same row-vector linear map $\operatorname{vec}(\cdot)\mathbf W$. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -530,13 +540,13 @@ $$
 $$
 For $d = 3$, $\mathbf W_{\text{patch}}\in\R^{4\times 3}$ and $\hat{\mathbf X}\in\R^{4\times 3}$. The kernel reshapes each column $\mathbf W_{\text{patch}}[:,j] = (w_{1j},w_{2j},w_{3j},w_{4j})$ in row-major order to $\mathbf K[:,:,:,j] = \left(\begin{smallmatrix} w_{1j} & w_{2j}\\ w_{3j} & w_{4j}\end{smallmatrix}\right)$. Then, for patch $\mathbf u_{00}$ with $\operatorname{vec}(\mathbf u_{00}) = (I_{00},I_{01},I_{10},I_{11})$,
 $$
-\langle \mathbf K[:,:,:,j], \mathbf u_{00}\rangle_F = w_{1j}I_{00} + w_{2j}I_{01} + w_{3j}I_{10} + w_{4j}I_{11} = \operatorname{vec}(\mathbf u_{00})^\top\mathbf W_{\text{patch}}[:,j] = \Emb(\mathbf u_{00})_j,
+\langle \mathbf K[:,:,:,j], \mathbf u_{00}\rangle_F = w_{1j}I_{00} + w_{2j}I_{01} + w_{3j}I_{10} + w_{4j}I_{11} = \operatorname{vec}(\mathbf u_{00})\mathbf W_{\text{patch}}[:,j] = \Emb(\mathbf u_{00})_j,
 $$
 matching <XRef id="thm-patch-conv" />. $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 1.8 (Prove).** Deduce the factorized 2D shift law (<XRef id="thm-pe-2d-shift" />) from the 1D shift law (<XRef id="thm-pe-rotation" />) by applying it to each channel half, and write out the closed form of the 2D inner product.
+**Exercise 1.8 (Prove).** For offsets that keep both shifted coordinates nonnegative, deduce the factorized 2D shift law (<XRef id="thm-pe-2d-shift" />) from the 1D shift law (<XRef id="thm-pe-rotation" />) by applying it to each channel half, and write out the closed form of the 2D inner product.
 
 <SolutionBox>
 

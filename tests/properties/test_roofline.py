@@ -27,7 +27,7 @@ def ridge(F: float, B: float) -> float:
 
 class RooflineTests(unittest.TestCase):
     def test_ridge_is_the_crossover(self):
-        """At I = I* the two clocks are equal; the max has either argument."""
+        """def-cost-eq makes the two clocks equal at I = I*."""
         F, B = 3.12e14, 1.5e12
         I_star = ridge(F, B)
         beta = 1e6

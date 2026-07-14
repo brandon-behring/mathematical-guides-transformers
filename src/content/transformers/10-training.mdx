@@ -19,7 +19,7 @@ los:
   - id: lo-language-model-loss-computation
     statement: "Compute the cross-entropy loss for a small example and compare it with the label-smoothed loss."
   - id: lo-captioning-as-conditional-language-modeling
-    statement: "Express image captioning as the existing autoregressive cross-entropy loss with an enlarged conditioning set, reusing the q − y gradient, teacher forcing, and label smoothing unchanged."
+    statement: "Define image captioning as the existing autoregressive cross-entropy loss with an enlarged conditioning set, reusing the q − y gradient, teacher forcing, and label smoothing unchanged."
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
@@ -75,11 +75,17 @@ where $H$ and $D_{\mathrm{KL}}$ are taken over length-$T$ sequences (the loss ca
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 This is the sequence-level instance of the cross-entropy decomposition (<XRef id="prop-ce-kl" />). Each per-token loss $-\log p_\theta(x_t\mid x_{<t})$ is the cross-entropy $H(\mathbf e_{x_t}, \mathbf q_t)$ (<XRef id="def-ce-loss" />). Taking the expectation over $p_{\text{data}}$, summing over positions (the chain rule factorizes sequence-level cross-entropy into the per-position conditionals), and carrying the loss's $1/T$ average, the decomposition gives
 $$
 \E[\mathcal L] = \tfrac{1}{T}\Big(H(p_{\text{data}}) + D_{\mathrm{KL}}(p_{\text{data}} \,\|\, p_\theta)\Big),
 $$
-in which the entropy term is a property of the data alone (<XRef id="prop-ce-kl" />). Its gradient in $\theta$ is therefore zero, so $\nabla_\theta \E[\mathcal L] = \nabla_\theta D_{\mathrm{KL}}(p_{\text{data}}\,\|\,p_\theta)$: the two objectives share the same minimizer. $\qquad\blacksquare$
+in which the entropy term is a property of the data alone (<XRef id="prop-ce-kl" />). Its gradient in $\theta$ is therefore zero, so
+$$
+\nabla_\theta \E[\mathcal L]
+=\frac1T\nabla_\theta D_{\mathrm{KL}}(p_{\text{data}}\,\|\,p_\theta).
+$$
+The positive constant $1/T$ rescales the gradient without changing its zeros or minimizers, so the two objectives share the same minimizer. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="cross-ref" label="From loss to allocation">Chapter 13 treats this held-out next-token loss as a measured response surface over parameter count and seen training tokens, then derives its compute-optimal continuous allocation (<XRef id="thm-compute-optimal-allocation" />).</MarginNote>
@@ -204,7 +210,7 @@ The decomposition explains label smoothing through the logit gradient (<XRef id=
 The optimizer needs a step size that is small while its own statistics are unreliable, then large enough to make progress, then decaying for convergence. The original transformer encodes exactly this shape in a closed-form schedule: a linear ramp up to a peak at step $t_{\text{warmup}}$, followed by an inverse-square-root decay.
 
 <Theorem kind="definition" name="Warmup with inverse-square-root decay" id="def-lr-schedule">
-The original transformer <Cite key="vaswani2017attention" /> sets the learning rate at training step $t$ to
+For positive integer training step $t\in\{1,2,\dots\}$ and positive integer warmup length $t_{\text{warmup}}\in\{1,2,\dots\}$, the original transformer <Cite key="vaswani2017attention" /> sets the learning rate to
 $$
 \operatorname{lr}(t) = d^{-1/2}\cdot \min\!\big(t^{-1/2},\; t\cdot t_{\text{warmup}}^{-3/2}\big).
 $$

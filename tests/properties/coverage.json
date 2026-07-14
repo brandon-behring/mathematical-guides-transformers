@@ -4,7 +4,7 @@
     {
       "id": "prop-bpe-merge-accounting",
       "test": "tests/properties/test_bpe.py",
-      "statementSha256": "40df3624d945eb0e86d66f620fd6db71f8d92a54d80865b1e0b63c04a4edba5a"
+      "statementSha256": "c4fb3385ff430b5514470fe8a4a1eaee94aa380b602658e7ddfe899e53ea1b84"
     },
     {
       "id": "thm-associative-lookup",
@@ -24,7 +24,7 @@
     {
       "id": "prop-linear-attention-gd",
       "test": "tests/properties/test_in_context_learning.py",
-      "statementSha256": "167b7759533e6ef4fe5455eb93efe127c0b96f39ae76217444dfda2db6ec8c91"
+      "statementSha256": "f50722719617330c0cf576bbd6053aaa834c77e3bd43121e0dd0fde23eb8c6f4"
     },
     {
       "id": "def-cost-eq",
@@ -230,6 +230,236 @@
       "id": "prop-optimal-excess-loss-rate",
       "test": "tests/properties/test_scaling_laws.py",
       "statementSha256": "1494d0d6b5ef65113b04a701239c214c1a1a95fc287e5a23df5f21caffef3eb5"
+    },
+    {
+      "id": "def-bpe",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "fd843812641d0bb0f1a801c59594b080144a4b7403e338a6e87c3cfd17c96973"
+    },
+    {
+      "id": "def-causal-mask",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "2ad54d9e59bbeed68325210d5107c913f9ccc778bfe7878c4d27ebccd7538153"
+    },
+    {
+      "id": "def-cross-attention",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "489e2293c2d18ff94c410dfe15e985e457a860c4a8e8485231b7cf6e529a2803"
+    },
+    {
+      "id": "def-cross-entropy",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "3dbae55718aa74c487e3044ab1ee84435022eaf9dd2ec18ef32cc39a5f8e9173"
+    },
+    {
+      "id": "def-decoder-block",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "ebd2f9b46c269b577fd9a3838bdc27fadbd9bb15ffce63573c97c4789200a3f2"
+    },
+    {
+      "id": "def-kl",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "c34cadf179cd839cd07567d9efed7c36fe30759cf73a911932c207d4d51a50b3"
+    },
+    {
+      "id": "def-residual",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "6a3855f8855667ecf82762651d6d9a4fad5dba8f2bd01275ff8b0528d7624105"
+    },
+    {
+      "id": "def-rope",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "38819400e19fea800b15d95d8647a26985a5f637a3086187a42c3f856b7bc2e9"
+    },
+    {
+      "id": "prop-ce-kl",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "51faced3f77a9b4ccf77a77d3f9531939f8e74e27814d89d1b309812cad0c0b8"
+    },
+    {
+      "id": "prop-complexity",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "a6f8c115adc6a8b137058e51b09dfd8ec982dca0a51fb4351e6b9b982018a581"
+    },
+    {
+      "id": "prop-scan",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "083eb8db164222d6be02645f4e75950f15b9c14cbccbb04a652ddb54a6e0f84f"
+    },
+    {
+      "id": "prop-softmax-jacobian",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "6b651c4dc1d97ac651cd260be0603b9a7d3455a24c21a8d46be4e818c14dd1be"
+    },
+    {
+      "id": "rem-rope-complex",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "4c429a6f0a231db8e5c5e0caab580bc57d5d2dd2a236b9b2eb9df6b6f449f6b5"
+    },
+    {
+      "id": "thm-pe-2d-shift",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "a5fa6031908f0a4cfcc1e8ca73f46c3259bf9daaa3edd78cb66a77a673a17445"
+    },
+    {
+      "id": "thm-pe-rotation",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "6f4104635966318ddf4b19f0119d041651ab457bdd5ad2dee10870e42032c3be"
+    },
+    {
+      "id": "thm-rope-relative",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "b02195dd348e1a3ed107e044c6a4dba5cd4ad94013e2a221d8c3dd7afcf976e3"
+    },
+    {
+      "id": "thm-universal-approx",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "5877d7660d544150699054fe1bedb722cf8bfc0e8f084ba4a2264699c0eeb55a"
+    },
+    {
+      "id": "thm-variance-preservation",
+      "test": "tests/properties/test_proof_audit_foundations.py",
+      "statementSha256": "84c02b3b6db73d1a83a31dbee5aa6d5fbf58cb2c5de1ab8bd9d161f46e52a76d"
+    },
+    {
+      "id": "def-affine-quant",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "e87930eed2bd1c0cdc70d449fead3fc0ff4d3bd392f3ebf5ca5ad8c244a0c13d"
+    },
+    {
+      "id": "def-bidirectional-scan",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "c29465b395111a81232906a5dfb2311bdb8b58808dd1d733096389d954e06e12"
+    },
+    {
+      "id": "def-cosine-temp",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "e5cf4653649fb1c4052dea717978f807b567de1ef82ed5488057b09fd0eece5d"
+    },
+    {
+      "id": "def-lr-schedule",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "f91b63f355b26009c84293fe61eaa7181499e66d6f05b1bd3b505b647fe24f8a"
+    },
+    {
+      "id": "def-ood-score",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "d32ec01253ce078d3fd01b528aaf254ff290a8adb5188174c4dc427a7dc71884"
+    },
+    {
+      "id": "def-spec-decode",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "cec1d0e789dc0cbfc82b3d855f955c4325b21c8d6c1929d5d718ad5bb152c44f"
+    },
+    {
+      "id": "prop-ce-kl-training",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "df3cf7cd2e6226df69c2f4c91806322b324f83788c0e0b80a95b42ccc2cb1404"
+    },
+    {
+      "id": "prop-lora-savings",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "7fd5a15837b8a69e0a26e5a0f1dc93d5886857cd0445b422138e567764ab2ea3"
+    },
+    {
+      "id": "prop-quant-error",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "9e96bd4b8b7a9265cd7278a5bb3337f11771e697e3f8b6ddb3796968c253f2a8"
+    },
+    {
+      "id": "prop-spec-speedup",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "270f4fe1b0a38673fdda8894b1886936009171069e3373e783b3db85cee40587"
+    },
+    {
+      "id": "prop-zero-memory",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "c1b4985e8ecbf21da28b082d2aa7f11f4399a64157a8dd3c136b03ab8b105d38"
+    },
+    {
+      "id": "rem-bf16",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "68df134f445361b1d787bbd77838cbde538e68f8609fd63a6fbf9614e2c6cc11"
+    },
+    {
+      "id": "thm-checkpointing",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "957016218d3c5b144749dbb66a0b7da1d17dff686a8a25e70b4cb1ae3015a58c"
+    },
+    {
+      "id": "thm-online-softmax-exact",
+      "test": "tests/properties/test_proof_audit_optimization.py",
+      "statementSha256": "3de294f90bcedcd3f80ca7829052de0df357dea45f48313ea2fb4fbe5778e89e"
+    },
+    {
+      "id": "def-mixed-mask",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "e1fa8893667420861976e3a86f2e767af0bce882ce07a160646fbcf741fc60a5"
+    },
+    {
+      "id": "def-resampler",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "5078044bd8c85104a555b9ab2f18b31fde7ebb80eee8f1a0c20604e287eb16a9"
+    },
+    {
+      "id": "def-retrieval",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "c6ef29ab7682db183efe955c961f87ca570d124fb54913aeddfb58e6bb68baf2"
+    },
+    {
+      "id": "prop-connector-data-processing-bound",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "b77120c458988326dce31d74a201dcc69a1b39a001cd99e163a67ae9dc348857"
+    },
+    {
+      "id": "prop-decode-state",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "e666d93ed84ff90cb3621391ad93d060cdc43507ee6a4d53e16e602f2773343d"
+    },
+    {
+      "id": "prop-mlstm-gated-state",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "9050838dfbc59e6192edb8d97b88724d3fcf7cfec8aa21eacd6e69f62a9e58dc"
+    },
+    {
+      "id": "prop-perplexity-kl",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "5f1e8c67d6f5811396e2d8aae70eb0abaa54eaa27b07cd176cf1d94e9e7cc0d2"
+    },
+    {
+      "id": "prop-recall-accuracy",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "81c46dfae6298c7b20748d2e792bfea06a219f5ca521f35284788a66bc35bfd4"
+    },
+    {
+      "id": "prop-resampler-convex",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "0419ec5f1e48f69cf0d92b3afa09dbe16187be55f0263e3e4f555e0531bae02d"
+    },
+    {
+      "id": "prop-resampler-cost",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "70534d4bd23b5d50047ae6e9e60f065793ef45822d3fa5bc8b33478af64b0164"
+    },
+    {
+      "id": "prop-selective-scan",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "88cdb118b30b44933a554ec0b907764d0e0b5bfee301bda1c45dc657d135639f"
+    },
+    {
+      "id": "prop-vq-gradient",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "5c50bf1bcbfa3f9ffb1b72f204601ed6ef38c9b0330f17c28e0551383357e13c"
+    },
+    {
+      "id": "thm-codebook-kmeans",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "87a14ca0db0c48b0e33ec99b89292b81491775f1c2610a189f1eaca2b59c71c1"
+    },
+    {
+      "id": "thm-semiseparable",
+      "test": "tests/properties/test_proof_audit_multimodal.py",
+      "statementSha256": "3359bb4323d03e81829aaa77c851ed3f6c9636d4718f8c21b8180322f04b0ab1"
     }
   ]
 }

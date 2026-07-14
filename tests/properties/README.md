@@ -1,11 +1,12 @@
-# Property tests — numeric guards for the guide's quantitative claims
+# Property tests — executable guards for the guide's formal claims
 
-Pure-Python (stdlib-only) executable re-derivations of the guide's load-bearing
-cost formulas. Each test file re-derives a proposition's arithmetic independently
-and asserts the closed forms, limiting cases, and cross-chapter consistencies the
-prose claims. A failing test means the prose and the math have drifted apart.
+Pure-Python (stdlib-only) executable re-derivations and adversarial checks for
+the guide's load-bearing formulas, domains, and boundary cases. Each test file
+independently asserts the closed forms, limiting cases, or cross-chapter
+consistencies the prose claims. A failing test means the prose and the math have
+drifted apart.
 
-**Current scope:** eleven quantitative families: BPE merge accounting and
+**Current scope:** the 138-test suite covers BPE merge accounting and
 base-stream invariance; associative retrieval, finite-softmax induction, and
 the controlled linear-attention/gradient-step identity; KL-regularized reward
 optimization, Bradley–Terry/DPO substitution, gradients, and identification
@@ -20,13 +21,26 @@ sparse-attention edge counts, receptive fields, normalization support, and
 native branch budgets; SSD chunk-cost balance; decoding transformations
 (temperature, top-$k$, and nucleus support and renormalization); and
 LayerNorm/RMSNorm Jacobians and norm bounds.
-The proof audit later extends this suite; it does not recreate it.
+
+The terminal proof audit adds 38 adversarial guards across three partitions:
+support-safe KL and causal-mask boundaries, positional/RoPE domains, residual
+identity, general-width attention typing and complexity, and $L^p$
+equivariance; per-token KL scaling, floating-point ranges, LoRA denominators,
+integer checkpointing, ZeRO wire traffic, quantization, FlashAttention traffic,
+online-softmax exactness, and exact speculative sampling; and dense recurrent
+cost, semiseparable rank, mLSTM readout scope, fixed-window hybrid state,
+projected resampler hulls, conditional data processing, VQ gradient routing and
+empty cells,
+generated-image mask causality, retrieval ties, and per-token perplexity.
 
 **Design.** Tests are self-contained executable assurance specifications, not a
 parser for MDX mathematics. `tests/properties/coverage.json` maps each guarded
-claim to its test and a normalized statement hash. CI therefore forces an
-explicit coverage review whenever guarded prose changes; reviewers still verify
-that the mathematical statement and executable specification agree.
+claim to its test and a normalized statement hash. The checker requires each ID
+inside an executable test function, rather than accepting module prose or an
+unused inventory tuple. CI therefore forces an explicit coverage review
+whenever guarded prose changes; 92 theorem/definition IDs are currently mapped.
+Reviewers still verify that each mathematical statement and executable
+specification agree.
 
 **Run:**
 

@@ -290,7 +290,7 @@ class VanillaInductionTests(unittest.TestCase):
                 self.assertLessEqual(error, 2.0 * (1.0 - matching_mass) + 1e-14)
 
     def test_unique_match_trace_is_soft_at_finite_scale(self):
-        """thm-induction-construction gives the exact mass and error certificate."""
+        """def-vanilla-induction-map and thm-induction-construction give the exact certificate."""
         tokens = ["A", "B", "C", "A"]
         basis = token_basis(tokens)
         output = finite_soft_induction(tokens, math.log(9.0))

@@ -74,7 +74,7 @@ class KVCacheTests(unittest.TestCase):
         self.assertEqual(latent, [512, 512, 512])
 
     def test_strict_selection_need_not_preserve_dense_attention(self):
-        """Reusing retained rows exactly does not make omitted rows irrelevant."""
+        """rem-kv-selection-exactness: retained reuse does not make omissions exact."""
         scores = [0.0, 0.0]
         values = [0.0, 2.0]
         dense = selected_attention(scores, values, [0, 1])
@@ -85,7 +85,7 @@ class KVCacheTests(unittest.TestCase):
         self.assertEqual(selected_attention(scores, values, [0, 1]), dense)
 
     def test_heterogeneous_layers_sum_their_cache_widths(self):
-        """The general model formula sums widths instead of multiplying by N."""
+        """prop-kv-memory sums heterogeneous widths instead of multiplying by N."""
         widths = [1_024, 512, 256]
         self.assertEqual(
             heterogeneous_cache_bytes(2_048, 2, widths),
@@ -93,7 +93,7 @@ class KVCacheTests(unittest.TestCase):
         )
 
     def test_general_unequal_key_and_value_widths(self):
-        """The base formula does not assume equal K/V widths or head counts."""
+        """prop-kv-cache does not assume equal K/V widths or head counts."""
         h_k, d_k = 3, 64
         h_v, d_v = 2, 96
         self.assertEqual(cache_width(h_k, d_k, h_v, d_v), 384)

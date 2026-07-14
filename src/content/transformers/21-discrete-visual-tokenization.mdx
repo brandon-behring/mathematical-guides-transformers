@@ -109,6 +109,7 @@ cover $\R^{d_c}$ and overlap only where nearest codes tie; the deterministic tie
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 By definition $q(\mathbf z)=\arg\min_{\mathbf e\in\mathcal C}\norm{\mathbf z-\mathbf e}$, which is the nearest-point (Euclidean) projection onto the finite set $\mathcal C$; the set of points for which $\mathbf e_k$ is a nearest code is exactly $R_k$. The regions cover the space. They can overlap only when multiple codes attain the same minimum, and the smallest-index rule assigns each such point to one output. Fix $\mathbf z$ off that boundary. Its nearest code is unique, so strict inequalities persist on a neighborhood; $q$ is constant there and every partial derivative vanishes. If two nearest codes $\mathbf e_k,\mathbf e_j$ tie, then $\mathbf z$ lies on their bisector $\{\norm{\mathbf z-\mathbf e_k}=\norm{\mathbf z-\mathbf e_j}\}$, an affine hyperplane of dimension $d_c-1$. The Voronoi boundary is contained in the finite union of these hyperplanes, hence has measure zero. Therefore the Jacobian is the zero matrix almost everywhere. $\qquad\blacksquare$
 </Theorem>
 
@@ -140,6 +141,7 @@ For the STE of <XRef id="def-ste" />:
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 (1) In the forward pass $\sg$ is the identity, so $\mathbf z_q=\mathbf z_e+\big(q_L(\mathbf z_e)-\mathbf z_e\big)=q_L(\mathbf z_e)$. (2) Differentiate $\mathbf z_q=\mathbf z_e+\sg[q_L(\mathbf z_e)-\mathbf z_e]$ with respect to the vectorization of $\mathbf z_e$. The first term contributes $\mathbf I$. The second term is a stop-gradient, whose backward Jacobian is $\mathbf 0$ by definition — this discards the row-wise quantizer's useless true Jacobian together with the $-\mathbf I$ inside the bracket. Hence $\partial\mathbf z_q/\partial\mathbf z_e=\mathbf I+\mathbf 0=\mathbf I$, and by the chain rule $\partial\mathcal L/\partial\mathbf z_e=\partial\mathcal L/\partial\mathbf z_q$. $\qquad\blacksquare$
 </Theorem>
 
@@ -162,7 +164,7 @@ with **commitment weight** $\beta>0$. The codebook and commitment terms are the 
 </Theorem>
 
 <Theorem kind="proposition" name="The VQ loss routes three gradients" id="prop-vq-gradient">
-Away from assignment boundaries—equivalently, holding the discrete assignments fixed locally—the three terms of <XRef id="def-vq-loss" /> produce three separately routed gradient contributions:
+Away from assignment boundaries—equivalently, holding the discrete assignments fixed locally—and at a point where the reconstruction loss composed with the decoder is differentiable with respect to $\mathbf z_q$ (or under the usual almost-everywhere derivative convention for piecewise-differentiable networks), the three terms of <XRef id="def-vq-loss" /> produce three separately routed gradient contributions:
 1. **Reconstruction → encoder.** $\partial\mathcal L_{\mathrm{rec}}/\partial\mathbf z_e = \partial\mathcal L_{\mathrm{rec}}/\partial\mathbf z_q$, copied through the STE (<XRef id="thm-ste-identity" />); it also trains the decoder $\Psi$.
 2. **Codebook → codes.** If $S_k=\{t:k^\star(\mathbf z_e^{(t)})=k\}$, then the codebook term has
    $$
@@ -174,6 +176,7 @@ Away from assignment boundaries—equivalently, holding the discrete assignments
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 (1) is <XRef id="thm-ste-identity" /> applied to $\mathcal L_{\mathrm{rec}}$, since $\mathbf z_q$ feeds the decoder and the STE Jacobian to $\mathbf z_e$ is the identity; the decoder parameters receive the ordinary reconstruction gradient. (2) Expand the Frobenius norm as $\sum_t\norm{\sg[\mathbf z_e^{(t)}]-\mathbf Z_{\mathcal C}^{(t)}}^2$. In the backward pass each $\sg[\mathbf z_e^{(t)}]$ is constant, so differentiation gives $2(\mathbf Z_{\mathcal C}^{(t)}-\mathbf z_e^{(t)})$ for the assigned code and zero for the encoder row. If several rows share a code, those gradients sum on the one shared parameter. (3) Symmetrically, expanding $\beta\norm{\mathbf z_e-\sg[\mathbf Z_{\mathcal C}]}_F^2$ gives rowwise encoder gradient $2\beta(\mathbf z_e^{(t)}-\mathbf Z_{\mathcal C}^{(t)})$ and no codebook gradient. Reconstruction and commitment both update the encoder, but as distinct additive contributions; only the two stop-gradient distance terms isolate codebook from encoder. $\qquad\blacksquare$
 </Theorem>
 
@@ -189,6 +192,7 @@ Alternating the assignment step ($i\mapsto k^\star(\mathbf z_e^{(i)})$, nearest 
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 For fixed assignments $S_k$, the objective separates over $k$, and for a nonempty cell the $k$-th block $\sum_{i\in S_k}\norm{\mathbf z_e^{(i)}-\mathbf e_k}^2$ is a sum of $|S_k|\ge 1$ convex quadratics in $\mathbf e_k$, with positive-definite Hessian $2|S_k|\mathbf I$. Its gradient is $\sum_{i\in S_k} 2(\mathbf e_k-\mathbf z_e^{(i)})$; setting it to zero gives $|S_k|\,\mathbf e_k=\sum_{i\in S_k}\mathbf z_e^{(i)}$, i.e. $\mathbf e_k^\star=\frac{1}{|S_k|}\sum_{i\in S_k}\mathbf z_e^{(i)}$, the centroid, which is the unique minimizer by strict convexity. This is the centroid (M-)step of Lloyd's algorithm; the Voronoi nearest-code rule of <XRef id="prop-voronoi" /> is its assignment (E-)step. A gradient step on the codebook term (clause 2 of <XRef id="prop-vq-gradient" />, $2(\mathbf e_k-\mathbf z_e^{(i)})$) moves $\mathbf e_k$ toward this centroid, so codebook learning is the stochastic/online form of k-means. $\qquad\blacksquare$
 </Theorem>
 
@@ -216,6 +220,7 @@ trained by the cross-entropy loss of <XRef id="def-ce-loss" /> (whose expectatio
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 The fixed deterministic map $x\mapsto \mathbf z=(\operatorname{idx}_{\mathcal C}\circ\Phi)(x)\in\{1,\dots,K\}^L$ pushes the image distribution forward to a distribution over index sequences on the finite alphabet $\mathcal V=\{1,\dots,K\}$. An autoregressive model over $\mathcal V^L$ is, by definition (<XRef id="def-autoregressive-lm" />), the chain-rule factorization $p_\theta(\mathbf z)=\prod_t p_\theta(z_t\mid z_{<t})$ with each conditional a softmax over $|\mathcal V|=K$ logits. The construction of the autoregressive loss uses only: (i) the chain rule, which is alphabet-agnostic; (ii) the softmax over the finite label set, here of size $K$; (iii) the identity that the *expected* loss over the data equals the data entropy plus $D_{\mathrm{KL}}(p_{\mathrm{data}}\,\|\,p_\theta)$, up to the $1/T$ average (<XRef id="prop-ce-kl-training" />), which references the alphabet only through the sum over its symbols; and (iv) teacher forcing (<XRef id="def-teacher-forcing" />), which conditions on ground-truth prefixes and is likewise indifferent to token meaning. None of (i)–(iv) mentions text, so each transfers unchanged under $\mathcal V\to\{1,\dots,K\}$. Sampling composes the learned autoregressive sampler with the fixed codebook lookup $\mathcal E_{\mathcal C}$ and decoder $\Psi$. This exactly models the pushed-forward code law and its decoded reconstruction law, not information the codec erased. $\qquad\blacksquare$
 </Theorem>
 
@@ -232,11 +237,12 @@ An index sequence of length $L$ over a codebook of size $K$ carries at most
 $$
 H(\mathbf z) \;\le\; L\log_2 K \quad\text{bits},
 $$
-with equality iff the codes are independent and uniformly distributed (uniform maximum from <XRef id="def-entropy" />; the joint-entropy subadditivity supplying the independence half is standard and taken as given). Consequently the image information recoverable from the code is at most $L\log_2 K$ bits (the bottleneck bound of <XRef id="prop-connector-data-processing-bound" /> with $\mathbf S=\mathbf z$), and two images sharing an index sequence are identical after decoding. Only a larger $K$ or $L$ can raise this **information-rate upper bound**; at fixed rate, a better encoder, codebook, or decoder can still reduce attained reconstruction distortion. Codebook size and code length are the rate knobs in a rate–distortion trade.
+with equality iff the codes are independent and uniformly distributed (uniform maximum from <XRef id="def-entropy" />; the joint-entropy subadditivity supplying the independence half is standard and taken as given). Consequently the image information recoverable from the code is at most $L\log_2 K$ bits (the bottleneck bound of <XRef id="prop-connector-data-processing-bound" /> with $\mathbf S=\mathbf z$ and no separate context, or fixed $C$), and two images sharing an index sequence are identical after decoding. Only a larger $K$ or $L$ can raise this **information-rate upper bound**; at fixed rate, a better encoder, codebook, or decoder can still reduce attained reconstruction distortion. Codebook size and code length are the rate knobs in a rate–distortion trade.
 </Theorem>
 
 <Theorem kind="proof">
-The entropy of a sequence of $L$ symbols satisfies $H(\mathbf z)\le\sum_{t=1}^L H(z_t)$ by subadditivity of joint entropy (standard; not proved in this guide), and each $H(z_t)\le\log_2 K$ because a distribution on $K$ outcomes has maximal entropy $\log_2 K$ at the uniform; equality throughout requires independence (for the first inequality) and uniform marginals (for the second), i.e. i.i.d. uniform codes. By <XRef id="prop-connector-data-processing-bound" /> with discrete bottleneck $\mathbf S=\mathbf z$, $I(X;\hat X)\le H(\mathbf z)\le L\log_2 K$. Finally, decoding is a function of $\mathbf z$ alone, so any two images with the same $\mathbf z$ map to the same $\hat x$. Their distinguishing information may already have been lost by a non-injective encoder, and additional latent distinctions can be collapsed by $q_L$; how much pixel-space error those losses induce depends on the encoder and decoder geometry, but *what the codec discarded cannot be recovered* by any prior over the codes. $\qquad\blacksquare$
+**Proof.**
+The entropy of a sequence of $L$ symbols satisfies $H(\mathbf z)\le\sum_{t=1}^L H(z_t)$ by subadditivity of joint entropy (standard; not proved in this guide), and each $H(z_t)\le\log_2 K$ because a distribution on $K$ outcomes has maximal entropy $\log_2 K$ at the uniform; equality throughout requires independence (for the first inequality) and uniform marginals (for the second), i.e. i.i.d. uniform codes. By <XRef id="prop-connector-data-processing-bound" /> with discrete bottleneck $\mathbf S=\mathbf z$ and $C$ absent (equivalently fixed), $I(X;\hat X)\le H(\mathbf z)\le L\log_2 K$. Finally, decoding is a function of $\mathbf z$ alone, so any two images with the same $\mathbf z$ map to the same $\hat x$. Their distinguishing information may already have been lost by a non-injective encoder, and additional latent distinctions can be collapsed by $q_L$; how much pixel-space error those losses induce depends on the encoder and decoder geometry, but *what the codec discarded cannot be recovered* by any prior over the codes. $\qquad\blacksquare$
 </Theorem>
 
 ## Exercises
@@ -274,11 +280,11 @@ For $t\in S_k$, the commitment summand is $\beta\norm{\mathbf z_e^{(t)}-\sg[\mat
 
 </SolutionBox>
 
-**Exercise 21.4 (Prove).** Prove the codebook-loss minimizer is the Voronoi-cell centroid (<XRef id="thm-codebook-kmeans" />), and identify the assignment and update steps with the two phases of Lloyd's algorithm.
+**Exercise 21.4 (Prove).** For each nonempty Voronoi cell, prove the codebook-loss minimizer is its centroid (<XRef id="thm-codebook-kmeans" />), and identify the assignment and update steps with the two phases of Lloyd's algorithm. What happens for an empty cell?
 
 <SolutionBox>
 
-For fixed assignments $S_k$, the codebook objective $\sum_{i\in S_k}\norm{\mathbf z_e^{(i)}-\mathbf e_k}^2$ is strictly convex in $\mathbf e_k$ (a sum of quadratics with positive-definite Hessian $2|S_k|\mathbf I$). Its gradient $\sum_{i\in S_k}2(\mathbf e_k-\mathbf z_e^{(i)})$ vanishes iff $\mathbf e_k=\frac{1}{|S_k|}\sum_{i\in S_k}\mathbf z_e^{(i)}$, the centroid, which is therefore the unique minimizer. The nearest-code assignment $i\mapsto k^\star(\mathbf z_e^{(i)})$ (<XRef id="prop-voronoi" />) is Lloyd's E-step (assign points to nearest centroid); the centroid update is Lloyd's M-step (recompute centroids as cluster means). Alternating them is k-means. $\qquad\blacksquare$
+For fixed assignments and a **nonempty** $S_k$, the codebook objective $\sum_{i\in S_k}\norm{\mathbf z_e^{(i)}-\mathbf e_k}^2$ is strictly convex in $\mathbf e_k$, with positive-definite Hessian $2|S_k|\mathbf I$. Its gradient $\sum_{i\in S_k}2(\mathbf e_k-\mathbf z_e^{(i)})$ vanishes iff $\mathbf e_k=\frac{1}{|S_k|}\sum_{i\in S_k}\mathbf z_e^{(i)}$, the unique centroid minimizer. If $S_k=\varnothing$, the sum is $0$ for every $\mathbf e_k$: there is no unique minimizer and the expression $1/|S_k|$ is undefined, so an implementation must leave, reinitialize, or otherwise handle that code. The nearest-code assignment $i\mapsto k^\star(\mathbf z_e^{(i)})$ (<XRef id="prop-voronoi" />) and the nonempty-cell centroid update are Lloyd's assignment and update phases. $\qquad\blacksquare$
 
 </SolutionBox>
 

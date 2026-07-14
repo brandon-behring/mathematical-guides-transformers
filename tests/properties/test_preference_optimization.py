@@ -278,7 +278,7 @@ def recover_scores_from_comparisons(
 
 class KLRegularizedPolicyTests(unittest.TestCase):
     def test_randomized_gibbs_gap_identity_and_normalization(self):
-        """thm-kl-regularized-policy-optimum's exact gap holds at pi_r."""
+        """def-kl-regularized-reward-objective and thm-kl-regularized-policy-optimum agree."""
         generator = random.Random(2026071301)
         for case in range(400):
             response_count = generator.randint(2, 12)
@@ -404,7 +404,7 @@ class KLRegularizedPolicyTests(unittest.TestCase):
 
 class DPOObjectiveTests(unittest.TestCase):
     def test_randomized_bradley_terry_substitution_equals_dpo(self):
-        """thm-dpo-objective follows by substituting the Gibbs inversion into BT."""
+        """def-bradley-terry-preference yields thm-dpo-objective after substitution."""
         generator = random.Random(2026071303)
         for case in range(300):
             response_count = generator.randint(2, 10)

@@ -37,7 +37,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 ## Conventions
 
-Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d}$), and matrices are bold uppercase ($\mathbf W$). Vectors are **row** vectors unless stated otherwise, so a sequence of $n$ tokens is a matrix $\mathbf X \in \R^{n\times d}$ whose $i$-th row is the $i$-th token representation. Sets are calligraphic ($\mathcal V$ for the vocabulary). We write $\defeq$ for "is defined as" (marking a definition, not a derived equality), $\odot$ for the Hadamard product, $\mathbf 1$ for the all-ones vector, and $\mathbf e_k$ for the $k$-th standard basis (one-hot) vector. The norm $\norm{\mathbf x}$ is Euclidean and $[\mathbf A]_{ij}$ is the $(i,j)$ entry. Note one glyph pair kept deliberately distinct: bold $\mathbf h_t$ is a recurrent hidden state (a vector), while italic $h$ is the head count (a scalar).
+Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d}$), and matrices are bold uppercase ($\mathbf W$). Vectors are **row** vectors unless stated otherwise, so a sequence of $n$ tokens is a matrix $\mathbf X \in \R^{n\times d}$ whose $i$-th row is the $i$-th token representation. Dimensions, sequence lengths, and other counts are positive integers unless a statement explicitly says otherwise; whenever $d/h$ is used as a head dimension, $h\mid d$ is assumed. Sets are calligraphic ($\mathcal V$ for the vocabulary). We write $\defeq$ for "is defined as" (marking a definition, not a derived equality), $\odot$ for the Hadamard product, $\mathbf 1$ for the all-ones vector, and $\mathbf e_k$ for the $k$-th standard basis (one-hot) vector. The norm $\norm{\mathbf x}$ is Euclidean and $[\mathbf A]_{ij}$ is the $(i,j)$ entry. Note one glyph pair kept deliberately distinct: bold $\mathbf h_t$ is a recurrent hidden state (a vector), while italic $h$ is the head count (a scalar).
 
 <NotationIndex />
 
@@ -84,6 +84,8 @@ For any scalar $c\in\R$, $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
+
 Multiply the numerator and denominator of entry $i$ by $e^{c}$ and cancel:
 $$
 \frac{e^{z_i + c}}{\sum_j e^{z_j + c}}
@@ -127,13 +129,13 @@ Both cases read $p_i(\delta_{ij} - p_j)$, i.e. $\mathbf J = \operatorname{diag}(
 
 <MarginNote variant="pattern" label="Saturation">Near a one-hot $\mathbf p$, every $p_i(1-p_i)\to 0$, so $\mathbf J\to\mathbf 0$ and gradients die. This is what the $1/\sqrt{d_k}$ attention scaling guards against.</MarginNote>
 
-Two readings of this Jacobian recur later. First, $\mathbf J\mathbf 1 = \mathbf p - \mathbf p(\mathbf p^\top\mathbf 1) = \mathbf p - \mathbf p = \mathbf 0$: the vector $\mathbf 1$ lies in the null space, so gradients are confined to the tangent plane of the simplex — the differential counterpart of translation invariance. Second, as $\mathbf p$ approaches a vertex of the simplex the entries $p_i(1-p_i)$ all vanish, the Jacobian collapses, and gradients through the softmax are attenuated.
+Two readings of this Jacobian recur later. First, $\mathbf J\mathbf 1 = \mathbf p - \mathbf p(\mathbf p^\top\mathbf 1) = \mathbf p - \mathbf p = \mathbf 0$: the vector $\mathbf 1$ lies in the null space. Because $\mathbf J$ is symmetric, its image is therefore contained in the simplex's tangent subspace $\{\mathbf v:\mathbf 1^\top\mathbf v=0\}$ — the differential counterpart of translation invariance. Second, as $\mathbf p$ approaches a vertex of the simplex the entries of $\mathbf J$ all vanish, the Jacobian collapses to $\mathbf 0$, and gradients through the softmax are attenuated.
 
 <Theorem kind="remark" name="Temperature" id="rem-softmax-temperature">
 A temperature $\tau > 0$ generalizes the map to $\softmax(\mathbf z/\tau)$. As $\tau\to 0^+$ the output approaches the uniform distribution over the maximizing set $\arg\max_i z_i$ — when the maximizer is unique, the one-hot vector at it (hard selection); as $\tau\to\infty$ it approaches the uniform distribution $\mathbf 1/K$. Transformer attention uses $\tau = 1$.
 </Theorem>
 
-Geometrically, softmax maps $\R^K$ onto the interior of the probability simplex $\Delta^{K-1} = \{\mathbf p : p_i \ge 0,\ \sum_i p_i = 1\}$, the convex hull of the standard basis vectors $\mathbf e_1,\dots,\mathbf e_K$. It is surjective onto the interior but not injective (translation invariance), and the saturation above is the statement that the simplex's tangent plane collapses at its vertices.
+Geometrically, softmax maps $\R^K$ onto the interior of the probability simplex $\Delta^{K-1} = \{\mathbf p : p_i \ge 0,\ \sum_i p_i = 1\}$, the convex hull of the standard basis vectors $\mathbf e_1,\dots,\mathbf e_K$. It is surjective onto the interior but not injective (translation invariance). At saturation it is the **softmax Jacobian** that collapses to zero; the simplex's tangent subspace itself does not collapse.
 
 ## Cross-entropy and KL divergence
 
@@ -149,10 +151,11 @@ It is maximal at the uniform distribution ($H = \log K$) and zero at any point m
 </Theorem>
 
 <Theorem kind="definition" name="Cross-entropy" id="def-cross-entropy">
-The **cross-entropy** of a model distribution $\mathbf q$ (with $q_k > 0$) relative to a target $\mathbf p$ is
+The **cross-entropy** of a model distribution $\mathbf q$ relative to a target $\mathbf p$ is the extended-real quantity
 $$
 H(\mathbf p, \mathbf q) \defeq -\sum_{k=1}^{K} p_k \log q_k.
 $$
+The contribution is $0$ when $p_k=0$ (including when $q_k=0$), and is $+\infty$ when $p_k>0$ but $q_k=0$. Thus $H(\mathbf p,\mathbf q)<\infty$ exactly when $\operatorname{supp}(\mathbf p)\subseteq\operatorname{supp}(\mathbf q)$.
 For a one-hot target $\mathbf p = \mathbf e_y$ it reduces to $-\log q_y$, the model's negative log-probability on the correct class.
 </Theorem>
 
@@ -161,6 +164,7 @@ The **Kullback–Leibler divergence** from $\mathbf p$ to $\mathbf q$ is
 $$
 D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q) \defeq \sum_{k=1}^{K} p_k \log \frac{p_k}{q_k}.
 $$
+We use the support-safe conventions $0\log(0/q_k)=0$ for every $q_k\ge 0$ and $p_k\log(p_k/0)=+\infty$ for $p_k>0$. Hence $D_{\mathrm{KL}}$ takes values in $[0,+\infty]$ and is finite exactly when $\operatorname{supp}(\mathbf p)\subseteq\operatorname{supp}(\mathbf q)$.
 <Sidenote>The directed information gain from $\mathbf q$ to $\mathbf p$ <Cite key="kullback1951information" />.</Sidenote>
 By Gibbs' inequality $D_{\mathrm{KL}} \ge 0$, with equality if and only if $\mathbf p = \mathbf q$.
 </Theorem>
@@ -170,17 +174,13 @@ $H(\mathbf p, \mathbf q) = H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \math
 </Theorem>
 
 <Theorem kind="proof">
-Add and subtract $\sum_k p_k \log p_k$ inside the definition of cross-entropy:
+**Proof.**
+
+The identity is support-safe term by term. If $p_k=0$, the entropy, cross-entropy, and KL contributions are all $0$. If $p_k>0$ and $q_k=0$, both the cross-entropy and KL contributions are $+\infty$, while the entropy contribution is finite. Finally, if $p_k,q_k>0$, ordinary logarithm rules give
 $$
-\begin{aligned}
-H(\mathbf p, \mathbf q)
-&= -\sum_k p_k \log q_k && \text{(cross-entropy)} \\
-&= -\sum_k p_k \log p_k + \sum_k p_k \log p_k - \sum_k p_k \log q_k \\
-&= H(\mathbf p) + \sum_k p_k \log \frac{p_k}{q_k} && \text{(entropy)} \\
-&= H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \mathbf q). && \text{(KL divergence)}
-\end{aligned}
+-p_k\log q_k=-p_k\log p_k+p_k\log\frac{p_k}{q_k}.
 $$
-The first term is constant in the parameters, so the gradient of the cross-entropy equals the gradient of the KL term. $\qquad\blacksquare$
+Summing these identities in the extended reals proves $H(\mathbf p,\mathbf q)=H(\mathbf p)+D_{\mathrm{KL}}(\mathbf p\|\mathbf q)$ without an undefined $\infty-\infty$ subtraction. Since $H(\mathbf p)$ is finite and independent of the model, the two objectives have the same minimizers (and, wherever finite and differentiable, the same gradients). $\qquad\blacksquare$
 </Theorem>
 
 ## Row-stochastic matrices
@@ -199,6 +199,8 @@ $$
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
+
 Row $i$ of the product is $\sum_j A_{ij}\mathbf v_j$ by the definition of matrix multiplication. The coefficients $A_{ij}$ are nonnegative and sum to one (<XRef id="def-row-stochastic" />), which is exactly a convex combination. $\qquad\blacksquare$
 </Theorem>
 

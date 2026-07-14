@@ -19,7 +19,7 @@ los:
   - id: lo-transformer-parameter-scaling
     statement: "Count the parameters of a concrete transformer configuration and identify the dominant scaling term."
   - id: lo-multimodal-transformer-composition
-    statement: "Recognize the Vision Transformer as the encoder over patch embeddings, and multimodal fusion as an instance of cross-attention or of a unified two-modality sequence, introducing no new core machinery."
+    statement: "Identify the Vision Transformer as the encoder over patch embeddings, and multimodal fusion as an instance of cross-attention or of a unified two-modality sequence, introducing no new core machinery."
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
@@ -64,25 +64,31 @@ A decoder must do two things an encoder need not: respect causality (it generate
 <Theorem kind="definition" name="Cross-attention" id="def-cross-attention">
 Let $\mathbf X_{\text{dec}}\in\R^{m\times d}$ be a decoder sequence and $\mathbf H_{\text{enc}}\in\R^{n\times d}$ an encoder output. **Cross-attention** projects queries from the decoder and keys and values from the encoder:
 $$
+\begin{aligned}
+\mathbf Q&\defeq\mathbf X_{\text{dec}}\mathbf W^Q\in\R^{m\times d_k},
+&\mathbf W^Q&\in\R^{d\times d_k},\\
+\mathbf K&\defeq\mathbf H_{\text{enc}}\mathbf W^K\in\R^{n\times d_k},
+&\mathbf W^K&\in\R^{d\times d_k},\\
+\mathbf V&\defeq\mathbf H_{\text{enc}}\mathbf W^V\in\R^{n\times d_v},
+&\mathbf W^V&\in\R^{d\times d_v},\\
+\mathbf C&\defeq\softmax\!\left(\frac{\mathbf Q\mathbf K^\top}{\sqrt{d_k}}\right)\mathbf V\in\R^{m\times d_v},
+&\mathbf W^O&\in\R^{d_v\times d},\\
 \operatorname{CrossAttn}(\mathbf X_{\text{dec}},\mathbf H_{\text{enc}})
-\defeq \operatorname{Attn}\!\big(
-  \mathbf X_{\text{dec}}\mathbf W^Q,\;
-  \mathbf H_{\text{enc}}\mathbf W^K,\;
-  \mathbf H_{\text{enc}}\mathbf W^V
-\big).
+&\defeq\mathbf C\mathbf W^O\in\R^{m\times d}. &&
+\end{aligned}
 $$
-Each decoder query thereby attends over **all** $n$ encoder positions, conditioning the output on the full input context.
+Each decoder query thereby attends over **all** $n$ encoder positions, and the explicit output projection restores model width so the result is type-compatible with a residual addition. Multi-head cross-attention applies these projections per head, concatenates the $m\times d_v$ head contexts, and uses $\mathbf W^O\in\R^{h d_v\times d}$ exactly as <XRef id="def-mha" />.
 </Theorem>
 
 <MarginNote variant="formula" label="Q vs K, V">Queries from the decoder, keys and values from the encoder — the only structural difference from self-attention, where all three come from one sequence.</MarginNote>
 
-Because cross-attention is an instance of scaled dot-product attention, the convexity guarantee carries over verbatim: each cross-attention weight row is row-stochastic, so every decoder output is a convex combination of the encoder value rows (<XRef id="prop-row-stochastic-convex" />). The decoder cannot manufacture content outside the span of the encoder's value vectors; it can only select and average over the encoded source. With this operation in hand, the decoder block has three sublayers: the encoder block's self-attention *masked*, the one genuinely new sublayer — cross-attention — and the feed-forward network.
+Because cross-attention uses scaled dot-product attention, each weight row is row-stochastic: every row of the pre-projection context $\mathbf C$ is a convex combination of the encoder value rows (<XRef id="prop-row-stochastic-convex" />). After $\mathbf W^O$, the residual-width output is equivalently a convex combination of the **projected** value rows $\mathbf v_j\mathbf W^O$. The attention core selects and averages encoded source features; the learned linear output projection then remixes their coordinates. With this operation in hand, the decoder block has three sublayers: the encoder block's self-attention *masked*, the one genuinely new sublayer — cross-attention — and the feed-forward network.
 
 <Figure
   src="/figures/cross-attention-wiring.svg"
-  alt="Cross-attention: the decoder supplies queries; the encoder supplies keys and values. Scores are m×n and each output row is a convex combination of the encoder values."
+  alt="Cross-attention: the decoder supplies queries; the encoder supplies keys and values. Scores are m×n and each pre-projection context row is a convex combination of the encoder values."
   desc="Two source streams feed one attention block. The decoder stream X_dec (m×d) projects by W^Q to Q; the encoder stream H_enc (n×d) projects by W^K and W^V to K and V. Q, K, V enter the cross-attention block, whose scores QKᵀ are m×n, producing a context C of length m (m×d_v). Edge labels mark the decoder length m and encoder length n."
-  caption="Cross-attention wiring (def-cross-attention): queries from the decoder, keys and values from the encoder — the only structural difference from self-attention. The scores are m×n (m decoder, n encoder positions), and because it is still scaled dot-product attention, each output row is a convex combination of the encoder values — the decoder selects and averages the encoded source, it cannot fabricate beyond it (prop-row-stochastic-convex)."
+  caption="Cross-attention wiring (def-cross-attention): queries come from the decoder, keys and values from the encoder. The scores are m×n, and the pictured pre-projection context C is m×d_v with each row a convex combination of encoder values (prop-row-stochastic-convex); the definition's output projection W^O then maps C to residual-compatible width d."
   id="fig-cross-attention"
   width="88%"
 />
@@ -90,9 +96,12 @@ Because cross-attention is an instance of scaled dot-product attention, the conv
 <Theorem kind="remark" name="Vision-language fusion is cross-attention" id="rem-multimodal-crossattn">
 The "separate input sequence" the decoder conditions on need not be text. Let $\mathbf H_{\text{img}}\in\R^{n_v\times d}$ be patch features from a Vision Transformer (<XRef id="rem-vit" />) and $\mathbf X_{\text{txt}}\in\R^{m\times d}$ a text stream. Conditioning text generation on the image is exactly <XRef id="def-cross-attention" /> with the encoder stream taken to be vision:
 $$
-\operatorname{CrossAttn}(\mathbf X_{\text{txt}},\mathbf H_{\text{img}}) = \operatorname{Attn}\!\big(\mathbf X_{\text{txt}}\mathbf W^Q,\ \mathbf H_{\text{img}}\mathbf W^K,\ \mathbf H_{\text{img}}\mathbf W^V\big).
+\operatorname{CrossAttn}(\mathbf X_{\text{txt}},\mathbf H_{\text{img}})
+= \softmax\!\left(
+\frac{(\mathbf X_{\text{txt}}\mathbf W^Q)(\mathbf H_{\text{img}}\mathbf W^K)^\top}{\sqrt{d_k}}
+\right)(\mathbf H_{\text{img}}\mathbf W^V)\mathbf W^O.
 $$
-The convexity guarantee above carries over unchanged: each fused text position is a convex combination of the image value rows, so the language model **selects and averages** visual evidence and cannot fabricate content outside its span. This is the core of cross-attention fusion. Flamingo's *gated* variant <Cite key="alayrac2022flamingo" /> refines it twice — the vision features first pass through a learned-query resampler (<XRef id="def-resampler" />), and the cross-attention enters through a $\tanh$ gate that starts closed (<XRef id="def-gated-xattn" />).
+The convexity guarantee applies before the output projection: each pre-projection fused text position is a convex combination of the image value rows, and after $\mathbf W^O$ it is a convex combination of their projected rows. This select-and-average core is cross-attention fusion; later residual and FFN sublayers can move outside that convex hull. Flamingo's *gated* variant <Cite key="alayrac2022flamingo" /> refines it twice — the vision features first pass through a learned-query resampler (<XRef id="def-resampler" />), and the cross-attention enters through a $\tanh$ gate that starts closed (<XRef id="def-gated-xattn" />).
 </Theorem>
 
 <Theorem kind="definition" name="Transformer decoder block" id="def-decoder-block">
@@ -100,7 +109,7 @@ A **decoder block** applies three sublayers in order, each with its own pre-norm
 $$
 \begin{aligned}
 \mathbf Z_1 &= \mathbf H + \operatorname{MHA}^{\text{causal}}\!\big(\operatorname{LN}(\mathbf H)\big) && \text{(masked self-attention),}\\
-\mathbf Z_2 &= \mathbf Z_1 + \operatorname{CrossAttn}\!\big(\operatorname{LN}(\mathbf Z_1),\,\mathbf H_{\text{enc}}\big) && \text{(cross-attention),}\\
+\mathbf Z_2 &= \mathbf Z_1 + \underbrace{\operatorname{CrossAttn}\!\big(\operatorname{LN}(\mathbf Z_1),\,\mathbf H_{\text{enc}}\big)}_{\in\,\R^{m\times d}\text{ after }\mathbf W^O} && \text{(cross-attention),}\\
 \operatorname{Block}(\mathbf H) &= \mathbf Z_2 + \operatorname{FFN}\!\big(\operatorname{LN}(\mathbf Z_2)\big) && \text{(feed-forward).}
 \end{aligned}
 $$
@@ -158,22 +167,39 @@ A generative vision-language model couples the two modalities by one of two rout
 A composition of blocks is only worth stacking if depth and width buy representational power. The classical universal-approximation theorems concern a single-hidden-layer network approximating a continuous function on a compact set; they say nothing about *sequence-to-sequence* maps or about the specific attention-plus-FFN architecture. The theorem below supplies the missing statement, and — more useful for intuition — its proof strategy says *why* the architecture is expressive: attention routes information across positions while the FFN stores function values, so together they implement an approximate quantize-route-lookup pipeline.
 
 <Theorem kind="theorem" name="Universal approximation for transformers" id="thm-universal-approx">
-Fix a sequence length $n$ and a compact domain $K\subset\R^{n\times d}$. There exist transformers approximating, on $K$ in entrywise $L^p$ distance ($1 \le p < \infty$) to arbitrary accuracy:
-<Sidenote>Both statements are due to <Cite key="yun2020transformers" />, proved for a residual attention-plus-FFN class *without* layer normalization, and in $L^p$ rather than uniform distance. They are *representation* theorems: parameters realizing the approximation exist for the fixed-length problem.</Sidenote>
-1. **Without positional encoding** — any continuous **permutation-equivariant** map $f:K\to\R^{n\times d}$;
-2. **With positional encoding** — any continuous map $f:K\to\R^{n\times d}$, the permutation-equivariance restriction removed.
+Fix $n\ge2$, $d\ge1$, and $1\le p<\infty$. For a measurable domain $D\subseteq\R^{n\times d}$, define
+$$
+d_{p,D}(f,g)
+\defeq
+\left(\int_D \norm{f(\mathbf X)-g(\mathbf X)}_p^p\,d\mathbf X\right)^{1/p},
+$$
+where $\norm{\cdot}_p$ is the entrywise matrix $\ell^p$ norm and $d\mathbf X$ is Lebesgue measure. Let $\mathcal T^{2,1,4}$ be the class of arbitrary finite-depth compositions of blocks, each block applying in order:
+
+- residual dot-product self-attention sublayers with exactly two heads, scalar query/key/value width per head, and a learned output projection back to width $d$; and
+- residual position-wise two-layer ReLU FFNs of hidden width $4$,
+
+with learned FFN biases and query-projection biases, and **no layer normalization**. Then:<Sidenote>These fixed-width $L^p$ density results are Theorems 2 and 3 of <Cite key="yun2020transformers" />. They are representation theorems for a deliberately idealized residual attention-plus-ReLU class, not for the normalized pre-norm block defined earlier.</Sidenote>
+
+1. **Without positional encoding.** For every continuous, compactly supported map $f:\R^{n\times d}\to\R^{n\times d}$ satisfying
+   $f(\mathbf P\mathbf X)=\mathbf P f(\mathbf X)$ for every $n\times n$ permutation matrix $\mathbf P$, and every $\epsilon>0$, there is $g\in\mathcal T^{2,1,4}$ with $d_{p,\R^{n\times d}}(f,g)<\epsilon$.
+2. **With learned additive positional encoding.** For every compact domain $K\subset\R^{n\times d}$ with $0<\lambda(K)<\infty$, every continuous $f:K\to\R^{n\times d}$, and every $\epsilon>0$, there are a learned table $\mathbf E\in\R^{n\times d}$ and $g\in\mathcal T^{2,1,4}$ such that
+   $d_{p,K}\big(f,\mathbf X\mapsto g(\mathbf X+\mathbf E)\big)<\epsilon$.
 </Theorem>
 
 <MarginNote variant="tip" label="Self-explanation">Before the sketch: plain self-attention treats the input as a *set* (permuting tokens permutes outputs). Which of the two statements must that symmetry force, and what single ingredient breaks it?</MarginNote>
 
 <Theorem kind="proof" name="Proof strategy (sketch)">
-We do not reproduce the full construction; we name the three structural facts it rests on and how they assemble.
+We do not reproduce the full construction; we name its three stages and the hypotheses that make each legitimate.
 
-**Self-attention builds contextual mappings.** The crux of the construction is that attention can produce token-wise features whose value at one position depends on the **whole** input sequence — a *contextual mapping* that, on a fine enough grid, assigns distinct outputs to distinct input sequences — the *route* step. (In the cited construction the preceding *quantize* step, snapping the continuous input onto the grid, is performed by feed-forward layers, not by attention.)
+**Quantize by FFNs.** Continuity and compact support (statement 1), or compactness of $K$ (statement 2), let a sufficiently fine cubical partition replace $f$ by a piecewise-constant map with arbitrarily small $L^p$ error. A stack of residual width-$4$ ReLU FFNs realizes an approximation to this coordinatewise quantizer; the construction need only fail on thin cell boundaries, which is why the metric is $L^p$ rather than uniform.
 
-**FFNs approximate the local map.** Once those contextual coordinates are available, the position-wise feed-forward layers act as a lookup table: by classical universal approximation applied pointwise, they fit the remaining continuous map on the compact domain (the *lookup* step).
+**Route by self-attention.** On the resulting finite grid, the two scalar-width attention heads build a contextual mapping: each row receives a code depending on the whole quantized sequence, equal inputs related by a row permutation receive correspondingly permuted codes, and inputs not related by a permutation receive distinct codes. This is the route step.
 
-**Positional encodings supply the asymmetry.** Plain self-attention is permutation-equivariant, so without position information the best achievable target class is exactly the permutation-equivariant maps — statement (1). Adding positional encodings makes position part of the representation, breaking the symmetry and extending the reach to arbitrary continuous maps — statement (2). See <Cite key="yun2020transformers" /> for the construction. $\qquad\blacksquare$
+**Look up by FFNs; separate positions when needed.** Further position-wise ReLU layers map each contextual code to the required grid value. Without position, every constituent operation commutes with $\mathbf X\mapsto\mathbf P\mathbf X$, giving statement 1's equivariant class. For statement 2, after an affine rescaling of the compact input range into $[0,1]^{n\times d}$ (absorbed into learned affine maps), one may choose the additive table
+$$
+\mathbf E_{t,:}=2(t-1)\mathbf1,\qquad t=1,\dots,n.
+$$
+Row $t$ then lies in the coordinate band $[2(t-1),\,2(t-1)+1]^d$, disjoint from every other row's band. The same quantize-route-lookup construction can therefore identify absolute row positions and implement an arbitrary continuous target in $L^p$. The cited paper supplies the layer-by-layer construction and error bounds. $\qquad\blacksquare$
 </Theorem>
 
 <Theorem kind="remark" name="Why depth helps: iterative refinement" id="rem-depth">
@@ -181,7 +207,7 @@ The construction needs contextual coordinates, and one layer provides exactly on
 </Theorem>
 
 <Theorem kind="remark" name="Existence is not optimization" id="rem-existence">
-The theorem is **existential**: it guarantees that a sufficiently deep, wide transformer *exists* realizing any target to the desired accuracy. It is silent on whether gradient descent will *find* such parameters, and on how the solution generalizes off the training set. Expressivity, optimization, and generalization are three separate questions; only the first is settled here.
+The theorem is **existential**: it guarantees that a finite, potentially very deep transformer with the stated fixed internal widths — two scalar-width heads and a width-$4$ ReLU FFN — *exists* to approximate each fixed-length target. It does not apply layer normalization, it does not provide a useful finite-depth bound for practical model selection, and it is silent on whether gradient descent will find those parameters or how the solution generalizes off the approximation domain. Expressivity, optimization, and generalization are separate questions; only the first is settled here.
 </Theorem>
 
 ## Computational complexity
@@ -189,28 +215,41 @@ The theorem is **existential**: it guarantees that a sufficiently deep, wide tra
 Expressivity says depth is worth having; cost says where the bill is paid. We count, per layer, the time and the activation memory of the two dominant operations — self-attention and the FFN — and locate the sequence length at which the quadratic attention term overtakes the linear-in-$n$ FFN term.
 
 <Theorem kind="proposition" name="Per-layer complexity" id="prop-complexity">
-For sequence length $n$, model dimension $d$, value dimension $d_v$, and feed-forward hidden dimension $d_{\text{ff}}$, one block costs:
+For sequence length $n$, model dimension $d$, $h$ heads of query/key width $d_k$ and value width $d_v$, and feed-forward hidden dimension $d_{\text{ff}}$, a dense multi-head block has the following leading time and materialized-activation memory costs:
 
 | Component | Time | Memory |
 |---|---|---|
-| Self-attention $\mathbf Q\mathbf K^\top$ | $O(n^2 d)$ | $O(n^2 + nd)$ |
-| Weight–value product $\mathbf A\mathbf V$ | $O(n^2 d)$ | $O(n d)$ |
-| Feed-forward network | $O(n\, d\, d_{\text{ff}})$ | $O(n\, d_{\text{ff}})$ |
-| **Total per layer** | $O(n^2 d + n\, d\, d_{\text{ff}})$ | $O(n^2 + n\, d_{\text{ff}})$ |
+| Q/K/V and output projections | $\Theta\!\big(n h d(d_k+d_v)\big)$ | $\Theta\!\big(nh(d_k+d_v)+nd\big)$ |
+| Scores and softmax, $\mathbf Q\mathbf K^\top$ | $\Theta(hn^2d_k)$ | $\Theta(hn^2)$ |
+| Weight–value products, $\mathbf A\mathbf V$ | $\Theta(hn^2d_v)$ | $\Theta(hnd_v)$ beyond the stored weights |
+| Feed-forward network | $\Theta(n d d_{\text{ff}})$ | $\Theta(nd_{\text{ff}}+nd)$ |
+| **Total per layer** | $\Theta\!\big(nhd(d_k+d_v)+hn^2(d_k+d_v)+ndd_{\text{ff}}\big)$ | $\Theta\!\big(hn^2+hn(d_k+d_v)+nd_{\text{ff}}+nd\big)$ |
 
-With the standard choice $d_{\text{ff}} = 4d$, self-attention dominates time exactly when $n \gtrsim d_{\text{ff}}$, i.e. $n\gtrsim 4d$.
+The **quadratic mixing term** overtakes the FFN at sequence scale
+$$
+n=\Theta\!\left(\frac{d\,d_{\text{ff}}}{h(d_k+d_v)}\right)
+$$
+and overtakes the linear attention projections at $n=\Theta(d)$. Thus it is the block's asymptotic time bottleneck beyond the larger of those two scales. These statements concern the quadratic term, not the sum of every attention projection, and assume dense materialization; <XRef id="rem-flash-attention" /> changes the memory schedule.
 </Theorem>
 
-<MarginNote variant="formula" label="Crossover">Attention $O(n^2 d)$ vs FFN $O(n\,d\,d_{\text{ff}})$. Equal at $n = d_{\text{ff}} \approx 4d$; attention dominates time beyond it.</MarginNote>
+<MarginNote variant="formula" label="Crossover">With $h\mid d$ and $d_k=d_v=d/h$, the two attention mixes and the two FFN maps have equal leading scalar-multiplication counts at $n=d_{\text{ff}}$. Projection work is linear in $n$ and is included in the total above.</MarginNote>
 
 <Theorem kind="proof">
-Two operations, each counted by the matrix products it performs.
+Count each matrix product at its displayed general width; constants are retained here only to locate the conventional crossover.
 
-**Self-attention.** The logit matrix $\mathbf Q\mathbf K^\top\in\R^{n\times n}$ is $n^2$ inner products of dimension $d_k = d/h$, so $O(n^2 d/h)$ per head and $O(n^2 d)$ across all $h$ heads (definition of matrix multiplication). The $n\times n$ weight matrix occupies $O(n^2)$ memory. Multiplying those weights by $\mathbf V$ costs $O(n^2 d_v)$ per head — $O(n^2 h d_v) = O(n^2 d)$ across all $h$ heads — by the same count.
+**Projections.** Per head, forming $\mathbf Q$ and $\mathbf K$ costs $2ndd_k$ scalar multiplications and forming $\mathbf V$ costs $ndd_v$. Across heads, the concatenated $n\times hd_v$ context times $\mathbf W^O\in\R^{hd_v\times d}$ costs another $nhd_vd$. The total is $2nhd(d_k+d_v)$, hence $\Theta(nhd(d_k+d_v))$ time, and the projected activations occupy $\Theta(nh(d_k+d_v)+nd)$ memory.
 
-**Feed-forward.** The FFN applies $\mathbf W_1\in\R^{d\times d_{\text{ff}}}$ and $\mathbf W_2\in\R^{d_{\text{ff}}\times d}$ at each of the $n$ positions, hence $O(n\, d\, d_{\text{ff}})$ time and $O(n\, d_{\text{ff}})$ activation memory (position-wise application).
+**Attention mixing.** Each head's $\mathbf Q\mathbf K^\top$ costs $n^2d_k$ and its $\mathbf A\mathbf V$ costs $n^2d_v$, for $hn^2(d_k+d_v)$ across heads. Materializing one attention-weight array costs $\Theta(hn^2)$; projected values and head contexts add $\Theta(hnd_v)$ and are already represented in the total's linear terms.
 
-**Crossover.** Attention dominates time when $n^2 d > n\, d\, d_{\text{ff}}$, i.e. $n > d_{\text{ff}}$ (cancel $nd$, both positive). With $d_{\text{ff}}=4d$ this is $n > 4d$. $\qquad\blacksquare$
+**Feed-forward.** The two position-wise maps cost $2ndd_{\text{ff}}$ scalar multiplications and store the $n\times d_{\text{ff}}$ hidden activation plus residual-width input/output, giving the table's FFN row.
+
+**Crossover.** Equating quadratic mixing with the two FFN products gives
+$$
+hn^2(d_k+d_v)=2ndd_{\text{ff}}
+\quad\Longleftrightarrow\quad
+n=\frac{2d\,d_{\text{ff}}}{h(d_k+d_v)}.
+$$
+Equating mixing with all four attention projections gives $n=2d$. With the standard assumption $h\mid d$ and choice $d_k=d_v=d/h$, the first equality reduces to $n=d_{\text{ff}}$ and the second to $n=2d$. Hence for the common $d_{\text{ff}}=4d$, the quadratic mixing term becomes the largest of these components at $n>d_{\text{ff}}=4d$; total attention time, which also includes projections, can cross the FFN earlier. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="tip" label="Memory wall">The $O(n^2)$ attention memory is the long-sequence bottleneck: at $n = 100{,}000$ a single attention matrix in 32-bit floats already needs $\sim 40$ GB.</MarginNote>
@@ -248,11 +287,17 @@ FlashAttention (<XRef id="rem-flash-attention" />) is an *algorithm*: it tiles t
 The asymptotics above hide constants that matter in practice. We count the parameters of one standard block explicitly, then assemble a full model, and read off the dominant scaling term — the quantity that governs how parameter count grows with width and depth.
 
 <Theorem kind="proposition" name="Dominant block parameter count" id="prop-params">
-For a pre-norm block with $d_k = d_v = d/h$ and feed-forward width $d_{\text{ff}}$, the multi-head attention contributes about $4d^2$ parameters (the four projections $\mathbf W^Q,\mathbf W^K,\mathbf W^V$ and the output projection, each $\R^{d\times d}$) and the FFN contributes $2 d\, d_{\text{ff}}$ (the two dense maps). Layer-norm scales and shifts are lower order. Hence one block has dominant count
+Assume $h\mid d$. For a pre-norm block with $d_k = d_v = d/h$ and feed-forward width $d_{\text{ff}}$, the multi-head attention contributes $4d^2$ weight parameters: each of the three per-head projection families has $d^2$ entries in total across heads, and the output projection has $d^2$. The FFN contributes $2 d\, d_{\text{ff}}$ from its two dense maps. Biases and layer-norm scales and shifts are lower order. Hence one block has dominant count
 $$
 4d^2 + 2 d\, d_{\text{ff}},
 $$
 and with $d_{\text{ff}} = 4d$ this is $4d^2 + 8d^2 = 12 d^2$ per block, so $N$ blocks contribute $\approx 12 N d^2$.
+</Theorem>
+
+<Theorem kind="proof">
+**Proof.**
+
+For queries, each of the $h$ heads has a matrix in $\R^{d\times(d/h)}$, so the family contains $h\,d(d/h)=d^2$ weights; keys and values contribute the same count, for $3d^2$ total. Concatenation has width $h(d/h)=d$, so $\mathbf W^O\in\R^{d\times d}$ adds $d^2$. The FFN matrices have shapes $d\times d_{\text{ff}}$ and $d_{\text{ff}}\times d$, adding $2dd_{\text{ff}}$. Therefore the dominant weight count is $4d^2+2dd_{\text{ff}}$; substituting $d_{\text{ff}}=4d$ and multiplying by $N$ gives $12Nd^2$. $\qquad\blacksquare$
 </Theorem>
 
 <Theorem kind="example" name="Parameter count for a concrete model" id="ex-param-count">
@@ -264,18 +309,22 @@ Take $d=512$, $h=8$, $d_k=d_v=64$, $d_{\text{ff}}=2048$, $N=6$, $|\mathcal V| = 
 
 **Model.** Embedding $16.4\text{M}$, plus $N=6$ blocks at $3.15\text{M}$ giving $18.9\text{M}$, plus an output projection of $0$ when tied to the embedding. **Total $\approx 35.3\text{M}$ parameters.**
 
-**Forward FLOPs at $n=1024$.** Per block, the two quadratic attention products (<XRef id="prop-complexity" />) cost $2n^2 d$ each — $\mathbf Q\mathbf K^\top$ and $\mathbf A\mathbf V$ — totalling $4n^2 d = 4\cdot 1024^2\cdot 512 \approx 2.15\times 10^9$, and the FFN $\approx 4 n\, d\, d_{\text{ff}} = 4\cdot 1024\cdot 512\cdot 2048 \approx 4.29\times 10^9$ (Q/K/V/O projections excluded, as in the complexity table), so $\approx 6.4\times 10^9$ per block and $\approx 39$ GFLOPs over $N=6$. Here $n = 1024 < d_{\text{ff}} = 2048$, so the FFN dominates FLOPs ($\sim 67\%$); attention takes over time only past the crossover $n\approx d_{\text{ff}}$ (<XRef id="prop-complexity" />), while its $O(n^2)$ memory pressure persists at every length.
+**Forward FLOPs at $n=1024$.** Count one multiply-add as two FLOPs. The Q/K/V/output projections cost $8nd^2=8\cdot1024\cdot512^2\approx2.15\times10^9$ FLOPs. The two quadratic attention products (<XRef id="prop-complexity" />) cost $2n^2d$ each — $\mathbf Q\mathbf K^\top$ and $\mathbf A\mathbf V$ — totalling $4n^2d\approx2.15\times10^9$. The two FFN maps cost $4ndd_{\text{ff}}\approx4.29\times10^9$. Thus the complete block costs about $8.59\times10^9$ FLOPs and the six blocks about $51.5$ GFLOPs. Here the FFN is about half of total block FLOPs; the quadratic mixing term alone is about one quarter. Since $n=1024<d_{\text{ff}}=2048$, that quadratic term has not yet overtaken the FFN, although projection work means **total** attention already matches it in this example. The $O(n^2)$ materialized-memory pressure persists at every length.
 </Theorem>
 
 ## Exercises
 
 Attempt each before expanding its solution.
 
-**Exercise 7.1 (Prove).** Show that the decoder cross-attention output of <XRef id="def-cross-attention" /> is, in every row, a convex combination of the encoder value rows; conclude it cannot lie outside their convex hull.
+**Exercise 7.1 (Prove).** Show that the pre-projection context in <XRef id="def-cross-attention" /> is, in every row, a convex combination of the encoder value rows, and that the residual-width output is a convex combination of their rows after $\mathbf W^O$.
 
 <SolutionBox>
 
-Cross-attention is $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ with $\mathbf Q = \mathbf X_{\text{dec}}\mathbf W^Q$, $\mathbf K = \mathbf H_{\text{enc}}\mathbf W^K$, $\mathbf V = \mathbf H_{\text{enc}}\mathbf W^V$. Each row of $\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$ is row-stochastic, so decoder output row $i$ is $\sum_j w_{ij}\mathbf v_j$, a convex combination of the encoder value rows (<XRef id="prop-row-stochastic-convex" />). It therefore lies in the convex hull of the encoder values: the decoder selects and averages encoded source content, it cannot extrapolate beyond it. $\qquad\blacksquare$
+Write $\mathbf A=\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$. Each row is row-stochastic, so pre-projection context row $i$ is $\mathbf c_i=\sum_jA_{ij}\mathbf v_j$, a convex combination of the encoder value rows (<XRef id="prop-row-stochastic-convex" />). Linearity of the output projection gives
+$$
+\mathbf c_i\mathbf W^O=\sum_jA_{ij}(\mathbf v_j\mathbf W^O),
+$$
+with the same nonnegative coefficients summing to one. Thus the cross-attention output lies in the convex hull of the projected value rows. Later residual and FFN operations need not remain in that hull. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -287,11 +336,11 @@ The switches are (a) output-stack self-attention causal vs bidirectional and (b)
 
 </SolutionBox>
 
-**Exercise 7.3 (Compute).** For $d = 1024$, $d_{\text{ff}} = 4096$, find the sequence length at which self-attention overtakes the FFN in time, and explain why FlashAttention does not move that crossover.
+**Exercise 7.3 (Compute).** For $d = 1024$, $d_{\text{ff}} = 4096$, $h\mid d$, and the standard $d_k=d_v=d/h$, find the sequence length at which the **quadratic attention-mixing term** overtakes the FFN in leading matrix-multiplication work, and explain why FlashAttention does not move that asymptotic crossover.
 
 <SolutionBox>
 
-Per layer, attention is $O(n^2 d)$ and the FFN is $O(n\,d\,d_{\text{ff}})$. Setting $n^2 d = n\,d\,d_{\text{ff}}$ and cancelling $nd$ gives $n = d_{\text{ff}}$; with $d=1024$, $d_{\text{ff}}=4096$, the crossover is $n \approx 4096$. FlashAttention does not move it — it computes the same $O(n^2 d)$ operator, tiling to cut memory traffic and constants, not the asymptotic. $\qquad\blacksquare$
+Across heads, the two quadratic products require $2n^2d$ scalar multiplications, while the two FFN maps require $2ndd_{\text{ff}}$. Equating them and cancelling $2nd>0$ gives $n=d_{\text{ff}}=4096$. This is the crossover of the quadratic mixing term with the FFN; Q/K/V/output projections are additional work linear in $n$, so total attention can cross earlier. FlashAttention does not move the stated asymptotic crossover: it computes the same quadratic operator while changing the tiling and materialized-memory schedule. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -303,10 +352,28 @@ Per block, MHA contributes $4d^2$ and the FFN $2 d\,d_{\text{ff}}$ (layer-norm s
 
 </SolutionBox>
 
-**Exercise 7.5 (Derive).** Explain why plain self-attention is permutation-equivariant and why this forces statement (1) of <XRef id="thm-universal-approx" /> in the absence of positional encodings; give a single target function it therefore cannot approximate.
+**Exercise 7.5 (Derive).** Explain why the no-position class in <XRef id="thm-universal-approx" /> is permutation-equivariant. Using the theorem's global $L^p$ metric, prove that an $L^p$ limit of such maps is equivariant almost everywhere, and give a continuous compactly supported target excluded by that closure.
 
 <SolutionBox>
 
-Let $\mathbf P$ be a permutation matrix. Self-attention applies the same position-independent linear maps to every row, so permuting inputs by $\mathbf P$ permutes $\mathbf Q,\mathbf K,\mathbf V$ identically, sends the logits to $\mathbf P(\mathbf Q\mathbf K^\top)\mathbf P^\top$, and (row-wise softmax + per-row FFN) sends the output to $\mathbf P f(\mathbf X)$: the network is permutation-equivariant. A uniform limit of equivariant maps is equivariant, so without positional encodings the reachable class is exactly the permutation-equivariant continuous maps. A position-sensitive target — e.g. "return the first token," $f(\mathbf X) = \mathbf x_1$ broadcast — has $f(\mathbf P\mathbf X)\ne\mathbf P f(\mathbf X)$ and is unreachable; positional encodings break the symmetry and restore it. $\qquad\blacksquare$
+Let $\mathbf P$ be a permutation matrix. Shared row-wise projections send $\mathbf X\mapsto\mathbf P\mathbf X$ to $\mathbf Q,\mathbf K,\mathbf V\mapsto\mathbf P\mathbf Q,\mathbf P\mathbf K,\mathbf P\mathbf V$; logits become $\mathbf P(\mathbf Q\mathbf K^\top)\mathbf P^\top$, row-wise softmax transforms the same way, and residual attention and row-wise FFNs therefore satisfy $g(\mathbf P\mathbf X)=\mathbf P g(\mathbf X)$.
+
+For an equivariant $g$, define the equivariance defect of a target $f$ at $\mathbf P$ by $\Delta_{\mathbf P}f(\mathbf X)=f(\mathbf P\mathbf X)-\mathbf P f(\mathbf X)$. The triangle inequality, equivariance of $g$, invariance of Lebesgue measure under $\mathbf X\mapsto\mathbf P\mathbf X$, and invariance of the entrywise norm under row permutations give
+$$
+\begin{aligned}
+\norm{\Delta_{\mathbf P}f}_{L^p}
+&\le \norm{f(\mathbf P\,\cdot)-g(\mathbf P\,\cdot)}_{L^p}
+  +\norm{\mathbf P(g-f)(\cdot)}_{L^p}\\
+&=2\,d_{p,\R^{n\times d}}(f,g).
+\end{aligned}
+$$
+Hence if equivariant $g_r\to f$ in global $L^p$, then $\Delta_{\mathbf P}f=0$ almost everywhere. If $f$ is continuous, its defect is continuous, so equality almost everywhere implies equality everywhere.
+
+For a counterexample, choose a continuous cutoff $\eta:[0,\infty)\to[0,1]$ with $\eta(r)=1$ for $r\le1$ and $\eta(r)=0$ for $r\ge2$, and define
+$$
+f(\mathbf X)\defeq \eta(\norm{\mathbf X}_F)
+\begin{pmatrix}\mathbf x_1\\ \vdots\\ \mathbf x_1\end{pmatrix}.
+$$
+This map is continuous and compactly supported. At any $\mathbf X$ of Frobenius norm below $1$ with $\mathbf x_1\ne\mathbf x_2$, swapping rows $1$ and $2$ changes the broadcast source from $\mathbf x_1$ to $\mathbf x_2$, while permuting the already-broadcast output does nothing. Its equivariance defect is therefore nonzero on an open set, so the displayed bound rules out arbitrarily accurate no-position $L^p$ approximation. Learned positional encodings break precisely this symmetry. $\qquad\blacksquare$
 
 </SolutionBox>

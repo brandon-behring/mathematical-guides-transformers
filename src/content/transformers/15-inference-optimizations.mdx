@@ -62,6 +62,7 @@ A workload with arithmetic intensity $I < I^*$ has time per token $T_{\text{toke
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 When $I < I^*$, divide both sides by $F$: $\Phi/(\beta F) < 1/\mathcal B$, i.e. $\Phi/F < \beta/\mathcal B$. So the second argument of the $\max$ in <XRef id="def-cost-eq" /> dominates and $T_{\text{token}} = \beta/\mathcal B$. Achieved throughput is the operations done divided by the time taken,
 $$
 \frac{\Phi}{T_{\text{token}}} = \frac{\Phi}{\beta/\mathcal B} = \mathcal B\cdot\frac{\Phi}{\beta} = \mathcal B\cdot I,
@@ -117,6 +118,7 @@ For the rules of <XRef id="def-token-decoding" />:
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 Write $Z_S=\sum_{j\in S}p_j>0$. The retained entries $p_i/Z_S$ are positive, omitted entries are zero, and the sum is $Z_S/Z_S=1$, proving (1). For $i,j\in S$, the common denominator cancels: $(p_i/Z_S)/(p_j/Z_S)=p_i/p_j$, proving (2).
 
 For (3), the first $r$ sorted entries have at least as much mass as any $r$-element subset: replacing any selected lower-probability index by a missing higher-probability one cannot decrease the sum. By the minimal definition of $m$, the largest possible mass of any $(m-1)$-element subset is $\sum_{j=1}^{m-1}p^{(\tau)}_{\pi_j}<p_0$, while the $m$-entry prefix reaches $p_0$. No smaller subset can qualify.
@@ -145,6 +147,7 @@ If every layer has the same persisted width $d_{\text{cache}}$, this becomes $Nn
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 Layer $\ell$ stores $n d_{\text{cache},\ell}$ persisted attention-state scalars (<XRef id="def-kv-cache" />), hence $nbd_{\text{cache},\ell}$ bytes. The layers store disjoint caches, so summing gives $nb\sum_\ell d_{\text{cache},\ell}$. Equal widths factor out as $Nnbd_{\text{cache}}$. Under the all-MHA specialization, every $d_{\text{cache},\ell}=hd_k+hd_v=2d$, giving $2Nndb$. $\qquad\blacksquare$
 </Theorem>
 
@@ -188,45 +191,52 @@ As last verified on 2026-07-13, production methods choose the approximation diff
 
 ## Quantization
 
-The other term in $\beta$ is the weight stream. Storing each weight in fewer bits reads fewer bytes and — in the memory-bound regime of <XRef id="prop-memory-bound" /> — raises throughput in direct proportion. The map from a floating-point tensor to a low-bit integer tensor is affine, and its fidelity is captured by a single round-off bound.
+The other term in $\beta$ is the weight stream. Storing each weight in fewer bits reads fewer bytes and — in the memory-bound regime of <XRef id="prop-memory-bound" /> — raises throughput in direct proportion. The low-bit map uses an affine scale followed by rounding and clamping, and its fidelity is captured by a single round-off bound.
 
 <Theorem kind="definition" name="Affine quantization" id="def-affine-quant">
-Fix a bit width yielding integer levels $\{0,1,\dots,2^{B}-1\}$ for $B$-bit quantization. Given a weight block with range $[w_{\min}, w_{\max}]$, the **scale** and **zero-point** are
+Fix an integer bit width $B\ge1$ and the integer level set $\mathcal Q_B\defeq\{0,1,\dots,2^B-1\}$. Let $\operatorname{nint}_{\downarrow}(x)$ denote a nearest integer with deterministic half-integer ties sent to the smaller integer. For a nonconstant weight block with $w_{\max}>w_{\min}$, the **scale** and **zero-point** are
 $$
-s \defeq \frac{w_{\max}-w_{\min}}{2^{B}-1}, \qquad z \defeq \operatorname{round}\!\left(-\frac{w_{\min}}{s}\right).
+s \defeq \frac{w_{\max}-w_{\min}}{2^{B}-1}>0,
+\qquad
+z \defeq \operatorname{clamp}\!\left(\operatorname{nint}_{\downarrow}\!\left(-\frac{w_{\min}}{s}\right),0,2^B-1\right)\in\mathcal Q_B.
 $$
 The **quantize** map $Q$ and **dequantize** map $D$ are
 $$
-Q(w) \defeq \operatorname{clamp}\!\big(\operatorname{round}(w/s)+z,\ 0,\ 2^{B}-1\big),
+Q:[w_{\min},w_{\max}]\to\mathcal Q_B,
+\quad
+Q(w) \defeq \operatorname{clamp}\!\big(\operatorname{nint}_{\downarrow}(w/s+z),\ 0,\ 2^{B}-1\big),
 \qquad
-D(q) \defeq s\,(q - z).
+D:\mathcal Q_B\to\R,
+\quad
+D(q) \defeq s\,(q-z).
 $$
-The stored tensor is $Q(w)$ in $B$ bits; computation uses the reconstruction $\widehat w \defeq D(Q(w))$.
+The stored tensor is $Q(w)$ in $B$ bits; computation uses the reconstruction $\widehat w \defeq D(Q(w))$. A constant block $w_{\min}=w_{\max}=w_0$ is handled separately, without dividing by a zero range: store the single level $Q(w_0)=0$ together with its block value and define $D(0)=w_0$, giving exact reconstruction.
 </Theorem>
 
 <MarginNote variant="formula" label="Step size">The reconstruction grid has spacing $s$. INT8 over a fixed range has $s$ sixteen-fold smaller than INT4 ($(2^8{-}1)/(2^4{-}1) = 17 \approx 2^4$) — one byte versus half a byte.</MarginNote>
 
 <Theorem kind="proposition" name="Round-off error bound" id="prop-quant-error">
-For any weight $w\in[w_{\min},w_{\max}]$ whose quantized value is not clamped, the reconstruction $\widehat w = D(Q(w))$ satisfies
+For any weight $w$ in a nonconstant block $[w_{\min},w_{\max}]$ whose quantized value is not clamped, the reconstruction $\widehat w = D(Q(w))$ satisfies
 $$
 \big|\,w - \widehat w\,\big| \;\le\; \frac{s}{2} \;=\; \frac{w_{\max}-w_{\min}}{2\,(2^{B}-1)}.
 $$
-Each additional bit of precision halves the worst-case error.
+Each additional bit of precision reduces this worst-case bound by more than one half; the constant-block special case has zero error.
 </Theorem>
 
 <Theorem kind="proof">
-Write $r \defeq w/s + z$, so by <XRef id="def-affine-quant" /> the unclamped quantized value is $Q(w)=\operatorname{round}(r)$. Rounding to the nearest integer obeys $|\operatorname{round}(r)-r|\le \tfrac12$. Dequantizing,
+**Proof.**
+Write $r \defeq w/s + z$, so by <XRef id="def-affine-quant" /> the unclamped quantized value is $Q(w)=\operatorname{nint}_{\downarrow}(r)$. Nearest-integer rounding, including the declared deterministic tie case, obeys $|\operatorname{nint}_{\downarrow}(r)-r|\le \tfrac12$. Dequantizing,
 $$
-\widehat w = s\big(\operatorname{round}(r)-z\big),\qquad
+\widehat w = s\big(\operatorname{nint}_{\downarrow}(r)-z\big),\qquad
 w = s\big(r - z\big),
 $$
-so $w-\widehat w = s\big(r-\operatorname{round}(r)\big)$ and $|w-\widehat w| = s\,|r-\operatorname{round}(r)| \le s/2$. Substituting $s=(w_{\max}-w_{\min})/(2^{B}-1)$ gives the stated form. Replacing $B$ by $B+1$ multiplies $2^{B}-1$ by roughly $2$, halving the bound. $\qquad\blacksquare$
+so $w-\widehat w = s\big(r-\operatorname{nint}_{\downarrow}(r)\big)$ and $|w-\widehat w| = s\,|r-\operatorname{nint}_{\downarrow}(r)| \le s/2$. Substituting $s=(w_{\max}-w_{\min})/(2^{B}-1)$ gives the stated form. The constant-block special case has error zero by definition. Replacing $B$ by $B+1$ reduces the nonconstant-block bound by the factor $(2^B-1)/(2^{B+1}-1)<1/2$. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="pattern" label="Bandwidth ÷ precision">In the memory-bound regime, throughput $\propto 1/b$. INT8 ($b{=}1$) roughly doubles tokens/sec over FP16 ($b{=}2$); INT4 quadruples it — until the workload crosses the ridge.</MarginNote>
 
 <Theorem kind="remark" name="Activations are harder than weights" id="rem-activation-quant">
-The bound above is for *weights*, which are fixed after training, so quantization is a one-time, reversible reparameterization: if quality regresses, one dequantizes. *Activation* quantization quantizes the running tensors at every layer, injecting fresh round-off noise at each step, and activation distributions carry per-batch outliers with a much wider effective range — inflating $s$ and hence the error bound of <XRef id="prop-quant-error" /> for the same bit width. This is why low-bit weight quantization is routine while low-bit activation quantization needs outlier-aware schemes; the formal object is the same affine map, but applied to a worse-conditioned range.
+The bound above is for *weights*, which are fixed after training, so quantization is a one-time transformation — but, except for exactly represented grid values and the constant-block special case, it is **lossy**. Dequantizing recovers the rounded approximation $D(Q(w))$, not the original $w$; exact rollback after a quality regression requires retaining the original checkpoint. *Activation* quantization quantizes the running tensors at every layer, injecting fresh round-off noise at each step, and activation distributions carry per-batch outliers with a much wider effective range — inflating $s$ and hence the error bound of <XRef id="prop-quant-error" /> for the same bit width. This is why low-bit weight quantization is routine while low-bit activation quantization needs outlier-aware schemes; the formal object is the same affine map, but applied to a worse-conditioned range.
 </Theorem>
 
 ## FlashAttention
@@ -256,7 +266,11 @@ $$
 \frac{\mathbf o_n}{\ell_n} = \sum_{j=1}^{n} \frac{e^{\,s_j}}{\sum_{k} e^{\,s_k}}\,\mathbf v_j
 = \big[\softmax(\mathbf s)\,\mathbf V\big],
 $$
-i.e. it equals scaled dot-product attention (<XRef id="def-softmax" />) exactly. The HBM traffic is $\Theta(n^2 d^2 / M)$ bytes for on-chip memory of size $M$, against $\Theta(n^2 + nd)$ for the materialized kernel, with no change to the arithmetic or the output.
+i.e. it equals scaled dot-product attention (<XRef id="def-softmax" />) exactly. Let $M$ be on-chip capacity measured in scalar **elements**, assume $M=\Omega(d)$ so at least a constant number of width-$d$ rows fit on chip, and let each element occupy $b$ bytes. The tiled kernel's HBM traffic is
+$$
+\Theta\!\left(b\left(nd+\frac{n^2d^2}{M}\right)\right),
+$$
+including the compulsory $\Theta(bnd)$ input/output stream, against $\Theta\!\bigl(b(n^2+nd)\bigr)$ for a kernel that materializes the score matrix. In the common regime $d\lesssim M\lesssim nd$, the tiled bound simplifies to $\Theta(bn^2d^2/M)$. The memory schedule changes neither the arithmetic nor the output.
 </Theorem>
 
 <Theorem kind="proof">
@@ -279,13 +293,17 @@ and the identical algebra on the value-weighted accumulator gives $\mathbf o_j=\
 $$
 \frac{\mathbf o_n}{\ell_n} = \frac{\sum_i e^{s_i-m_n}\mathbf v_i}{\sum_i e^{s_i-m_n}} = \frac{\sum_i e^{s_i}\mathbf v_i}{\sum_i e^{s_i}} = \softmax(\mathbf s)\,\mathbf V.
 $$
-The output is the materialized-kernel output. For the IO count, tiling the queries into blocks of $M/d$ rows reads all $n$ keys and values once per query block; there are $\Theta(nd/M)$ such blocks, each reading $\Theta(nd)$ bytes, for $\Theta(n^2 d^2/M)$ total — and the $n\times n$ matrix is never written. $\qquad\blacksquare$
+The output is the materialized-kernel output. For the IO count, $M$ elements hold $\Theta(M/d)$ query rows at a time. There are therefore $\Theta(nd/M)$ query blocks, and each streams $\Theta(nd)$ key/value elements, producing $\Theta(n^2d^2/M)$ transferred elements. Reading the inputs and writing the output imposes the independent floor $\Theta(nd)$ elements, so multiplying by $b$ bytes per element gives
+$$
+\Theta\!\left(b\left(nd+\frac{n^2d^2}{M}\right)\right).
+$$
+When $d\lesssim M\lesssim nd$, the tiled term is at least the stream floor and the expression simplifies to $\Theta(bn^2d^2/M)$. A materialized implementation additionally writes and rereads $\Theta(n^2)$ score elements, hence $\Theta(b(n^2+nd))$ bytes. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="pattern" label="Exact, not approximate">FlashAttention changes the *memory access pattern*, not the function. Same FLOPs ($O(n^2d)$), same output — only the $O(n^2)$ HBM writes disappear.</MarginNote>
 
 <Theorem kind="remark" name="The big-O is invariant across versions" id="rem-flash-versions">
-Successive FlashAttention variants reorganize the *parallelism* of the same recurrence — for instance distributing work along the sequence dimension rather than only across heads, raising the fraction of the device kept busy. These change the constant factor in $\Theta(n^2 d^2/M)$, not the bound, and they leave <XRef id="thm-online-softmax-exact" /> untouched: the tile-plus-online-softmax computation is exact by construction in every version. The technique's gain is realized only where attention is memory-bound (large $n$); at very short sequences the $n\times n$ matrix already fits on chip and there is nothing to save.
+Successive FlashAttention variants reorganize the *parallelism* of the same recurrence — for instance distributing work along the sequence dimension rather than only across heads, raising the fraction of the device kept busy. These change constant factors in $\Theta\!\left(b(nd+n^2d^2/M)\right)$, not the bound, and they leave <XRef id="thm-online-softmax-exact" /> untouched: the tile-plus-online-softmax computation is exact by construction in every version. The technique's gain is realized only where attention is memory-bound (large $n$); at very short sequences the $n\times n$ matrix already fits on chip and there is nothing to save.
 </Theorem>
 
 ## Speculative decoding
@@ -293,7 +311,19 @@ Successive FlashAttention variants reorganize the *parallelism* of the same recu
 The previous techniques shrank $\beta$. Speculative decoding <Cite key="leviathan2023speculative" /> attacks the per-token cost from the other side: a cheap draft model proposes several tokens, and one expensive forward pass of the target model verifies them all at once. Because a memory-bound target reads its weights once whether it scores one position or several, verifying $K{+}1$ candidates costs essentially the same as emitting one token — so every accepted draft is nearly free. The payoff is governed by how many drafts survive verification, which is a short expectation.
 
 <Theorem kind="definition" name="Speculative decoding" id="def-spec-decode">
-A small **draft model** generates $K$ candidate tokens autoregressively. The **target model** performs one parallel forward pass over the prefix and the $K$ candidates, producing its distribution at each position. Candidates are checked left to right under a rejection-sampling rule that accepts each with probability matching the target distribution; on the first rejection the target's own resampled token is used at that position, and the remaining drafts are discarded. The accepted prefix seeds the next cycle. Here “target distribution” may be the full softmax or the distribution after a fixed temperature/truncation rule from <XRef id="def-token-decoding" />; preservation is relative to whichever target rule is chosen.
+A small **draft model** generates an integer $K\ge1$ candidate tokens autoregressively, and the **target model** performs one parallel verification pass over their positions. At a candidate position, let $q$ and $p$ be respectively the draft and target distributions conditional on the currently accepted prefix, and let the proposed token be $x\sim q$. Because a sampled proposal has $q(x)>0$, accept it with probability
+$$
+a(x)\defeq\min\!\left(1,\frac{p(x)}{q(x)}\right).
+$$
+On the first rejection, discard that candidate and all later drafts and instead sample one correction token from
+$$
+r(y)\defeq
+\frac{[p(y)-q(y)]_+}{\sum_z[p(z)-q(z)]_+},
+\qquad [u]_+\defeq\max(u,0).
+$$
+If the denominator is zero then $p=q$, so rejection has probability zero and this branch is never entered. If all $K$ candidates are accepted, sample one additional **bonus token** directly from the target distribution $p$ at the next position. The accepted drafts followed by the correction or bonus token seed the next cycle.
+
+This is an exact sampler from the chosen target rule. Indeed, the accepted-proposal contribution to output token $y$ is $q(y)a(y)=\min(q(y),p(y))$. The total rejection probability is $1-\sum_z\min(q(z),p(z))=\sum_z[p(z)-q(z)]_+$, so the correction contribution is $[p(y)-q(y)]_+$. Their sum is $p(y)$. Here $p$ may be the full target softmax or the distribution after one fixed temperature/truncation rule from <XRef id="def-token-decoding" />; exactness is relative to that chosen target distribution.
 </Theorem>
 
 <MarginNote variant="formula" label="Per cycle">One target pass (cost $1$) plus $K$ draft passes (cost $Kc$, where $c$ is the draft/target per-token cost ratio), in exchange for an expected $\E[T_K]$ accepted tokens.</MarginNote>
@@ -301,13 +331,17 @@ A small **draft model** generates $K$ candidate tokens autoregressively. The **t
 <Theorem kind="proposition" name="Expected tokens and speedup per cycle" id="prop-spec-speedup">
 Suppose each candidate is accepted independently with the same probability $\alpha\in[0,1]$. Then the expected number of tokens produced per cycle (the accepted drafts plus one guaranteed target token) is
 $$
-\E[T_K] = \frac{1-\alpha^{K+1}}{1-\alpha} \qquad (\alpha<1),
+\E[T_K] =
+\begin{cases}
+\dfrac{1-\alpha^{K+1}}{1-\alpha}, & 0\le\alpha<1,\\[4pt]
+K+1, & \alpha=1,
+\end{cases}
 $$
 and the expected speedup over one-token-at-a-time target decoding is
 $$
 \text{speedup} = \frac{\E[T_K]}{1 + Kc},
 $$
-where $c$ is the per-token cost of the draft relative to one target forward pass.
+where one batched target verification pass costs one unit and each of the $K$ autoregressive draft steps costs $c$ units. This simplified model ignores sampling overhead, collective/kernel-launch latency, and any failure to overlap work.
 </Theorem>
 
 <Theorem kind="proof">
@@ -317,14 +351,14 @@ $$
 $$
 A cleaner route to the closed form: since each of the $K$ drafts is accepted iff all earlier ones were, the $i$-th draft contributes an accepted token with probability $\alpha^{i}$, and the one target token is always produced. Summing the indicator expectations,
 $$
-\E[T_K] = 1 + \sum_{i=1}^{K}\alpha^{i} = \sum_{i=0}^{K}\alpha^{i} = \frac{1-\alpha^{K+1}}{1-\alpha},
+\E[T_K] = 1 + \sum_{i=1}^{K}\alpha^{i} = \sum_{i=0}^{K}\alpha^{i}.
 $$
-the last step the finite geometric series.
+For $\alpha<1$, the finite geometric-series identity gives $(1-\alpha^{K+1})/(1-\alpha)$. For $\alpha=1$, every term equals one and the sum is $K+1$, which also follows directly because every draft is accepted and the bonus target token is emitted.
 
 **Speedup.** Each cycle costs one target pass ($1$ unit) plus $K$ draft passes ($Kc$ units) and yields $\E[T_K]$ tokens, so its tokens-per-unit-cost is $\E[T_K]/(1+Kc)$. Plain target decoding yields one token per target pass, i.e. one token per unit cost. The ratio of the two rates is the displayed speedup. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="pattern" label="Saturation in K">$\E[T_K]\to 1/(1-\alpha)$ as $K\to\infty$: accepted tokens cap at $1/(1-\alpha)$, so beyond a few drafts the numerator stalls while $Kc$ keeps growing — there is an interior-optimal $K$.</MarginNote>
+<MarginNote variant="pattern" label="Saturation in K">For $0\le\alpha<1$, $\E[T_K]\to 1/(1-\alpha)$ as $K\to\infty$: accepted tokens cap at $1/(1-\alpha)$, so beyond a few drafts the numerator stalls while $Kc$ keeps growing — there is an interior-optimal $K$. At $\alpha=1$, instead, $\E[T_K]=K+1$.</MarginNote>
 
 <Theorem kind="remark" name="Why a memory-bound target makes it pay" id="rem-spec-regime">
 The speedup exceeds one when $\E[T_K] > 1 + Kc$, which for a cheap draft ($c\to 0$) holds for any $\alpha>0$ since $\E[T_K]\ge 1+\alpha$. The hidden premise is that one target pass over $K{+}1$ candidates costs about the same as one target pass over a single token. That is exactly the memory-bound regime of <XRef id="prop-memory-bound" />: the target reads its full weight set once per pass regardless of how many positions it scores, so the verification of many candidates is amortized into a single weight read. In a compute-bound regime (large batches, prefill) the verification pass costs proportionally more arithmetic and the free-lunch argument fails.

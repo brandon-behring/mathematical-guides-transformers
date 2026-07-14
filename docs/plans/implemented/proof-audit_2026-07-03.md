@@ -173,3 +173,31 @@ When the sweep reaches a chapter, pull anchored excerpts + evidence IDs from its
 rather than re-deriving citations. The corrected/frontier claims flagged by the 2026-07-10 dossier-coverage audit
 (MoE traffic = derive; MLA decoupled-RoPE = top-up; MoE aux-loss = positive excerpt) are noted in
 `docs/plans/implemented/dossier-guide-integration_2026-07-10.md`.
+
+## Execution record — completed 2026-07-13
+
+- **Frozen source:** `8f913733a509751c54c606a29b4123ce2d8f8103`, after
+  both expansion tracks had merged. The remeasured denominator was 344 formal
+  units across 24 chapters: 107 definitions, 104 result/proof units, and 133
+  exercise solutions.
+- **Pipeline completion:** 344/344 units received their assigned formalization
+  and comparison stages; 145/145 proof specifications completed blind
+  derivation. Stage D adjudicated 52 candidates into 49 upheld and 3 rejected,
+  with none unresolved. All six pre-seeded groups passed non-regression.
+- **Corrections:** all 49 Stage-D findings were repaired, `prop-params` received
+  its missing adjacent proof, and the terminal three-voice diff review found
+  and corrected three additional cross-chapter scope/integration defects. The
+  final source-correction total is 52.
+- **Durable assurance:** the property suite grew from 100 to 138 tests and the
+  guarded-claim manifest from 46 to 92 IDs. The coverage checker now requires
+  each mapped ID inside an executable test function. Corpus, semantic-ID,
+  validation, build, KaTeX, mobile-layout, and full-PDF gates are recorded in
+  `docs/audits/proof-audit_2026-07-13.md`.
+- **Review-model disclosure:** the planned external Gemini and Anthropic legs
+  both failed before inference because of client/account limits, so no
+  cross-vendor verdict is claimed. Blind source isolation and role-separated
+  Codex reviewers were retained and disclosed in the audit report.
+- **Publication boundary:** PR #24 passed the required `build`, `validate`, and
+  `properties` checks before squash merge; the audit report records that
+  evidence. Deployment remains deliberately deferred until the Cloudflare
+  account is configured; it was not part of this execution.

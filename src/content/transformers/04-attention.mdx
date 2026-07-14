@@ -4,7 +4,7 @@ slug: attention
 chapter: 4
 part: 3
 description: "Scaled dot-product attention from first principles: softmax and its translation invariance, attention as a learned-kernel regression, and why the 1/sqrt(d_k) scaling is exactly the factor that restores unit variance."
-last_verified: 2026-05-27
+last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation]
 notation_introduced: ['\mathbf M', 'd_v']
@@ -66,15 +66,17 @@ Because each softmax row is non-negative and sums to one (<XRef id="def-softmax"
 For language modeling, attention must additionally respect time: position $i$ may consult only positions $j \le i$. This is imposed not by changing the operator but by adding a fixed mask to the logits before the softmax.
 
 <Theorem kind="definition" name="Causal (masked) attention" id="def-causal-mask">
-The **causal mask** $\mathbf M \in \R^{n\times n}$ has entries
+For $C>0$, define the finite mask $\mathbf M^{(C)}\in\R^{n\times n}$ by
 $$
-M_{ij} \defeq \begin{cases} 0 & j \le i,\\ -\infty & j > i,\end{cases}
+M^{(C)}_{ij} \defeq \begin{cases} 0 & j \le i,\\ -C & j > i.\end{cases}
 $$
-and **causal attention** is attention on the masked logits:
+For finite $\mathbf Q,\mathbf K,\mathbf V$, **causal attention** is the entrywise limit
 $$
-\operatorname{Attn}^{\text{causal}}(\mathbf Q,\mathbf K,\mathbf V) \defeq \softmax\!\Big(\tfrac{\mathbf Q\mathbf K^\top}{\sqrt{d_k}} + \mathbf M\Big)\,\mathbf V.
+\operatorname{Attn}^{\text{causal}}(\mathbf Q,\mathbf K,\mathbf V)
+\defeq \lim_{C\to\infty}
+\softmax\!\Big(\tfrac{\mathbf Q\mathbf K^\top}{\sqrt{d_k}} + \mathbf M^{(C)}\Big)\,\mathbf V.
 $$
-A $-\infty$ logit exponentiates to $0$, so each softmax row remains a probability distribution, now supported on $\{j : j \le i\}$: row $i$ attends only to positions up to $i$.
+Equivalently, use the extended-real mask $\mathbf M\in(\R\cup\{-\infty\})^{n\times n}$ with entries $0$ for $j\le i$ and $-\infty$ for $j>i$, interpreting $e^{-\infty}=0$. Every row has at least the finite diagonal logit $j=i$, so its limiting denominator is positive and the formula is well-defined. Each resulting row remains a probability distribution, now supported on $\{j:j\le i\}$: row $i$ attends only to positions up to $i$.
 </Theorem>
 
 <Figure
@@ -119,7 +121,7 @@ $$
 $$
 </Theorem>
 
-So $1/\sqrt{d_k}$ is the unique scale that holds logit variance at $1$ as $d_k$ grows — which is what keeps softmax gradients alive <Cite key="vaswani2017attention" />.
+So $1/\sqrt{d_k}$ is the unique positive scale that holds logit variance at $1$ as $d_k$ grows. It removes this dimension-driven pressure toward softmax saturation; it does not guarantee that learned logits can never saturate <Cite key="vaswani2017attention" />.
 
 ## Exercises
 
@@ -133,11 +135,16 @@ Fix a query row $i$ and write the logits $\ell_{ij} = \inner{\mathbf q_i}{\mathb
 
 </SolutionBox>
 
-**Exercise 4.2 (Derive).** Without the $1/\sqrt{d_k}$ scaling, give $\Var(\inner{\mathbf q}{\mathbf k})$ and explain what happens to a softmax row as $d_k\to\infty$ (relate it to gradient saturation).
+**Exercise 4.2 (Derive).** Without the $1/\sqrt{d_k}$ scaling, give $\Var(\inner{\mathbf q}{\mathbf k})$. State a sufficient logit-gap condition under which a softmax row approaches one-hot as $d_k\to\infty$, relate it to gradient saturation, and contrast the case of tied maxima.
 
 <SolutionBox>
 
-By the variance-preservation theorem (unscaled case), $\Var(\inner{\mathbf q}{\mathbf k}) = d_k$. As $d_k\to\infty$ the logit spread grows without bound, so within a softmax row the largest logit dominates and the row concentrates toward a **one-hot** vector. At a near-one-hot $\mathbf p$, the softmax Jacobian $\operatorname{diag}(\mathbf p) - \mathbf p\mathbf p^\top$ has entries $J_{ij} = p_i(\delta_{ij} - p_j)$ (<XRef id="prop-softmax-jacobian" />) — diagonal $p_i(1-p_i)\to 0$ and off-diagonal $-p_i p_j\to 0$ — so gradients through the softmax **vanish** (gradient saturation). Dividing logits by $\sqrt{d_k}$ holds the variance at $1$ and prevents this. $\qquad\blacksquare$
+By the variance-preservation theorem (unscaled case), $\Var(\inner{\mathbf q}{\mathbf k}) = d_k$. Variance growth alone does **not** deterministically imply a one-hot row. For a sequence of logit rows $\boldsymbol\ell^{(d_k)}$, a sufficient condition is a unique maximizing index $i^\ast$ whose gaps diverge:
+$$
+\ell^{(d_k)}_{i^\ast}-\ell^{(d_k)}_j\longrightarrow+\infty
+\qquad\text{for every }j\ne i^\ast.
+$$
+Dividing numerator and denominator by $e^{\ell_{i^\ast}}$ then gives $\softmax(\boldsymbol\ell^{(d_k)})\to\mathbf e_{i^\ast}$. At that limit the Jacobian $\operatorname{diag}(\mathbf p)-\mathbf p\mathbf p^\top$ tends to $\mathbf0$, so gradients saturate (<XRef id="prop-softmax-jacobian" />). If instead $r\ge2$ entries remain tied for the maximum while their gaps to all other entries diverge, the limit is uniform on that tied set, not one-hot; the Jacobian retains a nonzero rank-$(r-1)$ block within the tied face. Scaling by $1/\sqrt{d_k}$ holds the variance at $1$ and removes dimension-driven spread, but it does not by itself rule out either learned saturation or ties. $\qquad\blacksquare$
 
 </SolutionBox>
 

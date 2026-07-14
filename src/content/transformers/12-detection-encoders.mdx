@@ -15,7 +15,7 @@ los:
   - id: lo-symmetric-contrastive-cross-entropy
     statement: "Define the symmetric contrastive objective and prove it is cross-entropy over in-batch pair indices with a temperature-scaled similarity logit."
   - id: lo-contrastive-geometry-and-temperature
-    statement: "Separate the unconstrained-logit contrastive infimum from the normalized-embedding optimum, derive the alignment/separation gradient directions, and identify the role of temperature."
+    statement: "Compare the unconstrained-logit contrastive infimum with the normalized-embedding optimum, derive the alignment/separation gradient directions, and identify the role of temperature."
   - id: lo-ood-ranking-and-auroc
     statement: "Define an embedding-geometry score function for out-of-distribution detection and prove AUROC equals the probability the score ranks an anomaly above an inlier."
   - id: lo-cross-modal-contrastive-alignment
@@ -80,7 +80,7 @@ Labeled detection data is often scarce, but *pairs* are cheap: any document and 
 We first fix the similarity and its scale.
 
 <Theorem kind="definition" name="Cosine similarity with temperature" id="def-cosine-temp">
-For embeddings $\mathbf u,\mathbf v\in\R^{d}$, the **cosine similarity** is $\operatorname{sim}(\mathbf u,\mathbf v) \defeq \inner{\mathbf u}{\mathbf v}/(\norm{\mathbf u}\,\norm{\mathbf v})$. When the embeddings are $L^2$-normalized ($\norm{\mathbf u}=\norm{\mathbf v}=1$) this is the plain inner product $\inner{\mathbf u}{\mathbf v}\in[-1,1]$. A **temperature** $\tau>0$ rescales it to the **similarity logit** $\inner{\mathbf u}{\mathbf v}/\tau$.
+For nonzero embeddings $\mathbf u,\mathbf v\in\R^{d}\setminus\{\mathbf0\}$, the **cosine similarity** is $\operatorname{sim}(\mathbf u,\mathbf v) \defeq \inner{\mathbf u}{\mathbf v}/(\norm{\mathbf u}\,\norm{\mathbf v})$. When the embeddings are $L^2$-normalized ($\norm{\mathbf u}=\norm{\mathbf v}=1$) this is the plain inner product $\inner{\mathbf u}{\mathbf v}\in[-1,1]$. A **temperature** $\tau>0$ rescales the cosine to the **similarity logit** $\operatorname{sim}(\mathbf u,\mathbf v)/\tau$, which is $\inner{\mathbf u}{\mathbf v}/\tau$ in the normalized case used below.
 </Theorem>
 
 <MarginNote variant="formula" label="Temperature">Small $\tau$ sharpens the candidate softmax toward the single nearest partner; large $\tau$ flattens it toward uniform — exactly the temperature limits of <XRef id="rem-softmax-temperature" />. Practice learns $\log(1/\tau)$ as a parameter.</MarginNote>
@@ -106,6 +106,7 @@ Each row of $\mathbf M$ is a vector of logits over the $B$ candidate $\mathbf v$
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 Fix row $i$. By the definition of softmax (<XRef id="def-softmax" />) applied to the logit vector $\mathbf M_{i,:}$,
 $$
 p(j\mid i) \defeq \softmax(\mathbf M_{i,:})_j = \frac{e^{M_{ij}}}{\sum_{j'=1}^{B} e^{M_{ij'}}},
@@ -132,6 +133,7 @@ The normalized symmetric objective is continuous on a compact product of spheres
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 Write
 $$
 \ell_i=\log\!\left(1+\sum_{j\ne i}e^{M_{ij}-M_{ii}}\right).
@@ -160,7 +162,7 @@ Take the two views of <XRef id="def-contrastive" /> to be **two modalities**: $\
 The final picture leaves classification entirely. Suppose we have an embedding $\mathbf r = \operatorname{pool}(Q(\mathbf X))$ and a sample of *inlier* (in-distribution) embeddings. If the representation places anomalies in regions that are sparse under the inlier distribution, distance or fitted-density geometry can expose them; neither contrastive training nor encoder architecture guarantees that separation. Conditional on a chosen embedding, detection is a one-dimensional thresholding problem on a **score** that measures outlyingness, and its usefulness is an empirical property of the resulting score distributions.
 
 <Theorem kind="definition" name="Embedding-geometry OOD score" id="def-ood-score">
-Let $\{\mathbf r^{(1)},\dots,\mathbf r^{(m)}\}\subset\R^{d}$ be inlier embeddings with mean $\boldsymbol\mu$ and (full-rank) covariance $\boldsymbol\Sigma$. An **out-of-distribution score** $s:\R^{d}\to\R$ assigns each embedding $\mathbf r$ a value increasing in its outlyingness; an input is flagged anomalous when $s(\mathbf r)$ exceeds a threshold. Three standard score functions are
+Let $\{\mathbf r^{(1)},\dots,\mathbf r^{(m)}\}\subset\R^{d}$ be inlier embeddings with mean $\boldsymbol\mu$ and (full-rank) covariance $\boldsymbol\Sigma$. An **out-of-distribution score** $s:\R^{d}\to\overline{\R}$, where $\overline{\R}\defeq\R\cup\{+\infty\}$, assigns each embedding $\mathbf r$ a value increasing in its outlyingness; an input is flagged anomalous when $s(\mathbf r)$ exceeds a threshold. Three standard score functions are
 $$
 s_{\textsf{NN}}(\mathbf r) = \min_{k}\norm{\mathbf r - \mathbf r^{(k)}}
 \quad(\text{nearest-inlier distance}),
@@ -172,12 +174,13 @@ $$
 s_{\textsf{nll}}(\mathbf r) = -\log \hat p(\mathbf r)
 \quad(\text{negative log-density under a model } \hat p \text{ fit to the inliers}).
 $$
+For the density score, use the extended-real convention $-\log 0=+\infty$.
 </Theorem>
 
 <MarginNote variant="formula" label="Mahalanobis = whitened distance">$s_{\textsf{M}}$ is the Euclidean distance after whitening by $\boldsymbol\Sigma^{-1/2}$: it is the Euclidean score in coordinates where the inlier cloud is isotropic, so it accounts for the cluster's shape, not just its center.</MarginNote>
 
-<Theorem kind="remark" name="The three scores are one idea" id="rem-scores-unified">
-All three scores answer "how unlike the inliers is this point?" and are monotone reparametrizations of one another under matching modeling assumptions. If the inliers are fit by a single Gaussian $\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$, then the negative log-density is $s_{\textsf{nll}}(\mathbf r) = \tfrac12 s_{\textsf{M}}(\mathbf r)^2 + \text{const}$, so thresholding $s_{\textsf{nll}}$ and thresholding $s_{\textsf{M}}$ produce identical decisions. The nearest-inlier score $s_{\textsf{NN}}$ is the nonparametric counterpart: it makes no distributional assumption and reduces to the same "distance from the support" intuition when the support is a single cluster. The contrastive geometry of <XRef id="rem-separation-geometry" /> is what makes any of them work — it is what concentrates the inliers so that "far from them" is meaningful.
+<Theorem kind="remark" name="Parametric equivalence and a nonparametric analogue" id="rem-scores-unified">
+All three scores ask "how unlike the inliers is this point?", but only two are monotone reparametrizations under the stated model. If the inliers are fit by a single Gaussian $\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)$, then the negative log-density is $s_{\textsf{nll}}(\mathbf r) = \tfrac12 s_{\textsf{M}}(\mathbf r)^2 + \text{const}$, so thresholding $s_{\textsf{nll}}$ and thresholding $s_{\textsf{M}}$ produce identical decisions and rankings. The nearest-inlier score $s_{\textsf{NN}}$ is instead a distinct nonparametric analogue: it measures distance to the finite reference sample, makes no Gaussian assumption, and generally need not rank points as Mahalanobis distance or a fitted negative log-density does. A learned embedding can make any of these scores discriminative by concentrating inliers, but that geometry is an empirical outcome subject to <XRef id="rem-separation-geometry" />, not an equivalence among the scores.
 </Theorem>
 
 A score function must be judged independently of any particular threshold, because the deployment threshold trades false alarms against misses and is chosen later. The threshold-free summary is the probability that the score ranks a true anomaly above a true inlier — and this probability has a closed name.
@@ -201,6 +204,7 @@ the Mann–Whitney statistic. It is invariant under any strictly increasing repa
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 Estimate the probabilities in <XRef id="def-auroc" /> by their empirical frequencies over the $n_{+}n_{-}$ independent cross pairs $(a_p,b_q)$. The event $S^{+}>S^{-}$ has empirical frequency $\frac{1}{n_+n_-}\sum_{p,q}\mathbf 1\{a_p>b_q\}$, and the tie event contributes $\frac{1}{n_+n_-}\sum_{p,q}\mathbf 1\{a_p=b_q\}$ with weight $\tfrac12$ exactly as in the definition; summing gives the displayed statistic. For the invariance claim, let $\phi$ be strictly increasing. Then $a_p>b_q \iff \phi(a_p)>\phi(b_q)$ and $a_p=b_q\iff\phi(a_p)=\phi(b_q)$, so every indicator in the double sum is unchanged and so is $\widehat{\operatorname{AUROC}}$. No comparison references a cutoff, so the statistic is threshold-free. $\qquad\blacksquare$
 </Theorem>
 

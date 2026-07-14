@@ -3,7 +3,7 @@ title: "Multimodal Evaluation"
 slug: multimodal-evaluation
 chapter: 23
 part: 6
-description: "A compact capstone showing every vision-language metric reduces to a ranking statistic or a likelihood already in hand: retrieval recall and reciprocal rank, with recall@1 equal to in-batch contrastive accuracy and the pairwise hit probability equal to the AUROC rank statistic; perplexity as the exponential of conditional cross-entropy and hence a proper scoring rule, against surface-overlap metrics that are not; and zero-shot classification as a softmax classifier whose weights are class-name text embeddings, with transfer accuracy depending empirically on contrastive geometry."
+description: "A compact capstone showing every vision-language metric reduces to a ranking statistic or a likelihood already in hand: retrieval recall and reciprocal rank, with recall@1 equal to in-batch contrastive accuracy and the tie-adjusted pairwise hit equal to the AUROC rank statistic; corpus perplexity as the exponential of expected conditional cross-entropy, preserving the strictly proper log-loss minimizer, against surface-overlap metrics that do not; and zero-shot classification as a softmax classifier whose weights are class-name text embeddings, with transfer accuracy depending empirically on contrastive geometry."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, input-representations, training, detection-encoders]
@@ -11,9 +11,9 @@ notation_introduced: ['r(q)', '\mathrm{recall}@k', '\mathrm{MRR}', '\mathrm{PPL}
 theorems: ['def-retrieval', 'prop-recall-accuracy', 'def-perplexity', 'prop-perplexity-kl', 'rem-surface-metrics', 'def-zeroshot', 'prop-zeroshot-classifier', 'rem-all-reduced']
 los:
   - id: lo-multimodal-retrieval-metrics
-    statement: "Define retrieval rank, recall@k, and mean reciprocal rank, and prove recall@1 equals in-batch contrastive accuracy while the pairwise hit probability is the AUROC rank statistic."
+    statement: "Define retrieval rank, recall@k, and mean reciprocal rank, and prove recall@1 equals in-batch contrastive accuracy while the tie-adjusted pairwise hit probability is the AUROC rank statistic."
   - id: lo-perplexity-proper-scoring
-    statement: "Define perplexity as the exponential of conditional cross-entropy and prove minimizing it minimizes the conditional KL, making it a proper scoring rule unlike surface-overlap metrics."
+    statement: "Define perplexity as the exponential of conditional cross-entropy and prove corpus perplexity preserves the conditional-KL minimizer of the strictly proper log-loss, unlike surface-overlap metrics."
   - id: lo-zero-shot-classification
     statement: "Define zero-shot classification, prove it is an encoder-only softmax classifier whose head is the class-name text embeddings, and state the empirical alignment condition on which its transfer accuracy depends."
   - id: lo-multimodal-metric-reductions
@@ -31,7 +31,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 
 # Multimodal Evaluation
 
-**Where we are.** This short capstone makes good on the dual-footing thesis one last time, now for *measurement*. The metrics that score vision-language models look modality-specific — image–text retrieval recall, captioning perplexity, zero-shot classification accuracy — but each is a quantity we already defined for text or for detection, evaluated on cross-modal inputs. Retrieval is a ranking problem, and its headline number, recall@1, is exactly the in-batch accuracy of the contrastive objective (<XRef id="def-contrastive" />); its pairwise form is the AUROC rank statistic (<XRef id="prop-auroc-rank" />). Captioning quality is perplexity, the exponential of the conditional cross-entropy of the training chapter (<XRef id="def-ce-loss" />), and minimizing it minimizes a conditional KL — so it is a proper scoring rule, while the surface-overlap metrics (BLEU, CIDEr, SPICE) are not. Zero-shot classification is an encoder-only softmax classifier (<XRef id="def-encoder-classifier" />) whose weight columns are supplied, with no label training, by the text encoder; its transfer succeeds to the extent that contrastive training places novel images near appropriate class-name prompts on the shared sphere (<XRef id="prop-contrastive-alignment" />), an empirical condition rather than a correctness guarantee. We write $r(q)$ for a retrieval rank, $\mathrm{PPL}$ for perplexity, and $\mathbf t_c$ for a class-name text embedding.
+**Where we are.** This short capstone makes good on the dual-footing thesis one last time, now for *measurement*. The metrics that score vision-language models look modality-specific — image–text retrieval recall, captioning perplexity, zero-shot classification accuracy — but each is a quantity we already defined for text or for detection, evaluated on cross-modal inputs. Retrieval is a ranking problem, and its headline number, recall@1, is exactly the in-batch accuracy of the contrastive objective (<XRef id="def-contrastive" />); its tie-adjusted pairwise form is the AUROC rank statistic (<XRef id="prop-auroc-rank" />). Captioning quality is reported by corpus perplexity, the exponential of expected conditional cross-entropy from the training chapter (<XRef id="def-ce-loss" />); it preserves the conditional-KL minimizer of the strictly proper log-loss, while the surface-overlap metrics (BLEU, CIDEr, SPICE) do not. Zero-shot classification is an encoder-only softmax classifier (<XRef id="def-encoder-classifier" />) whose weight columns are supplied, with no label training, by the text encoder; its transfer succeeds to the extent that contrastive training places novel images near appropriate class-name prompts on the shared sphere (<XRef id="prop-contrastive-alignment" />), an empirical condition rather than a correctness guarantee. We write $r(q)$ for a retrieval rank, $\mathrm{PPL}$ for perplexity, and $\mathbf t_c$ for a class-name text embedding.
 
 ## Retrieval is a ranking statistic
 
@@ -42,13 +42,13 @@ $N$ is the retrieval-pool size, not the transformer block count. The letter $c$ 
 </NotationOverride>
 
 <Theorem kind="definition" name="Retrieval rank, recall@k, and MRR" id="def-retrieval">
-For a query $q$ and a candidate pool $\{c_1,\dots,c_N\}$ with similarity scores $s(q,c_j)$ (e.g. the cosine of <XRef id="def-cosine-temp" />), rank the candidates in decreasing score and let $r(q)\in\{1,\dots,N\}$ be the rank of the true match. Over a query set $\mathcal Q$,
+For a query $q$ and a candidate pool $\{c_1,\dots,c_N\}$ with similarity scores $s(q,c_j)$ (e.g. the cosine of <XRef id="def-cosine-temp" />), rank the candidates in decreasing score, resolving equal scores by one fixed deterministic candidate order, and let $r(q)\in\{1,\dots,N\}$ be the rank of the true match. For $1\le k\le N$ and a finite **nonempty** query set $\mathcal Q$,
 $$
 \mathrm{recall}@k \defeq \frac{1}{|\mathcal Q|}\sum_{q\in\mathcal Q}\mathbf 1\{r(q)\le k\},
 \qquad
 \mathrm{MRR} \defeq \frac{1}{|\mathcal Q|}\sum_{q\in\mathcal Q}\frac{1}{r(q)},
 $$
-the fraction of queries whose true match falls in the top $k$, and the mean reciprocal rank.
+the fraction of queries whose true match falls in the top $k$, and the mean reciprocal rank. The same deterministic tie rule is used by retrieval ranks and every $\argmax$ comparison below.
 </Theorem>
 
 <Figure
@@ -59,13 +59,18 @@ the fraction of queries whose true match falls in the top $k$, and the mean reci
 />
 
 <Theorem kind="proposition" name="Recall@1 is in-batch contrastive accuracy; the pairwise hit is AUROC" id="prop-recall-accuracy">
-Evaluate retrieval over a batch of $B$ matched pairs with the similarity matrix $\mathbf M$ of <XRef id="def-contrastive" />, query $i$ ranking the $B$ candidates by $M_{i,:}$.
+Evaluate retrieval over a batch of $B\ge2$ matched pairs with the similarity matrix $\mathbf M$ of <XRef id="def-contrastive" />, query $i$ ranking the $B$ candidates by $M_{i,:}$ under the shared deterministic tie rule.
 1. **Recall@1 = accuracy.** $\mathrm{recall}@1$ for query $i$ is $\mathbf 1\{\argmax_j M_{ij}=i\}$, which is exactly the top-1 correctness of the in-batch softmax classifier of <XRef id="prop-contrastive-ce" />. Averaged over the batch, retrieval recall@1 equals in-batch contrastive accuracy.
-2. **Pairwise hit = AUROC.** The probability that a *random* matched score exceeds a *random* mismatched score — positives $\{M_{ii}\}$, negatives $\{M_{i'j} : j\ne i'\}$, the two drawn independently (cross-row comparisons included) — is the Mann–Whitney/AUROC statistic of <XRef id="prop-auroc-rank" />. It is a different statistic from recall@1: a relaxation counting every pairwise ordering, not just the per-row top spot.
+2. **Tie-adjusted pairwise hit = AUROC.** Draw a matched score $S^+$ uniformly from $\{M_{ii}\}$ and, independently, a mismatched score $S^-$ uniformly from $\{M_{i'j}:j\ne i'\}$. Then
+   $$
+   \Pr(S^+>S^-)+\tfrac12\Pr(S^+=S^-)
+   $$
+   is exactly the empirical Mann–Whitney/AUROC statistic of <XRef id="prop-auroc-rank" /> (cross-row comparisons included). It differs from recall@1: it counts every pairwise ordering with half credit for ties, not only the per-row top spot.
 </Theorem>
 
 <Theorem kind="proof">
-(1) Recall@1 fires for query $i$ iff the top-ranked candidate is the true match, i.e. $\argmax_j M_{ij}=i$. The in-batch classifier of <XRef id="prop-contrastive-ce" /> predicts $\hat\jmath(i)=\argmax_j p(j\mid i)=\argmax_j\softmax(\mathbf M_{i,:})_j=\argmax_j M_{ij}$, the last equality because softmax is strictly increasing and so preserves the argmax (under any fixed tie-breaking rule applied identically to both sides). Thus the recall@1 indicator equals the indicator that the classifier's top-1 prediction is correct; averaging over $i$ gives accuracy. (2) Take positives $\{M_{ii}\}_{i=1}^{B}$ and negatives $\{M_{i'j}:j\ne i'\}$ and apply <XRef id="prop-auroc-rank" />: the empirical AUROC is the normalized count over all $B \cdot B(B-1)$ matched–mismatched pairs (cross-row pairs $M_{ii}$ vs $M_{i'j}$, $i'\ne i$, included, with the $\tfrac12$ tie term) — the probability a random true match outranks a random distractor. $\qquad\blacksquare$
+**Proof.**
+(1) Recall@1 fires for query $i$ iff the top-ranked candidate is the true match, i.e. $\argmax_j M_{ij}=i$. The in-batch classifier of <XRef id="prop-contrastive-ce" /> predicts $\hat\jmath(i)=\argmax_j p(j\mid i)=\argmax_j\softmax(\mathbf M_{i,:})_j=\argmax_j M_{ij}$, the last equality because softmax is strictly increasing and so preserves the argmax (under any fixed tie-breaking rule applied identically to both sides). Thus the recall@1 indicator equals the indicator that the classifier's top-1 prediction is correct; averaging over $i$ gives accuracy. (2) Take positives $\{M_{ii}\}_{i=1}^{B}$ and negatives $\{M_{i'j}:j\ne i'\}$ and apply <XRef id="prop-auroc-rank" />: the empirical AUROC is the normalized count over all $B \cdot B(B-1)$ matched–mismatched pairs (cross-row pairs $M_{ii}$ vs $M_{i'j}$, $i'\ne i$, included, with the $\tfrac12$ tie term) — exactly the tie-adjusted probability in clause (2). $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="pattern" label="Two names, one relaxation">In-batch contrastive accuracy and retrieval recall@1 are the same number read two ways; the pooled AUROC is its pairwise-ranking relaxation — the cross-modal payoff of <XRef id="rem-crossmodal-canonical" />.</MarginNote>
@@ -83,11 +88,27 @@ where $\widehat H$ denotes the empirical cross-entropy loss — the training cha
 </Theorem>
 
 <Theorem kind="proposition" name="Minimizing perplexity minimizes conditional KL" id="prop-perplexity-kl">
-Since $\exp$ is strictly increasing, $\mathrm{PPL}$ and the per-token cross-entropy $\widehat H$ have the same minimizer over $\theta$. In expectation over the data, $\widehat H$ equals the conditional KL from the data to the model plus the data's conditional entropy (<XRef id="prop-ce-kl-training" />), the latter independent of $\theta$. Hence minimizing the expected log-loss minimizes the conditional KL $D_{\mathrm{KL}}\big(p_{\mathrm{data}}(\cdot\mid\mathbf c)\,\|\,p_\theta(\cdot\mid\mathbf c)\big)$: the log-loss is a **proper scoring rule**, uniquely minimized in expectation by the true conditional, and perplexity — reported as $\exp$ *of the expected loss* — inherits that minimizer. (The order matters: $\E[\exp\widehat H]$, expectation outside, is generally minimized elsewhere.)
+Fix a context $\mathbf c$ and target length $T$, and write $P_{\mathbf c}(\mathbf y)=p_{\mathrm{data}}(\mathbf y\mid\mathbf c)$ and $Q_{\theta,\mathbf c}(\mathbf y)=p_\theta(\mathbf y\mid\mathbf c)$ for distributions on complete length-$T$ target sequences. Then
+$$
+\E_{\mathbf y\sim P_{\mathbf c}}[\widehat H]
+=\frac1T\Big(H(P_{\mathbf c})+D_{\mathrm{KL}}(P_{\mathbf c}\Vert Q_{\theta,\mathbf c})\Big).
+$$
+Thus the expected per-token log-loss minimizes the conditional KL; the factor $1/T$ is exact and does not change the minimizer. If the model family realizes $P_{\mathbf c}$ and the minimum is attained, every minimizing **distribution** equals $P_{\mathbf c}$, though multiple parameters may represent it. If the family does not realize $P_{\mathbf c}$, any attained minimizer is instead a best-in-family KL projection. The log-loss is strictly proper over unrestricted predictive distributions, and corpus perplexity $\exp(\E[\widehat H])$ inherits its minimizer because $\exp$ is strictly increasing. The order matters: $\E[\exp(\widehat H)]$ is a different objective and can have a different minimizer.
 </Theorem>
 
 <Theorem kind="proof">
-$\mathrm{PPL}=\exp(\widehat H)$ with $\widehat H$ strictly increasing-transformed, so $\argmin_\theta\mathrm{PPL}=\argmin_\theta\widehat H$. Taking expectation over targets drawn from $p_{\mathrm{data}}(\cdot\mid\mathbf c)$ at a context $\mathbf c$ in the data support, the per-token cross-entropy decomposes as $\E[\widehat H]=H\big(p_{\mathrm{data}}(\cdot\mid\mathbf c)\big)+D_{\mathrm{KL}}\big(p_{\mathrm{data}}(\cdot\mid\mathbf c)\,\Vert\,p_\theta(\cdot\mid\mathbf c)\big)$ by <XRef id="prop-ce-kl-training" />. The entropy term does not depend on $\theta$, and KL is nonnegative with equality iff $p_\theta(\cdot\mid\mathbf c)=p_{\mathrm{data}}(\cdot\mid\mathbf c)$, so the expected loss is minimized exactly at the true conditional — the proper-scoring-rule property of the log-loss. Perplexity, as the monotone $\exp$ applied to that expected loss, shares the minimizer. $\qquad\blacksquare$
+**Proof.**
+The autoregressive factorization gives $-\sum_{t=1}^T\log p_\theta(y_t\mid y_{<t},\mathbf c)=-\log Q_{\theta,\mathbf c}(\mathbf y)$. Therefore
+$$
+\begin{aligned}
+\E_{P_{\mathbf c}}[\widehat H]
+&=-\frac1T\sum_{\mathbf y}P_{\mathbf c}(\mathbf y)\log Q_{\theta,\mathbf c}(\mathbf y)\\
+&=\frac1T\left[-\sum_{\mathbf y}P_{\mathbf c}(\mathbf y)\log P_{\mathbf c}(\mathbf y)
++\sum_{\mathbf y}P_{\mathbf c}(\mathbf y)\log\frac{P_{\mathbf c}(\mathbf y)}{Q_{\theta,\mathbf c}(\mathbf y)}\right]\\
+&=\frac1T\big(H(P_{\mathbf c})+D_{\mathrm{KL}}(P_{\mathbf c}\Vert Q_{\theta,\mathbf c})\big),
+\end{aligned}
+$$
+with the usual extended-real convention if $Q_{\theta,\mathbf c}$ assigns zero probability where $P_{\mathbf c}$ is positive. The entropy and positive factor $1/T$ do not affect optimization. Over all predictive distributions, KL is nonnegative and vanishes only at $Q=P$, so the log-loss is strictly proper. If that distribution lies in the model family and a minimum is attained, the minimizing distribution is $P_{\mathbf c}$ (not necessarily at a unique parameter); otherwise an attained minimizer minimizes KL within the family. Finally, strict monotonicity of $\exp$ makes $\exp(\E[\widehat H])$ share the same minimizers, whereas moving the expectation outside the exponential changes the objective. $\qquad\blacksquare$
 </Theorem>
 
 <Theorem kind="remark" name="Surface-overlap metrics are not proper scoring rules" id="rem-surface-metrics">
@@ -120,6 +141,7 @@ The zero-shot classifier of <XRef id="def-zeroshot" /> is the encoder-only class
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 With $\mathbf W_{\mathsf{cls}}=[\mathbf t_1,\dots,\mathbf t_C]$ and bias zero, the encoder-classifier logits of <XRef id="def-encoder-classifier" /> are $\mathbf o=\mathbf v\,\mathbf W_{\mathsf{cls}}$ with $o_c=\inner{\mathbf v}{\mathbf t_c}$, and $\hat y=\argmax_c o_c$ is exactly the zero-shot *decision* of <XRef id="def-zeroshot" /> for every $\tau>0$ (dividing logits by $\tau$ is a monotone rescaling); the probabilistic outputs coincide at $\tau=1$, the detection/readouts chapter's classifier carrying no temperature. The head columns are the text encoder's outputs on the class names, not parameters fit to target labels, so no label training occurs. For the alignment reading: during optimization the symmetric contrastive objective (<XRef id="def-contrastive" />) pushes matched *training-pair* logits up and mismatched ones down in the coordinatewise sense of <XRef id="prop-contrastive-alignment" />; insofar as a class-name prompt embeds near its class's caption cluster, $\argmax_c\inner{\mathbf v}{\mathbf t_c}$ recovers the true class. That transfer step is the zero-shot leap — empirical, not proved. $\qquad\blacksquare$
 </Theorem>
 
@@ -147,11 +169,15 @@ Take the argmax of each row: row 1 $\to$ index 1 ($0.9$); row 2 $\to$ index 2 ($
 
 </SolutionBox>
 
-**Exercise 23.3 (Prove).** Prove the proper-scoring-rule property behind perplexity (<XRef id="prop-perplexity-kl" />): the expected log-loss $\E[\widehat H]$ is minimized over $\theta$ exactly when $p_\theta(\cdot\mid\mathbf c)=p_{\mathrm{data}}(\cdot\mid\mathbf c)$, and conclude that perplexity reported as $\exp(\E[\widehat H])$ shares that minimizer. Why must the expectation be taken *before* exponentiating?
+**Exercise 23.3 (Prove).** For fixed context $\mathbf c$ and length $T$, derive the exact $1/T$ conditional-entropy-plus-KL decomposition behind <XRef id="prop-perplexity-kl" />. State the minimizer both when the true conditional is realizable and attained and when the model family is restricted; distinguish uniqueness of the predictive distribution from uniqueness of its parameters. Conclude that $\exp(\E[\widehat H])$ shares the minimizer, and explain why the expectation must precede exponentiation.
 
 <SolutionBox>
 
-By <XRef id="prop-ce-kl-training" />, $\E[\widehat H]=H(p_{\mathrm{data}}(\cdot\mid\mathbf c))+D_{\mathrm{KL}}(p_{\mathrm{data}}(\cdot\mid\mathbf c)\Vert p_\theta(\cdot\mid\mathbf c))$. The entropy term is independent of $\theta$, and KL $\ge 0$ with equality iff the two conditionals coincide (Gibbs' inequality), so $\E[\widehat H]$ is minimized exactly at $p_\theta(\cdot\mid\mathbf c)=p_{\mathrm{data}}(\cdot\mid\mathbf c)$ — the proper-scoring-rule property for the cross-entropy. Since $\exp$ is strictly increasing, $\exp(\E[\widehat H])$ has the same minimizer as $\E[\widehat H]$, so perplexity-of-the-expected-loss inherits the unique minimizer. The order is essential: $\E[\exp\widehat H]$ — expectation *outside* — re-weights heavy losses (Jensen) and is generally minimized at a different $\theta$, which is why perplexity is reported as $\exp$ of the average loss, never the average of $\exp$. $\qquad\blacksquare$
+Let $P(\mathbf y)=p_{\mathrm{data}}(\mathbf y\mid\mathbf c)$ and $Q_\theta(\mathbf y)=p_\theta(\mathbf y\mid\mathbf c)$ on length-$T$ sequences. Since $\widehat H(\mathbf y)=-(1/T)\log Q_\theta(\mathbf y)$,
+$$
+\E_P[\widehat H]=\frac1T\left(H(P)+D_{\mathrm{KL}}(P\Vert Q_\theta)\right).
+$$
+The entropy term and positive factor $1/T$ are independent of $\theta$. If $P$ belongs to the model family and the minimum is attained, Gibbs' inequality makes the unique minimizing **distribution** $Q=P$; parameters need not be unique because different $\theta$ may encode the same $Q$. In a restricted family not containing $P$, any attained optimizer is a best-in-family minimizer of $D_{\mathrm{KL}}(P\Vert Q_\theta)$, not the true conditional. Since $\exp$ is strictly increasing, $\exp(\E_P[\widehat H])$ has precisely the same minimizers. The order is essential: $\E_P[\exp\widehat H]$ reweights large sample losses and is a different objective, so it need not select the KL projection. $\qquad\blacksquare$
 
 </SolutionBox>
 
