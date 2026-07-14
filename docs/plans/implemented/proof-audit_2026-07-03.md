@@ -197,6 +197,7 @@ rather than re-deriving citations. The corrected/frontier claims flagged by the 
   both failed before inference because of client/account limits, so no
   cross-vendor verdict is claimed. Blind source isolation and role-separated
   Codex reviewers were retained and disclosed in the audit report.
-- **Publication boundary:** pull-request CI and merge are recorded in the audit
-  report at publication time. Deployment remains deliberately deferred until
-  the Cloudflare account is configured; it was not part of this execution.
+- **Publication boundary:** PR #24 passed the required `build`, `validate`, and
+  `properties` checks before squash merge; the audit report records that
+  evidence. Deployment remains deliberately deferred until the Cloudflare
+  account is configured; it was not part of this execution.

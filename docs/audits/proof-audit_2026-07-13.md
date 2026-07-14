@@ -233,4 +233,5 @@ No baseline result is reused as post-fix evidence.
   All 133 prompt/solution pairs are structurally grouped; no PDF page begins
   with a stranded Solution row; every sub-45-word page is an intentional part
   title; and the hybrid figure and caption occupy page 263 together.
-- Pull-request CI and merge: **pending**
+- Pull-request CI: **PR #24 passed the required `build`, `validate`, and
+  `properties` checks before squash merge.**
