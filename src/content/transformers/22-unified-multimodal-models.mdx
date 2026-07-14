@@ -17,7 +17,7 @@ los:
   - id: lo-merged-vocabulary-reduction
     statement: "Prove that a unified model with a merged vocabulary and shared head is exactly the autoregressive transformer of the training chapter."
   - id: lo-finite-discrete-generation-head
-    statement: "Distinguish finite-vector softmax heads from countably infinite categoricals and continuous densities, explain why the standard generation head uses a finite discrete alphabet while conditioning may stay continuous, and relate modality routing to mixture-of-experts."
+    statement: "Compare finite-vector softmax heads with countably infinite categoricals and continuous densities, explain why the standard generation head uses a finite discrete alphabet while conditioning may stay continuous, and relate modality routing to mixture-of-experts."
   - id: lo-mixed-block-causal-mask
     statement: "Define the mixed block-causal attention mask and show it reduces to the causal mask in the all-text limit."
 ---
@@ -97,6 +97,7 @@ and these are the same tag and routed-symbol factors the model already computes.
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 By the chain rule (<XRef id="def-autoregressive-lm" />) and $u_t=(c_t,x_t)$, each joint factor splits as
 $$
 p_\theta(u_t\mid u_{<t})
@@ -121,6 +122,7 @@ Let $\mathcal V = \mathcal V_{\mathrm{txt}}\sqcup\mathcal V_{\mathrm{img}}$ be t
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 The map $\iota:(c,x)\mapsto\iota(c,x)$ is a bijection from tagged units $\{(\mathrm{txt},x):x\in\mathcal V_{\mathrm{txt}}\}\cup\{(\mathrm{img},z):z\in\mathcal V_{\mathrm{img}}\}$ onto $\{1,\dots,|\mathcal V|\}$, because the two ranges $\{1,\dots,|\mathcal V_{\mathrm{txt}}|\}$ and $\{|\mathcal V_{\mathrm{txt}}|+1,\dots,|\mathcal V_{\mathrm{txt}}|+K\}$ are disjoint and cover $\mathcal V$. Define $\mathbf E[\iota(c,x),:]\defeq\mathbf E_c[x,:]+\mathbf m_c$; then the embedding of <XRef id="def-modality-embedding" /> is $\mathbf x_t=\mathbf E[\iota(c_t,x_t),:]+\mathbf P[t,:]$, a single table lookup, which is <XRef id="def-token-embedding" /> over $\mathcal V$. For the head, set the columns of $\mathbf W^{\mathrm{out}}$ on the text block equal to $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}$ and on the image block to $\mathbf W^{\mathrm{out}}_{\mathrm{img}}$; the single softmax $\softmax(\mathbf h_t\mathbf W^{\mathrm{out}})$ is then a categorical distribution over all $|\mathcal V|$ symbols, i.e. the next-token distribution of <XRef id="def-autoregressive-lm" /> with vocabulary $\mathcal V$. The body between embedding and head is the decoder-only stack (<XRef id="def-decoder-only" />), unchanged. Every component therefore coincides with the training-chapter autoregressive transformer over a vocabulary of size $|\mathcal V_{\mathrm{txt}}|+K$, and the cross-entropy training objective (<XRef id="def-ce-loss" />) and all its properties transfer verbatim. The routed-head model of <XRef id="def-routed-heads" /> is the special case that, knowing the next modality, evaluates only the corresponding block of $\mathbf W^{\mathrm{out}}$ — a computational shortcut that agrees with the shared head when off-modality probability is driven to zero. $\qquad\blacksquare$
 </Theorem>
 
@@ -135,24 +137,25 @@ Let $\mathcal A$ be an output alphabet. For finite $\mathcal A$, the standard au
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
 For finite $\mathcal A$, a logit vector $\mathbf o\in\R^{|\mathcal A|}$ has finitely many entries and $Z=\sum_{x\in\mathcal A}\exp(o_x)$ is finite and strictly positive, so $p(x)=\exp(o_x)/Z$ is normalized and the categorical cross-entropy of <XRef id="def-ce-loss" /> is directly computable. For $\mathcal A=\mathbb N$, the same formula defines a categorical law whenever the series $Z=\sum_{i=1}^{\infty}\exp(o_i)$ converges; mathematical existence therefore does **not** force finiteness. But exact representation needs one logit per $i$ and exact normalization needs the infinite sum, so it is not a finite-vector softmax $\softmax(\mathbf h\mathbf W^{\mathrm{out}})$. For $\mathcal A=\R^d$, a probability assigning mass through a finite categorical vector cannot cover the continuum; a density-based energy model instead uses $Z=\int_{\R^d}\exp(f(\mathbf v))\,d\mathbf v$, which defines a density only when the integral converges and is usable exactly only when that normalizer can be computed or otherwise handled. Thus the ordinary transformer head directly supports a finite discrete output, while a continuous generator must replace it with a suitable density or implicit mechanism — establishing the scoped output claim. For conditioning, the model uses given embeddings only through inner products in attention scores and convex value averages (<XRef id="def-cross-attention" />, <XRef id="prop-row-stochastic-convex" />); no step normalizes a probability over the conditioned modality's domain, so continuous inputs are admissible — the input claim. Finally, write the modality tag $c_{t+1}$ as a one-hot gate over the two heads; the routed head $\mathbf W^{\mathrm{out}}_{c_{t+1}}$ is the gate-selected expert. Mixture-of-experts (<XRef id="def-moe" />) selects expert FFNs by a learned top-$k$ gate; replacing the learned top-$k$ gate by the hard one-hot modality tag gives modality routing, so the two share the select-a-sub-module structure with a learned versus prescribed gate. $\qquad\blacksquare$
 </Theorem>
 
 ## The mixed block-causal mask
 
-A purely autoregressive unified model is fully causal — every position attends only to the past, exactly as in the attention chapter. But an image is a two-dimensional block whose codes have no natural left-to-right order, so when an image span is *given as context* (or generated as a block), one often lets its positions attend to each other in both directions while keeping causality across modality boundaries. This is a single attention mask that interpolates between the two regimes.
+A tokenwise autoregressive unified model is causal at every generated position — each target token may use only observed context and earlier target tokens. An image span that is **fully supplied as context**, however, has no unknown token to leak, so its positions may attend to one another in both directions. The mixed mask combines these regimes without granting a generated image token access to later target image codes.
 
 <Theorem kind="definition" name="Mixed block-causal mask" id="def-mixed-mask">
-Partition the interleaved sequence into contiguous **segments** (maximal same-modality spans). The **mixed block-causal mask** allows position $i$ to attend to position $j$ iff
+For a particular conditional-generation example, partition the interleaved sequence into contiguous **segments** (maximal same-modality spans), and let $\mathcal B_{\mathrm{ctx}}$ be the image segments whose entire contents are supplied as observed context rather than predicted by the tokenwise autoregressive objective. The **mixed block-causal mask** allows position $i$ to attend to position $j$ iff
 $$
-M_{ij}=1 \iff \underbrace{j\le i}_{\text{causal}} \ \ \text{or}\ \ \underbrace{\text{$i$ and $j$ lie in the same image segment}}_{\text{intra-image bidirectional}}.
+M_{ij}=1 \iff \underbrace{j\le i}_{\text{causal}} \ \ \text{or}\ \ \underbrace{\text{$i,j\in B$ for some $B\in\mathcal B_{\mathrm{ctx}}$}}_{\text{fully observed image context}}.
 $$
-Causality is enforced *across* segments, while positions inside one image segment may attend to one another in both directions. When the stream is all text, no positions share an *image* segment, so the second clause is empty and $M$ is the causal mask of the attention chapter (<XRef id="def-causal-mask" />); the unified model then reduces to the text decoder-only transformer.
+Causality is enforced across segments. Positions inside a fully observed context image may attend bidirectionally, because all of them are already given; positions in a target image segment use only the first clause and remain causal in raster/token order. When the stream is all text, $\mathcal B_{\mathrm{ctx}}$ is empty, so $M$ is the causal mask of the attention chapter (<XRef id="def-causal-mask" />); the unified model then reduces to the text decoder-only transformer.
 </Theorem>
 
 <Figure
   src="/figures/mixed-mask.svg"
-  caption="The mixed block-causal mask. Causal (lower-triangular) across the stream, with a full bidirectional block inside each image segment. The all-text limit drops the bidirectional blocks and recovers the causal mask of the attention chapter. Rendered from TikZ via the figures pipeline."
+  caption="The mixed block-causal mask. Attention is lower-triangular except for full bidirectional blocks belonging to image spans supplied entirely as observed context. Image spans generated token by token remain causal, and the all-text limit recovers the causal mask of the attention chapter. Rendered from TikZ via the figures pipeline."
   id="fig-mixed-mask"
   width="58%"
 />
@@ -165,7 +168,7 @@ Causality is enforced *across* segments, while positions inside one image segmen
 />
 
 <Theorem kind="remark" name="The body is the proof of the thesis" id="rem-body-unchanged">
-Across all three designs of the figure — merged single-stream, two-path, and continuous-in/discrete-out — the transformer *body* is identical and identical to the text model's: the same decoder-only blocks (<XRef id="def-decoder-only" />), the same stacking, the same universal-approximation guarantee (<XRef id="thm-universal-approx" />). What differs is only the embedding, the head, and the mask. That the body needs no change to become a state-of-the-art image–text generator is the dual-footing thesis (<XRef id="rem-modality-blind" />) discharged in full: chapters 4–6 were stated over $\R^{n\times d}$, and a unified multimodal model is what happens when their sequences are allowed to carry pixels as freely as words.
+Across all three designs of the figure — merged single-stream, two-path, and continuous-in/discrete-out — the transformer body uses the same decoder-only block ingredients and stacking as the text model (<XRef id="def-decoder-only" />). What differs is the embedding, the head, and the mask. This architectural reuse does **not** automatically transfer an unmasked universal-approximation theorem such as <XRef id="thm-universal-approx" />: causal and mixed masks restrict information flow, so an approximation guarantee for those models requires a separate mask-compatible theorem. The dual-footing claim here is therefore architectural and algebraic, not an unproved universality transfer: the same sequence-processing blocks accept image and text representations in $\R^{n\times d}$.
 </Theorem>
 
 ## Exercises
@@ -213,10 +216,10 @@ Conditioned images enter through a **connector** (<XRef id="def-connector" />) a
 
 </SolutionBox>
 
-**Exercise 22.5 (Prove).** Show the mixed block-causal mask (<XRef id="def-mixed-mask" />) reduces to the causal mask of <XRef id="def-causal-mask" /> when the stream contains no image segments, and explain why intra-image bidirectionality does not break autoregressive training across segment boundaries.
+**Exercise 22.5 (Prove).** Show the mixed block-causal mask (<XRef id="def-mixed-mask" />) reduces to the causal mask of <XRef id="def-causal-mask" /> when the stream contains no observed context image segments. Explain why bidirectionality inside a fully observed image context does not leak a target, and why an image segment generated by the chapter's tokenwise autoregressive factorization must remain causal.
 
 <SolutionBox>
 
-If the stream contains no image segments, no two distinct positions share one, so the second clause "$i,j$ in the same image segment" is never satisfied; the mask reduces to $M_{ij}=1\iff j\le i$, the lower-triangular causal mask of <XRef id="def-causal-mask" />. Intra-image bidirectionality is confined *within* a segment: positions in one image block may see each other, but the clause adds no edge from a position to anything in a *later* segment, so the cross-segment relation remains causal ($j\le i$). Training still factorizes left to right over segments — a later segment never conditions on a future one — so the autoregressive objective of <XRef id="def-autoregressive-lm" /> over the segment ordering is intact; only the within-image attention pattern is relaxed, which is sound because an image block is encoded/predicted as a unit rather than one raster-ordered token at a time. $\qquad\blacksquare$
+If there are no fully observed context image segments, $\mathcal B_{\mathrm{ctx}}=\varnothing$, so the second clause is never satisfied and $M_{ij}=1\iff j\le i$, exactly the lower-triangular causal mask of <XRef id="def-causal-mask" />. If $B\in\mathcal B_{\mathrm{ctx}}$, every token in $B$ is supplied before target scoring, so letting rows in $B$ see all other columns in $B$ reveals no unknown target; the clause also adds no edge from $B$ into a later segment. By contrast, for a generated image segment the tokenwise factorization contains factors $p_\theta(u_t\mid u_{<t})$. Allowing its row $t$ to see a later target $u_j$, $j>t$, would condition that factor on the answer and invalidate the factorization. Such a segment is therefore excluded from $\mathcal B_{\mathrm{ctx}}$ and remains causal. $\qquad\blacksquare$
 
 </SolutionBox>

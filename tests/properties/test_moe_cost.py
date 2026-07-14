@@ -349,7 +349,7 @@ class MoECostTests(unittest.TestCase):
                 self.assertLessEqual(active, min(experts, len(routes) * k))
 
     def test_three_accounting_quantities_have_distinct_dependencies(self):
-        """Residency uses E, compute uses T*k, and traffic uses A_B."""
+        """prop-moe-flops: residency uses E, compute T*k, and traffic A_B."""
         routes = [{0, 1}, {1, 2}, {2, 3}]
         result = account_moe(8, 2, routes, expert_bytes=100, expert_call_flops=30)
         self.assertEqual(result.resident_bytes, 800)

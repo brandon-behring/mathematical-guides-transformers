@@ -49,11 +49,11 @@ where $\operatorname{Attn}$ is scaled dot-product attention (<XRef id="def-atten
 Multi-head attention is then the concatenation of all heads' outputs followed by one shared linear map back to model width. The concatenation lays the $h$ output blocks side by side within each row; the output projection lets the layer mix across heads, so the heads are not forced to occupy disjoint output coordinates.
 
 <Theorem kind="definition" name="Multi-head attention" id="def-mha">
-**Multi-head attention** concatenates the $h$ heads row-wise and applies a final linear projection:<Sidenote>The split–concatenate–project construction, with $d_k=d_v=d/h$, is the original design of <Cite key="vaswani2017attention" />.</Sidenote>
+**Multi-head attention** concatenates the $h$ heads row-wise and applies a final linear projection:<Sidenote>The split–concatenate–project construction, with $h\mid d$ and $d_k=d_v=d/h$, is the original design of <Cite key="vaswani2017attention" />.</Sidenote>
 $$
 \operatorname{MHA}(\mathbf X) \defeq \operatorname{Concat}(\operatorname{head}_1,\dots,\operatorname{head}_h)\,\mathbf W^O \in \R^{n\times d},
 $$
-where $\operatorname{Concat}$ stacks the head outputs along the feature axis (giving an $n\times h\,d_v$ matrix whose $i$-th row is $([\operatorname{head}_1]_{i,:},\dots,[\operatorname{head}_h]_{i,:})$) and $\mathbf W^O\in\R^{h\,d_v\times d}$ is the **output projection matrix**. With the standard choice $d_k = d_v = d/h$ the concatenation has width $h\cdot d_v = d$, so $\mathbf W^O\in\R^{d\times d}$.
+where $\operatorname{Concat}$ stacks the head outputs along the feature axis (giving an $n\times h\,d_v$ matrix whose $i$-th row is $([\operatorname{head}_1]_{i,:},\dots,[\operatorname{head}_h]_{i,:})$) and $\mathbf W^O\in\R^{h\,d_v\times d}$ is the **output projection matrix**. With the standard choice $h\mid d$ and $d_k = d_v = d/h$, the concatenation has width $h\cdot d_v = d$, so $\mathbf W^O\in\R^{d\times d}$.
 </Theorem>
 
 Schematically: the input $\mathbf X$ fans out to $h$ heads; each head runs attention in its $d_k$-dimensional subspace and returns an $n\times d_v$ block; the blocks concatenate into an $n\times h\,d_v$ matrix; and $\mathbf W^O$ maps that back to $n\times d$. The split into subspaces is what makes the heads independent; the output projection is what lets them recombine.
@@ -71,10 +71,10 @@ Schematically: the input $\mathbf X$ fans out to $h$ heads; each head runs atten
 
 ## Parameter count and rank structure
 
-The standard choice $d_k = d_v = d/h$ is not arbitrary: it is exactly the width that holds the layer's parameter count fixed as $h$ varies, so adding heads buys more independent patterns at no extra cost.
+When $h\mid d$, the standard choice $d_k = d_v = d/h$ is not arbitrary: it is exactly the width that holds the layer's parameter count fixed as $h$ varies, so adding heads buys more independent patterns at no extra cost.
 
 <Theorem kind="proposition" name="MHA parameter count" id="prop-mha-params">
-With $d_k = d_v = d/h$, the multi-head attention layer has $4d^2$ learnable parameters (excluding biases), independent of $h$.
+Assume $h\mid d$. With $d_k = d_v = d/h$, the multi-head attention layer has $4d^2$ learnable parameters (excluding biases), independent of $h$.
 </Theorem>
 
 <Theorem kind="proof">
@@ -181,6 +181,8 @@ In either case, a length-$n$ layer cache contains $n\,d_{\text{cache}}$ scalars.
 </Theorem>
 
 <Theorem kind="proof">
+**Proof.**
+
 For a materialized cache, each position contributes $d_k$ scalars to every distinct key head and $d_v$ to every distinct value head, hence $h_kd_k+h_vd_v=d_{\text{cache}}$ scalars. MHA has $h_k=h_v=h$, GQA has $h_k=h_v=g$, and MQA has $h_k=h_v=1$, which gives the three displayed formulas after multiplying by $n$. Dividing the GQA and MQA totals by the MHA total cancels $n(d_k+d_v)$ and yields $g/h$ and $1/h$; setting $d_k=d_v$ gives the stated simplifications. For the joint-latent case, the hypothesis says that the only persisted content vector per position is $\mathbf c_t^{KV}\in\R^{d_c}$, so its width is $d_c$ and $n$ positions contain $nd_c$ scalars. Any other persisted vector contributes its own width by concatenation. $\qquad\blacksquare$
 </Theorem>
 
@@ -228,7 +230,7 @@ The parameter count checks against <XRef id="prop-mha-params" />: the two heads 
 
 Attempt each before expanding its solution.
 
-**Exercise 5.1 (Prove).** With $d_k = d_v = d/h$, show the multi-head attention layer has exactly $4d^2$ parameters (excluding biases) and that this count is independent of $h$; identify which $h$-dependence cancels.
+**Exercise 5.1 (Prove).** Assuming $h\mid d$ and taking $d_k = d_v = d/h$, show the multi-head attention layer has exactly $4d^2$ parameters (excluding biases) and that this count is independent of $h$; identify which $h$-dependence cancels.
 
 <SolutionBox>
 

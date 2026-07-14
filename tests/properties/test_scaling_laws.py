@@ -235,7 +235,7 @@ class TestScalingLawOptimalAllocation(unittest.TestCase):
         )
 
     def test_randomized_closed_form_satisfies_constraint_and_marginal_balance(self):
-        """thm-compute-optimal-allocation obeys both defining equations."""
+        """def-training-compute-proxy and thm-compute-optimal-allocation agree."""
         rng = random.Random(13_001)
         for _ in range(400):
             A = math.exp(rng.uniform(-8.0, 8.0))

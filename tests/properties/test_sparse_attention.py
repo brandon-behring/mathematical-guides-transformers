@@ -205,7 +205,7 @@ class SparseAttentionTests(unittest.TestCase):
         self.assertEqual(sparse_edge_count(supports), length * (length + 1) // 2)
 
     def test_sliding_window_formula_and_endpoints(self):
-        """prop-swa-edge-cache guards both edge and cache formulas."""
+        """def-swa and prop-swa-edge-cache guard edge and cache formulas."""
         for length in range(1, 20):
             for window in range(1, 25):
                 with self.subTest(length=length, window=window):

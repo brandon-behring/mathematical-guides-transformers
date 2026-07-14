@@ -102,7 +102,7 @@ The two 16-bit formats below store the same 16 bits but allocate them differentl
 | fp16 | 1 | 5 | 10 |
 | bf16 | 1 | 8 | 7 |
 
-A format's smallest representable positive magnitude is governed by its exponent width. fp16's $5$-bit exponent reaches only down to $\approx 6 \times 10^{-5}$, so Adam's second-moment update $v_t = \beta_2 v_{t-1} + (1-\beta_2) g_t^2$ — which *squares* already-small gradients — routinely underflows to zero, stalling the update. bf16 keeps FP32's $8$-bit exponent (hence FP32's dynamic range) and pays for it in mantissa precision, so the underflow does not arise. fp16 training therefore needs *loss scaling* — multiply the loss by a power of two before backprop and divide it out after — to lift gradients above the underflow threshold; bf16 needs no such rescaling.
+Normal and subnormal ranges must be distinguished. fp16's smallest positive **normal** number is $2^{-14}\approx 6.10\times10^{-5}$, while its smallest positive **subnormal** is $2^{-24}\approx5.96\times10^{-8}$. Values below the normal floor have reduced precision, and accelerator kernels may flush subnormals to zero; small gradients can therefore vanish during fp16 backward arithmetic or fp16 gradient transport before they are converted to FP32. bf16 keeps FP32's $8$-bit exponent (hence essentially FP32's dynamic range) and pays for it in mantissa precision, so this transport problem is far less acute. fp16 training therefore uses *loss scaling* — multiply the loss by a power of two before backprop, then unscale after the gradients have safely reached FP32 — to protect the backward/transport path. It does **not** protect Adam's moment buffers: under <XRef id="def-mixed-precision" /> those moments and their update already remain FP32.
 </Theorem>
 
 The memory consequence is quantitative, and the surprise is that it is smaller than "$16$-bit, so half the memory" suggests: the FP32 master copy and FP32 Adam state stay put.
@@ -142,15 +142,19 @@ Mixed precision left the activation term $A\,b_a$ structurally intact (it only h
 <MarginNote variant="tip" label="Self-explanation">Before the proof: if you store $K$ uniformly spaced checkpoints out of $L$ activations, each segment you must recompute has length about $L/K$; what is the peak memory as a function of $K$? Minimize it.</MarginNote>
 
 <Theorem kind="theorem" name="sqrt(L) checkpointing tradeoff" id="thm-checkpointing">
-For a sequential network of $L$ layers, storing $K$ uniformly spaced checkpoint activations and recomputing the layers between them gives peak activation memory $\Theta(K + L/K)$, minimized at $K = \sqrt{L}$ to peak memory $\Theta(\sqrt{L})$, at the cost of one extra forward pass during the backward computation. Any schedule storing $o(L)$ activations must recompute the missing ones, so the extra forward work is the price of the memory saving; the $O(\sqrt{L})$ construction achieving it is due to <Cite key="chen2016training" />.
+For positive integers $L$ and $K$ with $1\le K\le L$, split a sequential network of $L$ layers into $K$ contiguous segments whose lengths differ by at most one. Storing their boundary activations and recomputing within a segment gives peak activation memory
+$$
+\Theta\!\left(K+\left\lceil\frac{L}{K}\right\rceil\right),
+$$
+at the cost of one extra forward pass during the backward computation. The continuous relaxation $K+L/K$ is minimized at $K=\sqrt L$; choosing a legal neighboring integer $K\in\{\lfloor\sqrt L\rfloor,\lceil\sqrt L\rceil\}$ and using rounded segment boundaries yields peak memory $\Theta(\sqrt L)$. If an exactly equal-length presentation is desired, one may instead use a divisor of $L$ near $\sqrt L$ when such a divisor exists; divisibility is not required for the rounded construction. Any schedule storing $o(L)$ activations must recompute the missing ones, so the extra forward work is the price of the memory saving; the $O(\sqrt{L})$ construction achieving it is due to <Cite key="chen2016training" />.
 </Theorem>
 
 <Theorem kind="proof">
 Two steps: the memory cost of a uniform schedule, then its minimization.
 
-**Memory of a uniform schedule.** Split the $L$ layers into $K$ contiguous segments of $L/K$ layers each, and store only the $K$ segment-boundary activations — this is the $K$ term. During the backward pass, process segments from last to first; to differentiate one segment, re-run its forward pass from its stored starting checkpoint, holding the $L/K$ activations of *that one segment* live — this is the $L/K$ term. Only one segment is materialized at a time, so peak activation memory is $\Theta(K + L/K)$.
+**Memory of a uniform schedule.** Put the boundaries at rounded multiples of $L/K$. The resulting $K$ segment lengths are $\lfloor L/K\rfloor$ or $\lceil L/K\rceil$; if $K\mid L$, they are exactly $L/K$. Store only the $K$ segment-boundary activations — this is the $K$ term. During the backward pass, process segments from last to first; to differentiate one segment, re-run its forward pass from its stored starting checkpoint, holding at most $\lceil L/K\rceil$ activations of *that one segment* live. Only one segment is materialized at a time, so peak activation memory is $\Theta(K+\lceil L/K\rceil)$.
 
-**Minimization (AM–GM).** The recompute pass touches each layer exactly once across the whole backward sweep, so the extra arithmetic is a single forward pass regardless of $K$. Minimize the memory $g(K) = K + L/K$ over $K \in [1, L]$: by the AM–GM inequality $K + L/K \ge 2\sqrt{L}$ with equality iff $K = L/K$, i.e. $K = \sqrt{L}$. (Equivalently $g'(K) = 1 - L/K^2 = 0$ gives $K = \sqrt{L}$.) The optimum value is $2\sqrt{L} = \Theta(\sqrt{L})$. $\qquad\blacksquare$
+**Minimization (AM–GM, then integer rounding).** The recompute pass touches each layer exactly once across the whole backward sweep, so the extra arithmetic is a single forward pass regardless of $K$. For the continuous relaxation $g(x)=x+L/x$ on $[1,L]$, AM–GM gives $x+L/x\ge2\sqrt L$, with equality at $x=\sqrt L$ (equivalently $g'(x)=1-L/x^2=0$). An admissible integer nearest $\sqrt L$ differs from it by at most $1$, and its ceiling term is at most $L/K+1$, so it attains $\Theta(\sqrt L)$ peak memory. When $L$ is a perfect square the exact continuous optimizer is itself legal and the unrounded value is $2\sqrt L$. $\qquad\blacksquare$
 </Theorem>
 
 The exchange the theorem prices is among the best available: a $\sim\!\sqrt{L}$-fold drop in activation memory (e.g. $L = 64 \to K = 8$: peak $K + L/K = 16$ live tensors instead of $64$, a factor of four) for a single extra forward pass. Since the backward pass is already roughly twice the cost of a forward, adding one more forward raises the step time by only about a third.
@@ -215,30 +219,32 @@ PyTorch's Fully Sharded Data Parallel (FSDP) is the production implementation of
 The per-worker memory is immediate from the definition; the content is the *communication* each stage pays, which we compute from the collective each step performs.
 
 <Theorem kind="proposition" name="ZeRO per-worker memory and communication" id="prop-zero-memory">
-Let $M_P = N b_p$, $M_G = N b_g$, $M_O = N b_o$ be the unsharded contributions. Per-worker master-copy memory and dominant communication volume per optimizer step are:
+Let $M_P = N b_p$, $M_G = N b_g$, and $M_O = N b_o$ be the unsharded **resident-memory** contributions. Separately, let $b_w$ be the bytes per communicated parameter or gradient element on the wire. Under ring collectives and a ZeRO-3 schedule that reshards a layer's parameters after its forward use, the per-worker resident master-copy memory and payload volume per optimizer step are:
 
 | Stage | Per-worker master copy | Communication / step |
 |---|---|---|
-| DDP (no ZeRO) | $M_P + M_G + M_O$ | $2N b_g$ (one all-reduce) |
-| ZeRO-1 | $M_P + M_G + M_O/P$ | $2N b_g$ |
-| ZeRO-2 | $M_P + M_G/P + M_O/P$ | $2N b_g$ |
-| ZeRO-3 / FSDP | $(M_P + M_G + M_O)/P$ | $\approx 3N b_p$ |
+| DDP (no ZeRO) | $M_P + M_G + M_O$ | $2\frac{P-1}{P}N b_w\approx2Nb_w$ |
+| ZeRO-1 | $M_P + M_G + M_O/P$ | $2\frac{P-1}{P}N b_w\approx2Nb_w$ |
+| ZeRO-2 | $M_P + M_G/P + M_O/P$ | $2\frac{P-1}{P}N b_w\approx2Nb_w$ |
+| ZeRO-3 / FSDP | $(M_P + M_G + M_O)/P$ | $3\frac{P-1}{P}N b_w\approx3Nb_w$ |
+
+The approximations are the large-$P$ limits. These are payload-byte counts per worker; they exclude collective latency, bucket padding, protocol overhead, and communication hidden by overlap with computation.
 </Theorem>
 
 <Theorem kind="proof">
 The memory column is <XRef id="def-zero" /> applied term by term. The communication column comes from the collective each stage runs.
 
-**DDP.** Every worker replicates the full master copy; only gradients are reduced, once per step. A ring all-reduce of $N b_g$ bytes moves $2N b_g$ bytes per worker (a reduce-scatter of $N b_g$ followed by an all-gather of $N b_g$).
+**DDP.** Every worker replicates the full master copy; only gradients are reduced, once per step. In a ring, each reduce-scatter and all-gather moves $(P-1)N b_w/P$ payload bytes per worker. Their composition therefore makes one all-reduce cost exactly $2(P-1)N b_w/P$ payload bytes per worker.
 
-**ZeRO-1 and ZeRO-2.** Stage 1 partitions only optimizer state; each worker updates its parameter slice from its moment slice and the step still hinges on the same gradient reduction, so the dominant volume stays $2N b_g$. Stage 2 replaces the all-reduce by a reduce-scatter of gradients ($N b_g$) plus an all-gather of updated parameters ($N b_g$) — the same $2N b_g$ total, merely rebalanced.
+**ZeRO-1 and ZeRO-2.** Stage 1 partitions only optimizer state; whether implemented as the corresponding reduce-scatter/update/all-gather sequence or an equivalent gradient synchronization, its two ring phases total $2(P-1)N b_w/P$. Stage 2 explicitly uses a reduce-scatter of gradients plus an all-gather of updated parameters. Each phase costs $(P-1)N b_w/P$, so the exact total is again $2(P-1)N b_w/P$.
 
-**ZeRO-3 / FSDP.** Parameters are now sharded, so each layer's shard must be *all-gathered* to reconstruct its full weight tensor twice — once in the forward pass and once in the backward pass — contributing $\approx N b_p$ each, and a final *reduce-scatter* of gradients contributes $\approx N b_p$ (with $b_g = b_p$ for $16$-bit gradients). The dominant volume is therefore $\approx 3N b_p$, roughly $1.5\times$ DDP's $2N b_g$. $\qquad\blacksquare$
+**ZeRO-3 / FSDP.** Parameters are sharded. Under the stated reshard-after-forward schedule, each layer's full working weights are all-gathered once for its forward pass and again for its backward pass, and its gradients are reduce-scattered once. Each of these three ring phases costs $(P-1)N b_w/P$ after summing over layers, for an exact total $3(P-1)N b_w/P$. This is $1.5\times$ the DDP payload when both use the same wire width. $\qquad\blacksquare$
 </Theorem>
 
-So ZeRO-3 buys full $1/P$ partitioning of the entire master-copy block for about $1.5\times$ the communication of plain data parallelism. For a $70$B model in mixed precision the block is $(6 + 2 + 8)N = 16\cdot 70 \times 10^9 = 1120$ GB; on $P = 64$ workers the per-worker share is $17.5$ GB, comfortably inside an $80$ GB accelerator — whereas DDP would replicate the full $1120$ GB on every worker and not fit at all.
+So, under that schedule and a common $b_w$, ZeRO-3 buys full $1/P$ partitioning of the entire master-copy block for $1.5\times$ the payload of plain data parallelism. For a $70$B model in mixed precision the block is $(6 + 2 + 8)N = 16\cdot 70 \times 10^9 = 1120$ GB; on $P = 64$ workers the per-worker share is $17.5$ GB, comfortably inside an $80$ GB accelerator — whereas DDP would replicate the full $1120$ GB on every worker and not fit at all.
 
 <Theorem kind="remark" name="Communication can become the binding constraint" id="rem-fsdp-bandwidth">
-The $\approx 3N b_p$ figure is bytes, not time; the time depends on interconnect bandwidth, and ZeRO-3 stresses it hardest because the parameter all-gathers sit on the critical path of every layer. On a cluster with thin interconnect the all-gather latency for a layer can exceed that layer's compute time, leaving the accelerator idle. FSDP exposes a *wrapping granularity* knob — how many layers share one all-gather (per transformer block is the usual choice). Finer wrapping lowers peak memory but issues more, smaller collectives; coarser wrapping does the reverse. The right setting balances the two against the measured bandwidth, which is why ZeRO-3 is not a free lunch but a memory–bandwidth trade.
+The exact $3(P-1)N b_w/P$ figure is payload bytes, not time; the time depends on interconnect bandwidth and latency, and ZeRO-3 stresses it hardest because the parameter all-gathers sit on the critical path of every layer. On a cluster with thin interconnect the all-gather latency for a layer can exceed that layer's compute time, leaving the accelerator idle. FSDP exposes a *wrapping granularity* knob — how many layers share one all-gather (per transformer block is the usual choice). Finer wrapping lowers peak memory but issues more, smaller collectives; coarser wrapping does the reverse. The right setting balances the two against the measured bandwidth, which is why ZeRO-3 is not a free lunch but a memory–bandwidth trade.
 </Theorem>
 
 ## Putting it together
@@ -269,19 +275,23 @@ The mixed-precision block is $16N$: a $6N$ parameter term ($4N$ FP32 master $+ 2
 
 </SolutionBox>
 
-**Exercise 14.3 (Prove).** From the peak-memory model $g(K) = K + L/K$ of a uniform checkpointing schedule, prove $K = \sqrt{L}$ minimizes it and that the optimum is $2\sqrt{L}$. For $L = 100$, state the number of stored tensors, the memory-reduction factor, and the wall-time penalty.
+**Exercise 14.3 (Prove).** For the continuous relaxation $g(x) = x + L/x$ of a uniform checkpointing schedule, prove $x = \sqrt{L}$ minimizes it and that the optimum is $2\sqrt{L}$; then explain how <XRef id="thm-checkpointing" /> chooses a legal integer $K$. For $L = 100$, state the number of stored tensors, the memory-reduction factor, and the wall-time penalty.
 
 <SolutionBox>
 
-Minimize $g(K) = K + L/K$. By AM–GM, $K + L/K \ge 2\sqrt{L}$, equality iff $K = \sqrt{L}$ (or $g'(K) = 1 - L/K^2 = 0$, $g'' > 0$). For $L=100$, $K=10$: store $10$ checkpoints, with peak memory $g(10) = 10 + 100/10 = 20$ live tensors instead of $100$ — a $5\times$ reduction — for one extra forward pass on backward ($\approx +1/3$ step time). $\qquad\blacksquare$
+Minimize the continuous relaxation $g(x)=x+L/x$. By AM–GM, $x+L/x\ge2\sqrt L$, equality iff $x=\sqrt L$ (or $g'(x)=1-L/x^2=0$, $g''>0$). For general integer $L$, choose the better legal neighbor $K\in\{\lfloor\sqrt L\rfloor,\lceil\sqrt L\rceil\}$ and use segment length at most $\lceil L/K\rceil$ as in <XRef id="thm-checkpointing" />. For $L=100$, $K=10$ is already integral: store $10$ checkpoints, with peak memory $10+100/10=20$ live tensors instead of $100$ — a $5\times$ reduction — for one extra forward pass on backward ($\approx+1/3$ step time). $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 14.4 (Derive).** A $13$B model with $d = 5120$ is fine-tuned with LoRA at rank $r = 8$, applied to the four attention projections in each of $L = 40$ layers. Using <XRef id="prop-lora-savings" />, count the trainable parameters and their fraction of the full $13$B, and explain why the Adam state shrinks by the same factor.
+**Exercise 14.4 (Derive).** A $13$B model with $d = 5120$ is fine-tuned with LoRA at rank $r = 8$, applied to the four attention projections in each of $L = 40$ layers. Using <XRef id="prop-lora-savings" />, count the trainable parameters and their fraction of the full $13$B, then distinguish the Adam-state reduction relative to all-parameter fine-tuning from the reduction relative to fully tuning only the selected matrices.
 
 <SolutionBox>
 
-With $K = 4\cdot40 = 160$ adapted matrices, $r=8$, $d=5120$, the trainable count is $2Krd = 2\cdot160\cdot8\cdot5120 \approx 13$ M $= 0.1\%$ of $13$ B. Adam state shrinks by the same factor $2r/d = 1/320$: the frozen $\mathbf W_0$ produce no gradient and thus no moments, so gradients and optimizer state live only on the adapters. $\qquad\blacksquare$
+With $K = 4\cdot40 = 160$ adapted matrices, $r=8$, and $d=5120$, the exact trainable count is
+$$
+2Krd=2\cdot160\cdot8\cdot5120=13{,}107{,}200.
+$$
+Relative to all $13\times10^9$ model parameters this is $13{,}107{,}200/(13\times10^9)\approx0.1008\%\approx1/992$. The ratio $2r/d=1/320$ uses a different denominator: it compares the adapters with full fine-tuning of the **160 selected** $d\times d$ matrices, whose total is $160d^2$, not with all $13$B parameters. Adam stores a fixed number of moment bytes per trainable parameter, so its state inherits $1/320$ relative to full tuning of those selected matrices, or approximately $1/992$ relative to an all-parameter $13$B fine-tuning baseline. The frozen weights produce no gradients and hence no moments. $\qquad\blacksquare$
 
 </SolutionBox>
 
@@ -289,6 +299,10 @@ With $K = 4\cdot40 = 160$ adapted matrices, $r=8$, $d=5120$, the trainable count
 
 <SolutionBox>
 
-The unsharded $(6+2+8)N = 16N$ block for $N=70$ B is $1120$ GB. ZeRO-3/FSDP partitions all three terms by $P=64$: $17.5$ GB per worker — fits, with communication $\approx 3N b_p$ per step. DDP replicates the full $1120$ GB per worker (infeasible on $80$ GB), communicating $2N b_g$ per step. ZeRO-3 trades $\sim1.5\times$ communication for full $1/P$ memory partitioning. $\qquad\blacksquare$
+The unsharded $(6+2+8)N = 16N$ block for $N=70$ B is $1120$ GB. ZeRO-3/FSDP partitions all three resident terms by $P=64$: $17.5$ GB per worker — fits — while DDP replicates the full $1120$ GB per worker and is infeasible on an $80$ GB device. With bf16 payloads, $b_w=2$ bytes, DDP communicates
+$$
+2\frac{63}{64}(70\times10^9)(2)=275.625\times10^9\ \text{payload bytes per worker per step},
+$$
+whereas ZeRO-3 under the reshard-after-forward schedule communicates $3/2$ times that, $413.4375\times10^9$ bytes. The resident precisions determine the memory figures; the independent wire precision $b_w$ determines these communication figures. $\qquad\blacksquare$
 
 </SolutionBox>

@@ -155,14 +155,14 @@ The projection off $\operatorname{span}\{\mathbf 1\}$ is the same null-space phe
 
 ## Residual connections and the gradient highway
 
-Stacking many nonlinear layers makes the loss gradient at an early layer a long product of Jacobians; if those factors are even mildly contractive, the product shrinks geometrically and the early layers stop learning. The residual connection breaks the product apart by adding the input back to each sublayer's output, so that an *identity* sits beside every Jacobian. Reading the input as the default and the sublayer as a learned correction, the layer can represent the identity for free — and, as we now show, so can the backward pass.
+Stacking many nonlinear layers makes the loss gradient at an early layer a long product of Jacobians; if those factors are even mildly contractive, the product shrinks geometrically and the early layers stop learning. The residual connection breaks the product apart by adding the input back to each sublayer's output, so that an *identity summand* sits beside every Jacobian. Reading the input as the default and the sublayer as a learned correction, a parameterized residual family contains the identity whenever its branch can be set identically to zero — and, as we now show, the backward pass always contains an identity term.
 
 <Theorem kind="definition" name="Residual connection" id="def-residual">
 A **residual connection** wraps a sublayer $f$ (here $\operatorname{MHA}$ or $\operatorname{FFN}$) by adding its input to its output:
 $$
 \mathbf y \defeq \mathbf x + f(\mathbf x).
 $$
-The identity path $\mathbf x\mapsto\mathbf x$ guarantees the layer can represent the identity map regardless of $f$.
+The skip path supplies the identity summand $\mathbf x\mapsto\mathbf x$, but the whole layer equals the identity only when $f(\mathbf x)=\mathbf0$ on the relevant domain. Standard parameterized MHA and FFN branches can be made identically zero by zeroing an output projection (and its bias), so those residual **families** contain the identity; an arbitrary fixed nonzero $f$ does not.
 </Theorem>
 
 <MarginNote variant="tip" label="Self-explanation">Before the proof: a residual layer's Jacobian is $\mathbf I + \partial f/\partial\mathbf x$. Multiply $L-\ell$ such factors and expand — which term has no sublayer Jacobian?</MarginNote>
@@ -280,11 +280,11 @@ Shifting $\mathbf x\mapsto\mathbf x + c\mathbf 1$ shifts the feature mean to $\m
 
 </SolutionBox>
 
-**Exercise 6.4 (Compute).** Take $\mathbf x = (4, 0, -2, 2)\in\R^{4}$ with $\boldsymbol\gamma = \mathbf 1$, $\boldsymbol\beta = \mathbf 0$, $\epsilon = 0$. Compute $\mu_{\mathbf x}$, $\sigma_{\mathbf x}^2$, and $\operatorname{LN}(\mathbf x)$, and verify the output has zero mean and unit variance across its features.
+**Exercise 6.4 (Compute).** Use the idealized $\epsilon=0$ extension of layer normalization on $\mathbf x = (4, 0, -2, 2)\in\R^{4}$ with $\boldsymbol\gamma = \mathbf 1$ and $\boldsymbol\beta = \mathbf 0$. This extension is well-defined here because the variance is nonzero, but it lies outside <XRef id="def-ln" />, which requires $\epsilon>0$ for all-input stability. Compute $\mu_{\mathbf x}$, $\sigma_{\mathbf x}^2$, and the idealized output, and verify it has zero mean and unit variance across its features.
 
 <SolutionBox>
 
-With $\mathbf x = (4,0,-2,2)$: $\mu_{\mathbf x} = 1$, centered $(3,-1,-3,1)$, $\sigma_{\mathbf x}^2 = \tfrac14(9+1+9+1) = 5$. With $\boldsymbol\gamma=\mathbf 1,\boldsymbol\beta=\mathbf 0,\epsilon=0$,
+With $\mathbf x = (4,0,-2,2)$: $\mu_{\mathbf x} = 1$, centered $(3,-1,-3,1)$, $\sigma_{\mathbf x}^2 = \tfrac14(9+1+9+1) = 5$. Because $5>0$, the explicitly idealized $\epsilon=0$ extension is defined on this input, and with $\boldsymbol\gamma=\mathbf 1,\boldsymbol\beta=\mathbf 0$ it gives
 $$
 \operatorname{LN}(\mathbf x) = \tfrac{(3,-1,-3,1)}{\sqrt5} \approx (1.342,\,-0.447,\,-1.342,\,0.447),
 $$

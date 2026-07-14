@@ -217,10 +217,15 @@ The pair decouples two properties that are easy to conflate: one-pass training i
 Turning the causal switch off is trivial for attention — delete the mask — but a recurrence is one-directional by construction. The classical remedy is to run it twice.
 
 <Theorem kind="definition" name="Bidirectional scan" id="def-bidirectional-scan">
-Let $F$ be a causal recurrence mixer (RNN or discretized SSM). Its **bidirectional scan** runs one copy forward and an independent copy (its own parameters) on the reversed sequence, and merges position-wise: with $\overrightarrow{\mathbf h}_t$ the forward state after $\mathbf x_1,\dots,\mathbf x_t$ and $\overleftarrow{\mathbf h}_t$ the backward state after $\mathbf x_n,\dots,\mathbf x_t$, the output row is a position-wise map of the concatenation $[\,\overrightarrow{\mathbf h}_t;\ \overleftarrow{\mathbf h}_t\,]$.<Sidenote>Introduced for RNNs by <Cite key="schuster1997bidirectional" />; the same reversal applies verbatim to a linear state-space recurrence.</Sidenote> A bidirectional scan is not causal: row $t$ depends on $x_{t+1:n}$ through $\overleftarrow{\mathbf h}_t$ whenever the backward recurrence is nondegenerate. Attention needs no second scan — omitting the mask already lets every row read every position.
+Let $F$ be a causal recurrence mixer (RNN or discretized SSM). Its **bidirectional scan** runs one copy forward and an independent copy (its own parameters) on the reversed sequence, and merges position-wise: with $\overrightarrow{\mathbf h}_t$ the forward state after $\mathbf x_1,\dots,\mathbf x_t$ and $\overleftarrow{\mathbf h}_t$ the backward state after $\mathbf x_n,\dots,\mathbf x_t$, write
+$$
+\mathbf z_t=m\!\left([\,\overrightarrow{\mathbf h}_t;\ \overleftarrow{\mathbf h}_t\,]\right),
+\qquad \text{readout }\rho(\mathbf z_t),
+$$
+for a position-wise merge $m$ and any subsequent position-wise readout $\rho$.<Sidenote>Introduced for RNNs by <Cite key="schuster1997bidirectional" />; the same reversal applies verbatim to a linear state-space recurrence.</Sidenote> The construction is noncausal at row $t$ when varying $x_{t+1:n}$ changes $\overleftarrow{\mathbf h}_t$ **and** the composed merge/readout $\rho\circ m$ separates at least two such backward states. A nondegenerate backward recurrence alone is not sufficient if the merge or readout ignores its backward coordinates. Attention needs no second scan — omitting the mask already lets every row read every position, subject to the same readout-separation qualification when one claims a changed final prediction.
 </Theorem>
 
-An encoder therefore forfeits <XRef id="thm-one-pass" />: its rows cannot define next-token conditionals, so it cannot be trained as a language model in the autoregressive sense. What it *can* do is predict a position from both sides, and the standard objective does exactly that on a corrupted input.
+A genuinely bidirectional encoder satisfying that future-state/readout separation therefore forfeits <XRef id="thm-one-pass" />: its rows cannot define next-token conditionals, so it cannot be trained as a language model in the autoregressive sense. What it *can* do is predict a position from both sides, and the standard objective does exactly that on a corrupted input.
 
 <Theorem kind="definition" name="Masked language modeling" id="def-mlm">
 Fix a corruption rule: sample a mask set $\mathcal M\subset\{1,\dots,n\}$ and replace each $x_t$, $t\in\mathcal M$, by a reserved mask symbol, producing $\tilde x$. **Masked language modeling** trains a bidirectional stack with a position-wise readout to maximize
@@ -333,7 +338,7 @@ Attempt each before expanding its solution.
 
 </SolutionBox>
 
-**Exercise 9.2 (Show).** With $d = d_k = d_v = 1$, identity projections, and $\mathbf X = (0, c)^\top$, show that unmasked attention gives $F_2(\mathbf X)_1 = c/2$ while $F_1(\mathbf X_{1:1})_1 = 0$, and verify that adding the causal mask restores prefix-consistency on this input.
+**Exercise 9.2 (Prove).** With $d = d_k = d_v = 1$, identity projections, and $\mathbf X = (0, c)^\top$, prove that unmasked attention gives $F_2(\mathbf X)_1 = c/2$ while $F_1(\mathbf X_{1:1})_1 = 0$, and verify that adding the causal mask restores prefix-consistency on this input.
 
 <SolutionBox>
 
@@ -361,11 +366,11 @@ Check: $p_1(\mathtt a\mid\mathtt a) = \tfrac{1/3}{1/3+1/6} = \tfrac{2}{3}$, $p_1
 
 </SolutionBox>
 
-**Exercise 9.5 (Prove).** Prove that the one-pass identity of <XRef id="thm-one-pass" /> fails for a bidirectional stack: show that under either the unmasked-attention witness or a nondegenerate bidirectional scan, the row-$t$ readout on $x_{1:n}$ is a nonconstant function of $x_{t+1}$, and explain what a teacher-forced loss at position $t$ would then be scoring.
+**Exercise 9.5 (Prove).** Prove that the one-pass identity of <XRef id="thm-one-pass" /> fails for a bidirectional stack: show that under either the unmasked-attention witness with a readout that separates the changed rows, or a nondegenerate bidirectional scan whose merge/readout separates the changed backward states, the row-$t$ readout on $x_{1:n}$ is a nonconstant function of $x_{t+1}$, and explain what a teacher-forced loss at position $t$ would then be scoring.
 
 <SolutionBox>
 
-Unmasked attention: by <XRef id="prop-causal-instances" />, with identity projections and $\mathbf X = (0,c)^\top$, row $1$ of the length-$2$ evaluation is $c/2$, which varies with the second token; the readout $\softmax(F_2(\mathbf X)_1\mathbf W_{\text{out}})$ is therefore a nonconstant function of $x_2$ and cannot equal $p_\theta(\,\cdot\mid x_1)$, a function of $x_1$ alone. Bidirectional scan: row $t$ merges $\overleftarrow{\mathbf h}_t$, whose recursion consumes $\mathbf x_n,\dots,\mathbf x_{t+1},\mathbf x_t$; if the backward recurrence is nondegenerate, varying $x_{t+1}$ moves $\overleftarrow{\mathbf h}_t$ and hence the readout. In either case a teacher-forced "loss" at $t$ scores a quantity that has already read $x_{t+1}$ — the model can drive the loss down by copying the visible target rather than predicting the next-token conditional in the chain-rule joint. $\qquad\blacksquare$
+Unmasked attention: by <XRef id="prop-causal-instances" />, with identity projections and $\mathbf X = (0,c)^\top$, row $1$ of the length-$2$ evaluation is $c/2$, which varies with the second token. If the position-wise readout separates two of those row values (for example, the two-logit map $z\mapsto(z,0)$), its output is therefore a nonconstant function of $x_2$ and cannot equal $p_\theta(\,\cdot\mid x_1)$, a function of $x_1$ alone. Without that separation condition a constant readout would erase the witness, so changed hidden rows alone would not prove changed predictions. Bidirectional scan: row $t$ includes $\overleftarrow{\mathbf h}_t$, whose recursion consumes $\mathbf x_n,\dots,\mathbf x_{t+1},\mathbf x_t$; nondegeneracy makes varying $x_{t+1}$ move the backward state, and the stated merge/readout separation makes that movement change the output. In either case a teacher-forced "loss" at $t$ scores a quantity that has already read $x_{t+1}$ — the model can drive the loss down by copying the visible target rather than predicting the next-token conditional in the chain-rule joint. $\qquad\blacksquare$
 
 </SolutionBox>
 

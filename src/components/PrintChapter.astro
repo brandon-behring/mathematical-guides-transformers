@@ -1,5 +1,5 @@
 ---
-import { namespacePrintHeadingIds } from '../lib/print-html.mjs';
+import { groupPrintExerciseSolutions, namespacePrintHeadingIds } from '../lib/print-html.mjs';
 
 interface Props {
   prefix: string;
@@ -7,7 +7,7 @@ interface Props {
 
 const { prefix } = Astro.props;
 const rendered = await Astro.slots.render('default');
-const namespaced = namespacePrintHeadingIds(rendered, prefix);
+const namespaced = namespacePrintHeadingIds(groupPrintExerciseSolutions(rendered), prefix);
 ---
 
 <section class="chapter-print">

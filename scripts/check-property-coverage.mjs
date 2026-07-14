@@ -31,15 +31,28 @@ function normalizedClaimBlock(id) {
   return matches[0].block.replace(/\s+/g, ' ').trim();
 }
 
+function testFunctionBlocks(source) {
+  const starts = [...source.matchAll(/^[ \t]*def\s+test_[A-Za-z0-9_]+\s*\(/gm)]
+    .map((match) => match.index);
+  const footer = source.search(/^if __name__\s*==/m);
+  return starts.map((start, index) => {
+    const next = starts[index + 1] ?? source.length;
+    const end = footer > start && footer < next ? footer : next;
+    return source.slice(start, end);
+  });
+}
+
 let changed = false;
 const seen = new Set();
+const unlinked = [];
 for (const claim of coverage.claims) {
   if (seen.has(claim.id)) throw new Error(`duplicate property coverage id: ${claim.id}`);
   seen.add(claim.id);
   const testPath = join(root, claim.test);
   if (!existsSync(testPath)) throw new Error(`${claim.id}: missing test file ${claim.test}`);
-  if (!readFileSync(testPath, 'utf8').includes(claim.id)) {
-    throw new Error(`${claim.id}: ${claim.test} does not name the guarded id`);
+  const testSource = readFileSync(testPath, 'utf8');
+  if (!testFunctionBlocks(testSource).some((block) => block.includes(claim.id))) {
+    unlinked.push(`${claim.id}: ${claim.test}`);
   }
   const hash = createHash('sha256').update(normalizedClaimBlock(claim.id)).digest('hex');
   if (write) {
@@ -48,6 +61,10 @@ for (const claim of coverage.claims) {
   } else if (claim.statementSha256 !== hash) {
     throw new Error(`${claim.id}: statement changed; review the test and run npm run update:property-coverage`);
   }
+}
+
+if (unlinked.length > 0) {
+  throw new Error(`claims not named by any executable test function:\n${unlinked.join('\n')}`);
 }
 
 if (write && changed) writeFileSync(coveragePath, `${JSON.stringify(coverage, null, 2)}\n`);

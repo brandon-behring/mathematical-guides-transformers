@@ -274,7 +274,24 @@ $$
 -\frac{\eta}{n}(\mathbf x_i^\top\mathbf w_0-y_i)\right)\right\}_{i=1}^{n}
 \right).
 $$
-For fixed $(n,\eta,\mathbf w_0)$, construct a block-coded unnormalized linear-attention layer in which the demonstrations supply keys and residual-derived values, the query supplies only the query vector, and an output residual channel is initialized to $\mathbf x_\star^\top\mathbf w_0$. That layer computes the prediction after one exact gradient step while its own parameters remain fixed. Here $\mathbf w_0$ enters the constructed value projection and $\eta/n$ enters its scale; the statement does not assert that one unchanged layer handles arbitrary initial predictors or context lengths.
+For fixed $(n,\eta,\mathbf w_0)$, this identity has the following fully typed realization by one block-coded unnormalized self-attention layer. Use token width $2d+2$ with the direct-sum layout
+$$
+\mathbf r=(\mathbf x^{(D)},y,\mathbf x^{(Q)},b)
+\in \R^d\oplus\R\oplus\R^d\oplus\R.
+$$
+Encode demonstration $i$ as $\mathbf r_i=(\mathbf x_i,y_i,\mathbf0,0)$ and the query as $\mathbf r_\star=(\mathbf0,0,\mathbf x_\star,\mathbf w_0^\top\mathbf x_\star)$. Choose the fixed linear projections
+$$
+Q(\mathbf r)=\mathbf x^{(Q)},\qquad
+K(\mathbf r)=\mathbf x^{(D)},\qquad
+V(\mathbf r)=-\frac{\eta}{n}\bigl(\mathbf w_0^\top\mathbf x^{(D)}-y\bigr)\in\R,
+$$
+and let the output projection write that scalar only into the $b$ channel. Thus demonstration queries are zero, while the query token has zero key and value and is excluded from its own correction. At the query row the attention output in channel $b$ is exactly
+$$
+-\frac{\eta}{n}\sum_{i=1}^{n}
+\bigl(\mathbf w_0^\top\mathbf x_i-y_i\bigr)
+\,\mathbf x_i^\top\mathbf x_\star.
+$$
+The disjoint demonstration and query feature blocks provide the type gate using only linear projections. The residual supplies the initial $b=\mathbf w_0^\top\mathbf x_\star$, so reading that channel computes the prediction after one exact gradient step while the layer parameters remain fixed. Here $\mathbf w_0$ enters the value projection and $\eta/n$ enters its scale; the statement does not assert that one unchanged layer handles arbitrary initial predictors or context lengths.
 </Theorem>
 
 <Theorem kind="proof">
@@ -297,7 +314,7 @@ $$
 $$
 
 **Attention identification.**
-In <XRef id="prop-linear-attention-gd" />'s linear-attention expression, set query $\mathbf q=\mathbf x_\star$, key $\mathbf k_i=\mathbf x_i$, and value $v_i=-(\eta/n)(\mathbf x_i^\top\mathbf w_0-y_i)$. The defining sum of <XRef id="def-unnormalized-linear-attention" /> is exactly the correction term above. The residual channel supplies the base prediction, so the two computations agree identically. $\qquad\blacksquare$
+In <XRef id="prop-linear-attention-gd" />'s linear-attention expression, set query $\mathbf q=\mathbf x_\star$, key $\mathbf k_i=\mathbf x_i$, and value $v_i=-(\eta/n)(\mathbf x_i^\top\mathbf w_0-y_i)$. Under the displayed block layout, $Q(\mathbf r_i)=\mathbf0$ for every demonstration, while $Q(\mathbf r_\star)=\mathbf x_\star$, $K(\mathbf r_\star)=\mathbf0$, and $V(\mathbf r_\star)=0$. Hence the query row receives exactly the $n$ demonstration terms and no self-term. The defining sum of <XRef id="def-unnormalized-linear-attention" /> is the correction above, the output projection places it in $b$, and the residual in that channel supplies the base prediction. Thus the two computations agree identically. $\qquad\blacksquare$
 </Theorem>
 
 ### A complete regression trace

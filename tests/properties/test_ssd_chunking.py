@@ -90,7 +90,7 @@ class SSDChunkingTests(unittest.TestCase):
                 self.assertLessEqual(total, 4 * baseline)
 
     def test_exercise_18_6_exact_totals_and_masked_matmul_comparison(self):
-        """Reproduce the c=4,16,256 totals and the c=n comparison."""
+        """prop-chunked: reproduce the c=4,16,256 totals and c=n comparison."""
         n, d, d_s = 8_192, 1_024, 16
         expected = {
             4: ChunkCosts(34_078_720, 268_435_456, 33_554_432),
