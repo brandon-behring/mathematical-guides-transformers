@@ -227,7 +227,7 @@ Attempt each before expanding its solution.
 
 <SolutionBox exercise="12.1">
 
-Mean pooling is $\mathbf r_{\textsf{mean}} = \mathbf a\mathbf H$ with $\mathbf a = \tfrac1n\mathbf 1^\top$, a $1\times n$ row-stochastic vector, so $\mathbf r_{\textsf{mean}} = \sum_j \tfrac1n\mathbf h_j$ lies in the convex hull of the token states (<XRef id="prop-row-stochastic-convex" />). The prepended designated-position representation $\mathbf r_{\textsf{CLS}}$ need not lie in the hull of the *averaged token states* $\{\mathbf h_j\}_{j\ge 2}$, because $\mathbf h_{\textsf{CLS}}$ is a learned input vector, not one of the $\mathbf h_j$ averaged: the encoder writes into that slot through attention and the residual path, so it need not be any convex mixture of the token states. $\qquad\blacksquare$
+Mean pooling is $\mathbf r_{\textsf{mean}} = \mathbf a\mathbf H$ with $\mathbf a = \tfrac1n\mathbf 1^\top$, a $1\times n$ row-stochastic vector, so $\mathbf r_{\textsf{mean}} = \sum_j \tfrac1n\mathbf h_j$ lies in the convex hull of the token states (<XRef id="prop-row-stochastic-convex" />). The prepended designated-position representation $\mathbf r_{\textsf{CLS}}$ need not lie in the hull of the *averaged token states* $\{\mathbf h_j\}_{j\ge 2}$, because its state $\mathbf h_1$ is not one of the $\mathbf h_j$ averaged — the slot is seeded by the learned input vector $\mathbf x_{\textsf{CLS}}$, and the encoder writes into it through attention and the residual path, so it need not be any convex mixture of the token states. $\qquad\blacksquare$
 
 </SolutionBox>
 
