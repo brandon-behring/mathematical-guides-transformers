@@ -51,9 +51,12 @@ namespaces pdftocairo's generic internal IDs before inlining, which prevents cro
 - Modify `~/course_learning/transformer_mathematics` — frozen LaTeX source.
 
 ## Family macros
-KaTeX macros (`\R \Z \N \E \Var \norm \inner \defeq \softmax \Emb \sg`) inline-duplicated in `astro.config.mjs` from the
-hub's canonical `shared/styles/mathematical-guides-family.ts`. The state-space model (SSM) semantic macros
+`\R \Z \N \E` come from the scaffold-injected `ssmMacros` base (identical definitions; scaffold #177
+ships the set as a public export). The
+family additions (`\Var \inner \defeq \softmax \Emb \sg`) and the auto-sizing `\norm` override remain
+inline-duplicated in `astro.config.mjs` from the hub's canonical `shared/styles/mathematical-guides-family.ts`.
+The state-space model (SSM) semantic macros
 (`\statevec \statemat \inputmat \outputmat \feedmat \discA \discB`, rendering as bold `h A B C D` and
 `Ā B̄`) are pinned to `\mathbf` typography as top-level consumer overrides in `astro.config.mjs` — they
-win over the scaffold-injected `ssmMacros` (forward-compatible with scaffold #177). State dimension is
+win over the scaffold-injected `ssmMacros`. State dimension is
 `d_s`, step size `\Delta`, scan operator `\bullet` (including `\scanop`), elementwise `\odot`; never `\seqlen/\statedim/\inputdim`.

@@ -27,11 +27,11 @@ const mathematicalGuidesFamilyStyle = defineStyle({
   site: 'https://mathematical.brandon-behring.dev',
   routes: { frontmatter: { enabled: true, prefix: '' } },
   deploy: 'pages',
+  // \R \Z \N \E come from the scaffold-injected ssmMacros base (identical
+  // definitions; exported publicly since book-scaffold-astro#177), so only
+  // the family additions remain here. \norm deliberately overrides the
+  // scaffold's non-sizing variant with \left/\right auto-sizing.
   katexMacros: {
-    '\\R': '\\mathbb{R}',
-    '\\Z': '\\mathbb{Z}',
-    '\\N': '\\mathbb{N}',
-    '\\E': '\\mathbb{E}',
     '\\Var': '\\operatorname{Var}',
     '\\norm': '\\left\\lVert #1 \\right\\rVert',
     '\\inner': '\\left\\langle #1, #2 \\right\\rangle',
