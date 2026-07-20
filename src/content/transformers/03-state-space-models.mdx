@@ -1,9 +1,9 @@
 ---
-title: "Linear Recurrences and State Space Models"
+title: "Linear Recurrences and State-Space Models"
 slug: state-space-models
 chapter: 3
 part: 2
-description: "What survives when the recurrent network's nonlinearity is removed: the continuous-time LTI state space model and its exact zero-order-hold discretization, the equivalence of recurrent, convolutional, and parallel-scan evaluation with the ceil(log2 n)-round scan, closed-form gradients whose timescales are dialed by the spectrum of A, the HiPPO-LegS derivation of an optimal memory matrix from the Legendre generating function and its normal-plus-low-rank structure, and the proof that an additive LTI input-output map cannot perform content-dependent selection — the obstruction that attention and selective state spaces each escape."
+description: "Develops linear state-space models from continuous dynamics through recurrence, convolution, and scan, then explains controlled memory and the limits of content-independent linear systems."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, input-representations, recurrent-networks]
@@ -11,7 +11,7 @@ notation_introduced: ['d_s', '\statevec', '\statemat', '\inputmat', '\outputmat'
 theorems: ['def-ssm', 'thm-zoh', 'thm-conv-recurrence', 'def-scan-op', 'prop-scan', 'ex-impulse-trace', 'prop-gradient-timescale', 'lem-legendre', 'thm-hippo-legs', 'prop-legs-nplr', 'prop-lti-obstruction', 'rem-toward-selectivity']
 los:
   - id: lo-ssm-zoh-discretization
-    statement: "Define the continuous-time linear state space model and prove the zero-order-hold discretization formulas Ā = e^{ΔA} and B̄ = A^{-1}(e^{ΔA} - I)B."
+    statement: "Define the continuous-time linear state-space model and prove the zero-order-hold discretization formulas Ā = e^{ΔA} and B̄ = A^{-1}(e^{ΔA} - I)B."
   - id: lo-ssm-three-evaluation-forms
     statement: "Prove that the recurrent, convolutional, and prefix-scan evaluations of the discrete SSM compute the same map, and derive the ceil(log2 n)-round parallel scan from associativity of the scan operator."
   - id: lo-ssm-gradient-timescales
@@ -23,24 +23,22 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Linear Recurrences and State Space Models
-
-**Where we are.** The recurrent network of the previous chapter carries a state through time and pays for it twice: the gradient bound (<XRef id="thm-gradient-bound" />) transports gradients through a product of data-dependent Jacobians that neither the designer nor the optimizer controls, and the nonlinear recurrence admits no evaluation other than one step after another. This chapter deletes the nonlinearity and studies what remains. The linear recurrence that survives — the discrete face of a **state space model** — is exactly solvable in every direction we need. We define the continuous-time model and discretize it exactly (<XRef id="thm-zoh" />); prove that the resulting recurrence, a causal convolution, and a parallel prefix scan compute the *same* map, the scan finishing in $\lceil\log_2 n\rceil$ rounds (<XRef id="thm-conv-recurrence" />, <XRef id="prop-scan" />); differentiate the recurrence in closed form, so that gradient timescales become a dial set by the spectrum of the state matrix rather than an accident of training (<XRef id="prop-gradient-timescale" />); derive from the Legendre generating function the HiPPO answer to what that matrix *should* be (<XRef id="lem-legendre" />, <XRef id="thm-hippo-legs" />) together with the structure that makes it practical (<XRef id="prop-legs-nplr" />); and close by proving what all this exactness costs — an additive LTI input-output map cannot select by content (<XRef id="prop-lti-obstruction" />). The final remark names the two escapes that organize the sequence-mixer arc: attention first, an efficiency and conditional-compute interlude, then sparse attention and input-dependent recurrence in Part 5.
+**Where we are.** Nonlinear recurrence carries state efficiently but forces sequential evaluation and transports gradients through data-dependent Jacobian products (<XRef id="thm-gradient-bound" />). This chapter removes the nonlinearity and studies the exactly solvable system that remains. We discretize continuous dynamics exactly (<XRef id="thm-zoh" />), then prove that recurrence, convolution, and parallel scan are three schedules for one map (<XRef id="thm-conv-recurrence" />, <XRef id="prop-scan" />). The spectrum makes memory timescales explicit (<XRef id="prop-gradient-timescale" />). An optional advanced section derives HiPPO from Legendre projection (<XRef id="lem-legendre" />, <XRef id="thm-hippo-legs" />) and exposes its useful matrix structure (<XRef id="prop-legs-nplr" />). We close by proving that a fixed linear time-invariant map cannot select by content (<XRef id="prop-lti-obstruction" />).
 
 ## The continuous-time model
 
-Strip the recurrent cell (<XRef id="def-rnn" />) to its skeleton: replace the activation $\varphi$ by the identity, and let time flow continuously rather than in token steps. What is left is a vector of $d_s$ numbers — the **state** — whose instantaneous motion is a fixed linear function of itself plus a fixed linear injection of the input, with the output read off by a fixed linear functional. Every coefficient is frozen: the same dynamics act at every time and on every input. This is the classical state space model of control theory.<Sidenote>The state space formulation of filtering and prediction is due to <Cite key="kalman1960filtering" />.</Sidenote>
+Strip the recurrent cell (<XRef id="def-rnn" />) to its skeleton: replace the activation $\varphi$ by the identity, and let time flow continuously rather than in token steps. What is left is a vector of $d_s$ numbers — the **state** — whose instantaneous motion is a fixed linear function of itself plus a fixed linear injection of the input, with the output read off by a fixed linear functional. Every coefficient is frozen: the same dynamics act at every time and on every input. This is the classical state-space model of control theory.<Sidenote>The state-space formulation of filtering and prediction is due to <Cite key="kalman1960filtering" />.</Sidenote>
 
-<Theorem kind="definition" name="Linear time-invariant state space model" id="def-ssm">
-A (single-input, single-output) **linear time-invariant state space model** with state dimension $d_s$ is the pair of equations
+<Theorem kind="definition" name="Linear time-invariant state-space model" id="def-ssm">
+A (single-input, single-output) **linear time-invariant state-space model** with state dimension $d_s$ is the pair of equations
 $$
 \dot{\statevec}(t) = \statemat\,\statevec(t) + \inputmat\,u(t),
 \qquad
@@ -51,7 +49,7 @@ where $u:\R_{\ge 0}\to\R$ is the input signal, $\statevec(t)\in\R^{d_s}$ is the 
 
 <MarginNote variant="pattern" label="Per channel">A width-$d$ model runs $d$ independent copies of this scalar-in, scalar-out system — one per channel of the embedded sequence $\hat{\mathbf X}$.</MarginNote>
 
-<NotationOverride scope="Linear Recurrences and State Space Models">
+<NotationOverride scope="Linear Recurrences and State-Space Models">
 The state $\statevec$ is a **column** acted on by left multiplication; $\inputmat$ is a column and $\outputmat$ a row. The symbol $u$ is the scalar input signal, not the raw unit $u_t$ of the embedding interface: for an embedded sequence it is one channel of a row of $\hat{\mathbf X}\in\R^{n\times d}$ (<XRef id="def-embedding-interface" />). Here $\Delta>0$ is the discretization step size.
 </NotationOverride>
 
@@ -186,7 +184,7 @@ $$
 **Step 3 (Doubling).** Set $P^{(0)}_t \defeq p_t$, and pad with the identity pair at negative indices. In round $r = 1,\dots,\lceil\log_2 n\rceil$, every position computes in parallel $P^{(r)}_t = P^{(r-1)}_t \bullet P^{(r-1)}_{t-2^{r-1}}$. By induction on $r$, $P^{(r)}_t$ is the composite of $p_s$ over $s\in[\max(t-2^r+1,0),\,t]$: the two operands cover the abutting ranges $[t-2^{r-1}+1,\,t]$ and $[t-2^{r}+1,\,t-2^{r-1}]$ (truncated at $0$), and associativity makes the regrouped product equal the flat composite. After $\lceil\log_2 n\rceil$ rounds, $2^r \ge n$, so every position holds its full prefix. $\qquad\blacksquare$
 </Theorem>
 
-<Sidenote>The doubling scheme performs $O(n\log n)$ total $\bullet$-work; work-efficient $O(n)$ scans exist <Cite key="blelloch1990prefix" />, with the depth/size trade mapped by <Cite key="ladner1980parallel" />. The scan is the evaluation mode of the S5 layer <Cite key="smith2023s5" />.</Sidenote>
+<Sidenote>The doubling scheme performs $O(n\log n)$ total $\bullet$-work; work-efficient $O(n)$ scans exist <Cite key="blelloch1990prefix" />, with the depth–size trade mapped by <Cite key="ladner1980parallel" />. The scan is the evaluation mode of the S5 layer <Cite key="smith2023s5" />.</Sidenote>
 
 For the discrete SSM the per-step pair is $p_t = (\discA,\ \discB u_t)$: all first components happen to coincide, and part 2 of the proposition returns exactly the states of <XRef id="thm-conv-recurrence" />.
 
@@ -194,7 +192,9 @@ For the discrete SSM the per-step pair is $p_t = (\discA,\ \discB u_t)$: all fir
 
 <Figure
   src="/figures/ssm-three-faces.svg"
-  caption="One discrete SSM, three evaluation schedules. The recurrence steps through time with O(1) state per token; the convolution slides the impulse-response kernel κ_j = C Ā^j B̄ across the whole input at once; the parallel scan regroups the same affine steps into a balanced tree of depth ceil(log2 n). The three compute identical outputs (thm-conv-recurrence, prop-scan)."
+  alt="One state-space model evaluated as a recurrence, a convolution, or a balanced parallel scan."
+  desc="Three parallel panels show a left-to-right state chain, a convolutional kernel sliding over the full input, and affine state updates combined in a balanced binary tree. All three terminate at matching output rows."
+  caption="A discrete state-space model has three equivalent schedules: sequential recurrence, whole-sequence convolution, and a balanced parallel scan. They differ in execution shape, not in the outputs they compute."
   id="fig-ssm-three-faces"
   width="85%"
 />
@@ -256,9 +256,11 @@ For the discrete SSM:
 
 <MarginNote variant="warning" label="Non-normal transients">The spectrum controls only asymptotics: for non-normal $\discA$, $\norm{\discA^k}$ can grow enormously before decaying even with all $\lvert\mu_i\rvert < 1$ (Exercise 3.5).</MarginNote>
 
-The contrast with the previous chapter is the point. There, gradient magnitude over a horizon was an *emergent* property of trained weights passed through a pessimistic bound — vanishing or exploding by accident. Here it is a design parameter: choose $\operatorname{Re}\lambda_i$ (and $\Delta$) and you have *chosen* the memory horizon of each mode, exactly. The gating mechanisms of the LSTM bought a controllable additive gradient path architecturally (<XRef id="prop-cec" />); the SSM gets a stronger version for free, because there is no nonlinearity for the gradient to fight. What linearity does **not** decide is which timescales are worth having — the eigenvalues are still hyperparameters. The next section replaces that guess with a derivation.
+The contrast with the previous chapter is the point. There, gradient magnitude over a horizon was an *emergent* property of trained weights passed through a pessimistic bound — vanishing or exploding by accident. Here it is a design parameter: choosing $\operatorname{Re}\lambda_i$ and $\Delta$ fixes the memory horizon of each mode exactly. The gating mechanisms of the LSTM bought a controllable additive gradient path architecturally (<XRef id="prop-cec" />); the SSM gets a stronger version for free, because there is no nonlinearity for the gradient to fight. What linearity does **not** decide is which timescales are worth having — the eigenvalues are still hyperparameters. The next section replaces that guess with a derivation.
 
 ## HiPPO: deriving the state matrix from optimal memory
+
+**Optional on a first pass.** The operational takeaway is that HiPPO chooses state and input dynamics so that the state coordinates track an optimal low-degree summary of the observed history. Readers following the core transformer route may continue at **The price of linearity**; the derivation below supplies the complete functional-analytic explanation and the structure used by later state-space models.
 
 Reverse the question. Instead of asking what a given $(\statemat, \inputmat)$ remembers, prescribe what the state *should be* and solve for the dynamics. The prescription: at every time $t$, the $d_s$ numbers in $\statevec(t)$ should be the coefficients of the **best degree-$(d_s{-}1)$ polynomial approximation of the entire history** $u\vert_{[0,t]}$, best in the $L^2$ sense under the uniform measure on $[0,t]$. If the state is an optimal compressed transcript of everything seen so far, then whatever the downstream readout needs, no other $d_s$-number summary serves it better in that norm.<Sidenote>The HiPPO framework of <Cite key="gu2020hippo" />; the measure family here is the "scaled Legendre" instance LegS.</Sidenote> Remarkably, this optimal summary does not need to be recomputed from scratch as $t$ advances: it evolves by a linear ODE of exactly the form we have been studying, with a specific, derivable $(\statemat, \inputmat)$.
 
@@ -286,9 +288,12 @@ For all degrees $m, k \ge 0$:
 
 **Step 2 (Orthogonality).** Fix $z, w \in (0,1)$ and integrate the product of two generating functions. Writing $f(x) = 1-2xz+z^2$ and $g(x) = 1-2xw+w^2$, differentiation verifies in one line that $-\frac{1}{\sqrt{zw}}\ln\!\big(\sqrt{w f(x)} + \sqrt{z g(x)}\big)$ is an antiderivative of $(f(x)g(x))^{-1/2}$. At the endpoints, $f(1) = (1-z)^2$ and $f(-1) = (1+z)^2$ (likewise for $g$), and the evaluations factor:
 $$
-\sqrt{w}(1-z) + \sqrt{z}(1-w) = (\sqrt z + \sqrt w)(1 - \sqrt{zw}),
-\qquad
-\sqrt{w}(1+z) + \sqrt{z}(1+w) = (\sqrt z + \sqrt w)(1 + \sqrt{zw}).
+\begin{aligned}
+\sqrt{w}(1-z) + \sqrt{z}(1-w)
+  &= (\sqrt z + \sqrt w)(1 - \sqrt{zw}),\\
+\sqrt{w}(1+z) + \sqrt{z}(1+w)
+  &= (\sqrt z + \sqrt w)(1 + \sqrt{zw}).
+\end{aligned}
 $$
 The common factor $\sqrt z + \sqrt w$ cancels in the difference of logarithms, leaving
 $$
@@ -296,7 +301,7 @@ $$
 = \frac{1}{\sqrt{zw}}\,\ln\frac{1+\sqrt{zw}}{1-\sqrt{zw}}
 = \sum_{m\ge 0}\frac{2\,(zw)^m}{2m+1},
 $$
-the last step the Taylor series of $\ln\frac{1+v}{1-v} = 2\sum_m \frac{v^{2m+1}}{2m+1}$ at $v = \sqrt{zw}$. To justify expanding the left side, choose $\rho$ with $\max\{z,w\}<\rho<1$. For $x\in[-1,1]$, the singularities of $G(x,\zeta)$ lie on $|\zeta|=1$, so $G$ is uniformly bounded on the compact set $[-1,1]\times\{|\zeta|\le\rho\}$. Uniform Cauchy bounds therefore make both generating series absolutely and uniformly convergent in $x$ at the chosen $z,w$; their Cauchy product is uniformly convergent as well. We may consequently multiply the series and integrate term by term. Thus the left side is $\sum_{m,k}z^m w^k\int_{-1}^1 P_mP_k\,dx$. The two convergent bivariate power series agree for every $z,w\in(0,1)$, so uniqueness of power-series coefficients gives $0$ for $m\ne k$ and $\frac{2}{2m+1}$ for $m = k$.
+where the final equality uses the Taylor series $\ln\frac{1+v}{1-v} = 2\sum_m \frac{v^{2m+1}}{2m+1}$ evaluated at $v = \sqrt{zw}$. To justify expanding the left side, choose $\rho$ with $\max\{z,w\}<\rho<1$. For $x\in[-1,1]$, the singularities of $G(x,\zeta)$ lie on $|\zeta|=1$, so $G$ is uniformly bounded on the compact set $[-1,1]\times\{|\zeta|\le\rho\}$. Uniform Cauchy bounds therefore make both generating series absolutely and uniformly convergent in $x$ at the chosen $z,w$; their Cauchy product is uniformly convergent as well. We may consequently multiply the series and integrate term by term. Thus the left side is $\sum_{m,k}z^m w^k\int_{-1}^1 P_mP_k\,dx$. The two convergent bivariate power series agree for every $z,w\in(0,1)$, so uniqueness of power-series coefficients gives $0$ for $m\ne k$ and $\frac{2}{2m+1}$ for $m = k$.
 
 **Step 3 (The expansion).** Encode both sides of the claim as series in $z$ and compare closed forms. With $Q \defeq (1-2xz+z^2)^{-3/2}$, direct differentiation gives $\partial_x G = zQ$ and $z\,\partial_z G = z(x-z)Q$. The left side of the claim is the coefficient sequence of $(1+x)\partial_x G$. For the right side, $\sum_m mP_m z^m = z\partial_zG$, and, summing the inner sum by exchanging the order of summation,
 $$
@@ -309,7 +314,7 @@ It remains to check the closed-form identity $(1+x)zQ = z(x-z)Q + \frac{z}{1-z}\
 
 Now fix $t > 0$ and set up the projection. Equip $[0,t]$ with the uniform probability measure and inner product $\inner{f}{g}_t \defeq \frac{1}{t}\int_0^t f(s)g(s)\,ds$, and rescale the Legendre family onto the window: $g^{(t)}_m(s) \defeq \sqrt{2m+1}\,P_m\big(\tfrac{2s}{t}-1\big)$. Substituting $x = \frac{2s}{t}-1$ in part 1 of the lemma shows $\{g^{(t)}_m\}_{m\ge 0}$ is **orthonormal** for $\inner{\cdot}{\cdot}_t$. By the standard Hilbert-space projection theorem, the best approximation of the history in the span of $g^{(t)}_0,\dots,g^{(t)}_{d_s-1}$ has coefficients $\inner{u}{g^{(t)}_m}_t$ — so those coefficients are what the state must store.
 
-<MarginNote variant="tip" label="Self-explanation">As $t$ advances two things happen at once: new signal enters at the right endpoint, and the window $[0,t]$ stretches, sliding every basis function under the old signal. Which term of the derivative below captures each effect?</MarginNote>
+<MarginNote variant="tip" label="Self-explanation">As $t$ advances, new signal enters at the right endpoint while the stretching window slides the basis under the old signal. Which derivative term captures each effect?</MarginNote>
 
 <Theorem kind="theorem" name="HiPPO-LegS coefficient dynamics" id="thm-hippo-legs">
 Let $u:[0,\infty)\to\R$ be continuous and define, for $t > 0$ and $m = 0,\dots,d_s-1$,
@@ -388,7 +393,9 @@ Unitarily diagonalizing the normal part turns $-\statemat$ into a *diagonal-plus
 
 <Figure
   src="/figures/hippo-projection.svg"
-  caption="HiPPO-LegS: the state as an online optimal summary. The history u restricted to [0,t] is projected, in L2 of the uniform measure on the window, onto the first d_s rescaled Legendre basis functions; the coefficient vector is the SSM state. As t advances, the new sample enters at the boundary and the stretching window slides the basis — together producing the linear dynamics of thm-hippo-legs."
+  alt="A signal history projected onto a finite set of rescaled Legendre basis functions."
+  desc="The observed signal over a growing time window sits above several basis curves. Projection arrows lead to a finite coefficient vector, while a boundary arrow and stretching-window arrow show how new data and rescaling update that vector online."
+  caption="HiPPO stores an online projection of the observed history onto finitely many rescaled Legendre functions. New boundary data and the stretching time window together determine the coefficient dynamics."
   id="fig-hippo-projection"
   width="80%"
 />
@@ -399,10 +406,10 @@ Everything in this chapter — exact discretization, three interchangeable evalu
 
 For this section we allow vector inputs, $u_t\in\R^2$ with $\inputmat\in\R^{d_s\times 2}$ and $\feedmat\in\R^{1\times 2}$; the unrolled formula of <XRef id="thm-conv-recurrence" /> holds verbatim, with matrix-valued kernel entries.
 
-<MarginNote variant="tip" label="Self-explanation">Before the proof: superposition says the response to a sum of inputs is the sum of responses. Can a map with that property give the marker channel *veto power* over the value channel?</MarginNote>
+<MarginNote variant="tip" label="Self-explanation">Superposition makes the response to a sum equal the sum of responses. Can such a map let the marker channel veto the value channel?</MarginNote>
 
 <Theorem kind="proposition" name="No LTI system selects by content" id="prop-lti-obstruction">
-Consider the **selective-copy specification**: inputs are length-$2$ sequences of pairs $u_t = (v_t, m_t)\in\R^2$ with exactly one marked position ($m_{t^\ast} = 1$, the other $0$), and the required final output is the marked value, $y_1 = v_{t^\ast}$. No discrete LTI state space model — of any state dimension $d_s$ and any parameters $(\discA, \discB, \outputmat, \feedmat)$ — meets this specification on the four inputs displayed in the proof. More strongly, no map whose final output is additive in the input sequence does.
+Consider the **selective-copy specification**: inputs are length-$2$ sequences of pairs $u_t = (v_t, m_t)\in\R^2$ with exactly one marked position ($m_{t^\ast} = 1$, the other $0$), and the required final output is the marked value, $y_1 = v_{t^\ast}$. No discrete LTI state-space model — of any state dimension $d_s$ and any parameters $(\discA, \discB, \outputmat, \feedmat)$ — meets this specification on the four inputs displayed in the proof. More strongly, no map whose final output is additive in the input sequence does.
 </Theorem>
 
 <Theorem kind="proof">
@@ -447,7 +454,7 @@ Attempt each before expanding its solution.
 
 **Exercise 3.1 (Compute).** Discretize the scalar SSM $a = -2$, $b = c = 1$, $\feedmat = 0$ at $\Delta = 0.3$: give $\discA$ and $\discB$, then compute the impulse response $y_0, y_1, y_2$ twice — by stepping the recurrence and by evaluating the kernel $\kappa_j$ — and confirm agreement.
 
-<SolutionBox>
+<SolutionBox exercise="3.1">
 
 By <XRef id="thm-zoh" />, $\discA = e^{-0.6} \approx 0.5488$ and $\discB = \frac{1 - e^{-0.6}}{2} \approx 0.2256$. Recurrence on $u = (1,0,0)$ with $h_{-1} = 0$: $h_0 = \discB \approx 0.2256 = y_0$; $h_1 = \discA h_0 \approx 0.1238 = y_1$; $h_2 = \discA h_1 \approx 0.0679 = y_2$. Kernel: $\kappa_j = \discA^{j}\discB$, so $\kappa_0 \approx 0.2256$, $\kappa_1 \approx 0.5488\cdot 0.2256 \approx 0.1238$, $\kappa_2 \approx 0.5488\cdot 0.1238 \approx 0.0679$. On an impulse $y_t = \kappa_t$, and the two traces agree, as <XRef id="thm-conv-recurrence" /> guarantees. $\qquad\blacksquare$
 
@@ -455,7 +462,7 @@ By <XRef id="thm-zoh" />, $\discA = e^{-0.6} \approx 0.5488$ and $\discB = \frac
 
 **Exercise 3.2 (Prove).** Show that $\int_0^{\Delta} e^{\sigma\statemat}\,d\sigma = \sum_{k\ge 0}\frac{\Delta^{k+1}\statemat^{k}}{(k+1)!}$ for **every** $\statemat$, that this equals $\statemat^{-1}(e^{\Delta\statemat}-\mathbf I)$ when $\statemat$ is invertible, and that the series therefore defines $\discB$ even for singular $\statemat$. Evaluate it at $\statemat = \mathbf 0$.
 
-<SolutionBox>
+<SolutionBox exercise="3.2">
 
 On $[0,\Delta]$ the series $\sum_k \sigma^k\statemat^k/k!$ is dominated termwise by the convergent constant series $\sum_k \Delta^k\norm{\statemat}^k/k!$, so it converges uniformly (Weierstrass) and integration passes inside: $\int_0^\Delta \sigma^k d\sigma = \frac{\Delta^{k+1}}{k+1}$ gives the stated sum, with no hypothesis on $\statemat$. Multiplying the sum by $\statemat$ telescopes into the exponential series: $\statemat\sum_{k\ge0}\frac{\Delta^{k+1}\statemat^{k}}{(k+1)!} = \sum_{j\ge 1}\frac{\Delta^{j}\statemat^{j}}{j!} = e^{\Delta\statemat} - \mathbf I$, so for invertible $\statemat$ the sum is $\statemat^{-1}(e^{\Delta\statemat}-\mathbf I)$. At $\statemat = \mathbf 0$ only the $k=0$ term survives: the integral is $\Delta\,\mathbf I$ and $\discB = \Delta\inputmat$ — the inverse formula is undefined there, the series is not. $\qquad\blacksquare$
 
@@ -463,7 +470,7 @@ On $[0,\Delta]$ the series $\sum_k \sigma^k\statemat^k/k!$ is dominated termwise
 
 **Exercise 3.3 (Derive).** For the scan operator (<XRef id="def-scan-op" />): (a) verify that $(\mathbf I, \mathbf 0)$ is a two-sided identity; (b) from $P_t = p_t\bullet P_{t-1}$ derive the closed form $P_t = (a_t\cdots a_0,\ \statevec_t)$; (c) for $n = 8$, list which composite each position holds after each of the $\lceil\log_2 8\rceil = 3$ doubling rounds.
 
-<SolutionBox>
+<SolutionBox exercise="3.3">
 
 (a) $(a,\mathbf b)\bullet(\mathbf I,\mathbf 0) = (a\mathbf I,\ a\mathbf 0 + \mathbf b) = (a,\mathbf b)$ and $(\mathbf I,\mathbf 0)\bullet(a,\mathbf b) = (\mathbf I a,\ \mathbf I\mathbf b + \mathbf 0) = (a,\mathbf b)$. (b) Induction: $P_0 = p_0 = (a_0, \mathbf b_0)$ and $\statevec_0 = \mathbf b_0$; if $P_{t-1} = (a_{t-1}\cdots a_0, \statevec_{t-1})$ then $P_t = p_t\bullet P_{t-1} = (a_t\cdots a_0,\ a_t\statevec_{t-1} + \mathbf b_t) = (a_t\cdots a_0,\ \statevec_t)$. (c) Write $[s..t]$ for the composite of $p_s$ through $p_t$. After round 1 (offset 1): position $t$ holds $[\max(t{-}1,0)..t]$, i.e. $[0..0], [0..1], [1..2], \dots, [6..7]$. After round 2 (offset 2): $[\max(t{-}3,0)..t]$, i.e. $[0..0], [0..1], [0..2], [0..3], [1..4], \dots, [4..7]$. After round 3 (offset 4): $[\max(t{-}7,0)..t] = [0..t]$ for every $t$ — all eight prefixes, in 3 rounds. $\qquad\blacksquare$
 
@@ -471,7 +478,7 @@ On $[0,\Delta]$ the series $\sum_k \sigma^k\statemat^k/k!$ is dominated termwise
 
 **Exercise 3.4 (Compute).** Write out the HiPPO-LegS matrices $\statemat$ and $\inputmat$ of <XRef id="thm-hippo-legs" /> for $d_s = 3$ numerically, and verify the NPLR identity of <XRef id="prop-legs-nplr" /> entrywise: compute $-\statemat + \tfrac12\inputmat\inputmat^\top$ and exhibit the skew-symmetric $\mathbf T$.
 
-<SolutionBox>
+<SolutionBox exercise="3.4">
 
 With degrees $m,k\in\{0,1,2\}$: diagonal $m+1 = 1,2,3$; below-diagonal entries $\sqrt{3}\approx 1.7321$, $\sqrt{5}\approx 2.2361$, $\sqrt{15}\approx 3.8730$; $\inputmat = (1, \sqrt3, \sqrt5)^\top$:
 $$
@@ -493,7 +500,7 @@ and $\mathbf T^\top = -\mathbf T$ by inspection ($0.8660 \approx \tfrac{\sqrt3}{
 
 **Exercise 3.5 (Construct).** Construct a $2\times 2$ matrix $\discA$ with spectral radius $0.9$ whose powers transiently **grow**: exhibit an entry of $\discA^k$ that exceeds $38$ for some $k$ before decaying to $0$, and locate the peak. Conclude that part 3 of <XRef id="prop-gradient-timescale" /> genuinely needs its diagonalizability hypothesis read with care for non-normal matrices.
 
-<SolutionBox>
+<SolutionBox exercise="3.5">
 
 Take $\discA = \begin{pmatrix}0.9 & 10\\ 0 & 0.9\end{pmatrix}$: both eigenvalues are $0.9$, so the spectral radius is $0.9 < 1$. By induction, $\discA^k = \begin{pmatrix}0.9^k & 10k\,(0.9)^{k-1}\\ 0 & 0.9^k\end{pmatrix}$ (the step: the new corner entry is $0.9^k\cdot 10 + 10k(0.9)^{k-1}\cdot 0.9 = 10(k{+}1)(0.9)^{k}$). The corner $f(k) = 10k(0.9)^{k-1}$ satisfies $f(k{+}1)/f(k) = 0.9\,\frac{k+1}{k} \ge 1$ iff $k \le 9$, so it rises to its peak $f(9) = f(10) = 90\cdot 0.9^{8} \approx 38.74$ before the geometric factor wins and drives it to $0$. A perturbation along $(1,0)^\top$'s complement is thus amplified nearly $39\times$ over ten steps despite every eigenvalue promising decay — the spectrum controls asymptotics only; for non-normal $\discA$ (here, a Jordan-type block) the transient is governed by $\norm{\discA^k}$, not the spectral radius. $\qquad\blacksquare$
 
@@ -501,7 +508,7 @@ Take $\discA = \begin{pmatrix}0.9 & 10\\ 0 & 0.9\end{pmatrix}$: both eigenvalues
 
 **Exercise 3.6 (Construct).** In the pattern of <XRef id="prop-lti-obstruction" />, construct a numeric additivity witness proving that no LTI system (indeed no additive map) computes the running maximum $y = \max_t u_t$ over length-$2$ scalar sequences.
 
-<SolutionBox>
+<SolutionBox exercise="3.6">
 
 Take $\mathbf x^{(1)} = (1, 0)$ and $\mathbf x^{(2)} = (0, 1)$: the specification assigns $F(\mathbf x^{(1)}) = \max(1,0) = 1$ and $F(\mathbf x^{(2)}) = 1$. Additivity forces $F\big((1,1)\big) = F(\mathbf x^{(1)}) + F(\mathbf x^{(2)}) = 2$, but the specification demands $\max(1,1) = 1 \ne 2$. The schema is the same as in the chapter: two inputs whose targets do not add. The maximum, like selective copying, is a content-dependent decision — which entry wins depends on the data — and superposition admits no such decisions. $\qquad\blacksquare$
 

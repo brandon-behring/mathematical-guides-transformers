@@ -6,7 +6,7 @@
     "labels": 310,
     "learningObjectives": 109,
     "proofMarkers": 227,
-    "printedNumberHits": 152
+    "printedNumberHits": 148
   },
   "chapters": [
     {
@@ -47,19 +47,43 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 213,
+          "line": 38,
+          "text": "Chapters 0"
+        },
+        {
+          "line": 38,
+          "text": "Chapters 2–3"
+        },
+        {
+          "line": 38,
+          "text": "Chapter 9"
+        },
+        {
+          "line": 40,
+          "text": "Chapters 0–23"
+        },
+        {
+          "line": 40,
+          "text": "Chapter 3"
+        },
+        {
+          "line": 40,
+          "text": "Chapter 7"
+        },
+        {
+          "line": 217,
           "text": "Exercise 0.1"
         },
         {
-          "line": 221,
+          "line": 225,
           "text": "Exercise 0.2"
         },
         {
-          "line": 229,
+          "line": 233,
           "text": "Exercise 0.3"
         },
         {
-          "line": 241,
+          "line": 245,
           "text": "Exercise 0.4"
         }
       ]
@@ -240,27 +264,27 @@
           "text": "Exercise 2.4"
         },
         {
-          "line": 371,
+          "line": 373,
           "text": "Exercise 2.1"
         },
         {
-          "line": 388,
+          "line": 390,
           "text": "Exercise 2.2"
         },
         {
-          "line": 401,
+          "line": 403,
           "text": "Exercise 2.3"
         },
         {
-          "line": 413,
+          "line": 415,
           "text": "Exercise 2.4"
         },
         {
-          "line": 421,
+          "line": 423,
           "text": "Exercise 2.5"
         },
         {
-          "line": 429,
+          "line": 431,
           "text": "Exercise 2.6"
         }
       ]
@@ -268,7 +292,7 @@
     {
       "path": "src/content/transformers/03-state-space-models.mdx",
       "slug": "state-space-models",
-      "title": "Linear Recurrences and State Space Models",
+      "title": "Linear Recurrences and State-Space Models",
       "chapter": 3,
       "part": 2,
       "labelIds": [
@@ -326,7 +350,7 @@
       "proofMarkers": 14,
       "printedNumberHits": [
         {
-          "line": 179,
+          "line": 177,
           "text": "Chapter 18"
         },
         {
@@ -334,27 +358,27 @@
           "text": "Exercise 3.5"
         },
         {
-          "line": 448,
+          "line": 455,
           "text": "Exercise 3.1"
         },
         {
-          "line": 456,
+          "line": 463,
           "text": "Exercise 3.2"
         },
         {
-          "line": 464,
+          "line": 471,
           "text": "Exercise 3.3"
         },
         {
-          "line": 472,
+          "line": 479,
           "text": "Exercise 3.4"
         },
         {
-          "line": 494,
+          "line": 501,
           "text": "Exercise 3.5"
         },
         {
-          "line": 502,
+          "line": 509,
           "text": "Exercise 3.6"
         }
       ]
@@ -394,15 +418,15 @@
       "proofMarkers": 4,
       "printedNumberHits": [
         {
-          "line": 130,
+          "line": 171,
           "text": "Exercise 4.1"
         },
         {
-          "line": 138,
+          "line": 179,
           "text": "Exercise 4.2"
         },
         {
-          "line": 151,
+          "line": 192,
           "text": "Exercise 4.3"
         }
       ]
@@ -452,23 +476,23 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 233,
+          "line": 231,
           "text": "Exercise 5.1"
         },
         {
-          "line": 241,
+          "line": 239,
           "text": "Exercise 5.2"
         },
         {
-          "line": 249,
+          "line": 247,
           "text": "Exercise 5.3"
         },
         {
-          "line": 257,
+          "line": 255,
           "text": "Exercise 5.4"
         },
         {
-          "line": 265,
+          "line": 263,
           "text": "Exercise 5.5"
         }
       ]
@@ -525,27 +549,27 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 259,
+          "line": 257,
           "text": "Exercise 6.1"
         },
         {
-          "line": 267,
+          "line": 265,
           "text": "Exercise 6.2"
         },
         {
-          "line": 275,
+          "line": 273,
           "text": "Exercise 6.3"
         },
         {
-          "line": 283,
+          "line": 281,
           "text": "Exercise 6.4"
         },
         {
-          "line": 295,
+          "line": 293,
           "text": "Exercise 6.5"
         },
         {
-          "line": 303,
+          "line": 301,
           "text": "Exercise 6.6"
         }
       ]
@@ -690,27 +714,27 @@
       "proofMarkers": 3,
       "printedNumberHits": [
         {
-          "line": 367,
+          "line": 365,
           "text": "Exercise 8.1"
         },
         {
-          "line": 375,
+          "line": 373,
           "text": "Exercise 8.2"
         },
         {
-          "line": 389,
+          "line": 387,
           "text": "Exercise 8.3"
         },
         {
-          "line": 407,
+          "line": 405,
           "text": "Exercise 8.4"
         },
         {
-          "line": 423,
+          "line": 421,
           "text": "Exercise 8.5"
         },
         {
-          "line": 452,
+          "line": 450,
           "text": "Exercise 8.6"
         }
       ]
@@ -756,7 +780,6 @@
         "def-decoder-only",
         "def-enc-dec",
         "def-encoder",
-        "def-in-context-learning",
         "def-kv-cache",
         "def-patterns",
         "def-prefix-lm",
@@ -792,31 +815,31 @@
       "proofMarkers": 13,
       "printedNumberHits": [
         {
-          "line": 333,
+          "line": 340,
           "text": "Exercise 9.1"
         },
         {
-          "line": 341,
+          "line": 348,
           "text": "Exercise 9.2"
         },
         {
-          "line": 349,
+          "line": 356,
           "text": "Exercise 9.3"
         },
         {
-          "line": 357,
+          "line": 364,
           "text": "Exercise 9.4"
         },
         {
-          "line": 369,
+          "line": 376,
           "text": "Exercise 9.5"
         },
         {
-          "line": 377,
+          "line": 384,
           "text": "Exercise 9.6"
         },
         {
-          "line": 385,
+          "line": 392,
           "text": "Exercise 9.7"
         }
       ]
@@ -877,31 +900,31 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 91,
+          "line": 89,
           "text": "Chapter 13"
         },
         {
-          "line": 128,
+          "line": 126,
           "text": "Chapter 11"
         },
         {
-          "line": 264,
+          "line": 262,
           "text": "Exercise 10.1"
         },
         {
-          "line": 276,
+          "line": 274,
           "text": "Exercise 10.2"
         },
         {
-          "line": 284,
+          "line": 282,
           "text": "Exercise 10.3"
         },
         {
-          "line": 296,
+          "line": 294,
           "text": "Exercise 10.4"
         },
         {
-          "line": 304,
+          "line": 302,
           "text": "Exercise 10.5"
         }
       ]
@@ -953,31 +976,27 @@
       "proofMarkers": 7,
       "printedNumberHits": [
         {
-          "line": 32,
-          "text": "Chapter 10"
-        },
-        {
-          "line": 426,
+          "line": 424,
           "text": "Exercise 11.1"
         },
         {
-          "line": 453,
+          "line": 451,
           "text": "Exercise 11.2"
         },
         {
-          "line": 474,
+          "line": 472,
           "text": "Exercise 11.3"
         },
         {
-          "line": 493,
+          "line": 491,
           "text": "Exercise 11.4"
         },
         {
-          "line": 521,
+          "line": 519,
           "text": "Exercise 11.5"
         },
         {
-          "line": 542,
+          "line": 540,
           "text": "Exercise 11.6"
         }
       ]
@@ -1025,7 +1044,6 @@
         "def-softmax",
         "def-zeroshot",
         "prop-auroc-rank",
-        "prop-ce-kl",
         "prop-contrastive-alignment",
         "prop-contrastive-ce",
         "prop-row-stochastic-convex",
@@ -1045,23 +1063,23 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 219,
+          "line": 226,
           "text": "Exercise 12.1"
         },
         {
-          "line": 227,
+          "line": 234,
           "text": "Exercise 12.2"
         },
         {
-          "line": 235,
+          "line": 242,
           "text": "Exercise 12.3"
         },
         {
-          "line": 243,
+          "line": 250,
           "text": "Exercise 12.4"
         },
         {
-          "line": 251,
+          "line": 258,
           "text": "Exercise 12.5"
         }
       ]
@@ -1108,35 +1126,27 @@
       "proofMarkers": 9,
       "printedNumberHits": [
         {
-          "line": 33,
-          "text": "Chapter 10"
-        },
-        {
-          "line": 33,
-          "text": "Chapters 14–16"
-        },
-        {
-          "line": 270,
+          "line": 268,
           "text": "Exercise 13.1"
         },
         {
-          "line": 289,
+          "line": 287,
           "text": "Exercise 13.2"
         },
         {
-          "line": 312,
+          "line": 310,
           "text": "Exercise 13.3"
         },
         {
-          "line": 326,
+          "line": 324,
           "text": "Exercise 13.4"
         },
         {
-          "line": 340,
+          "line": 338,
           "text": "Exercise 13.5"
         },
         {
-          "line": 348,
+          "line": 346,
           "text": "Exercise 13.6"
         }
       ]
@@ -1193,27 +1203,23 @@
       "proofMarkers": 10,
       "printedNumberHits": [
         {
-          "line": 35,
-          "text": "Chapter 13"
-        },
-        {
-          "line": 262,
+          "line": 260,
           "text": "Exercise 14.1"
         },
         {
-          "line": 270,
+          "line": 268,
           "text": "Exercise 14.2"
         },
         {
-          "line": 278,
+          "line": 276,
           "text": "Exercise 14.3"
         },
         {
-          "line": 286,
+          "line": 284,
           "text": "Exercise 14.4"
         },
         {
-          "line": 298,
+          "line": 296,
           "text": "Exercise 14.5"
         }
       ]
@@ -1288,27 +1294,27 @@
       "proofMarkers": 13,
       "printedNumberHits": [
         {
-          "line": 373,
+          "line": 382,
           "text": "Exercise 15.1"
         },
         {
-          "line": 381,
+          "line": 390,
           "text": "Exercise 15.2"
         },
         {
-          "line": 389,
+          "line": 398,
           "text": "Exercise 15.3"
         },
         {
-          "line": 403,
+          "line": 412,
           "text": "Exercise 15.4"
         },
         {
-          "line": 411,
+          "line": 420,
           "text": "Exercise 15.5"
         },
         {
-          "line": 419,
+          "line": 428,
           "text": "Exercise 15.6"
         }
       ]
@@ -1340,10 +1346,8 @@
       "xrefs": [
         "def-ce-loss",
         "def-cost-eq",
-        "def-ffn",
         "def-moe",
         "def-moe-capacity",
-        "def-train-memory",
         "def-zero",
         "prop-moe-capacity",
         "prop-softmax-jacobian",
@@ -1358,23 +1362,23 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 332,
+          "line": 330,
           "text": "Exercise 16.1"
         },
         {
-          "line": 347,
+          "line": 345,
           "text": "Exercise 16.2"
         },
         {
-          "line": 367,
+          "line": 365,
           "text": "Exercise 16.3"
         },
         {
-          "line": 379,
+          "line": 377,
           "text": "Exercise 16.4"
         },
         {
-          "line": 406,
+          "line": 404,
           "text": "Exercise 16.5"
         }
       ]
@@ -1382,7 +1386,7 @@
     {
       "path": "src/content/transformers/17-sparse-attention.mdx",
       "slug": "sparse-attention",
-      "title": "Sparse & Sub-Quadratic Attention",
+      "title": "Sparse and Sub-Quadratic Attention",
       "chapter": 17,
       "part": 5,
       "labelIds": [
@@ -1409,6 +1413,7 @@
       "xrefs": [
         "def-causal-mask",
         "def-cost-eq",
+        "def-hybrid-stack",
         "def-moe",
         "def-nsa-branches",
         "def-selective-ssm",
@@ -1432,27 +1437,27 @@
       "proofMarkers": 12,
       "printedNumberHits": [
         {
-          "line": 358,
+          "line": 356,
           "text": "Exercise 17.1"
         },
         {
-          "line": 366,
+          "line": 364,
           "text": "Exercise 17.2"
         },
         {
-          "line": 374,
+          "line": 372,
           "text": "Exercise 17.3"
         },
         {
-          "line": 386,
+          "line": 384,
           "text": "Exercise 17.4"
         },
         {
-          "line": 394,
+          "line": 392,
           "text": "Exercise 17.5"
         },
         {
-          "line": 402,
+          "line": 400,
           "text": "Exercise 17.6"
         }
       ]
@@ -1501,8 +1506,8 @@
         "prop-scan",
         "prop-selective-scan",
         "prop-sequential-depth",
+        "prop-state-recall",
         "rem-linear-attention",
-        "rem-toward-selectivity",
         "thm-conv-recurrence",
         "thm-linattn-rnn",
         "thm-semiseparable",
@@ -1518,18 +1523,6 @@
       },
       "proofMarkers": 13,
       "printedNumberHits": [
-        {
-          "line": 34,
-          "text": "ch. 3"
-        },
-        {
-          "line": 172,
-          "text": "ch. 2"
-        },
-        {
-          "line": 176,
-          "text": "Chapter 3"
-        },
         {
           "line": 406,
           "text": "Exercise 18.1"
@@ -1587,7 +1580,7 @@
         "def-codebook",
         "def-connector",
         "def-delta",
-        "def-hybrid-stack",
+        "def-lstm",
         "def-mlstm",
         "def-online-softmax",
         "def-patterns",
@@ -1600,14 +1593,11 @@
         "prop-kv-cache",
         "prop-kv-memory",
         "prop-memory-bound",
-        "prop-mlstm-gated-state",
         "prop-row-stochastic-convex",
-        "prop-rwkv-linattn",
         "prop-seq2seq-fixed-vector-bottleneck",
         "prop-state-recall",
         "prop-swa-edge-cache",
         "prop-swa-receptive-field",
-        "rem-design-space",
         "thm-associative-lookup",
         "thm-delta-descent",
         "thm-linattn-rnn",
@@ -1625,35 +1615,31 @@
       "proofMarkers": 12,
       "printedNumberHits": [
         {
-          "line": 99,
-          "text": "ch. 18"
-        },
-        {
-          "line": 197,
+          "line": 195,
           "text": "Exercise 19.3"
-        },
-        {
-          "line": 312,
-          "text": "Exercise 19.1"
         },
         {
           "line": 320,
+          "text": "Exercise 19.1"
+        },
+        {
+          "line": 328,
           "text": "Exercise 19.2"
         },
         {
-          "line": 334,
+          "line": 342,
           "text": "Exercise 19.3"
         },
         {
-          "line": 342,
+          "line": 350,
           "text": "Exercise 19.4"
         },
         {
-          "line": 350,
+          "line": 358,
           "text": "Exercise 19.5"
         },
         {
-          "line": 358,
+          "line": 366,
           "text": "Exercise 19.6"
         }
       ]
@@ -1688,7 +1674,6 @@
       "xrefs": [
         "def-codebook-embedding",
         "def-cross-attention",
-        "def-decoder-only",
         "def-embedding-interface",
         "def-entropy",
         "def-gated-xattn",
@@ -1703,7 +1688,6 @@
         "prop-resampler-cost",
         "prop-row-stochastic-convex",
         "rem-modality-blind",
-        "rem-vit",
         "thm-gated-identity"
       ],
       "kindCounts": {
@@ -1716,23 +1700,23 @@
       "proofMarkers": 9,
       "printedNumberHits": [
         {
-          "line": 207,
+          "line": 220,
           "text": "Exercise 20.1"
         },
         {
-          "line": 215,
+          "line": 228,
           "text": "Exercise 20.2"
         },
         {
-          "line": 231,
+          "line": 244,
           "text": "Exercise 20.3"
         },
         {
-          "line": 239,
+          "line": 252,
           "text": "Exercise 20.4"
         },
         {
-          "line": 255,
+          "line": 268,
           "text": "Exercise 20.5"
         }
       ]
@@ -1797,27 +1781,27 @@
       "proofMarkers": 12,
       "printedNumberHits": [
         {
-          "line": 252,
+          "line": 258,
           "text": "Exercise 21.1"
         },
         {
-          "line": 260,
+          "line": 266,
           "text": "Exercise 21.2"
         },
         {
-          "line": 268,
+          "line": 274,
           "text": "Exercise 21.3"
         },
         {
-          "line": 283,
+          "line": 289,
           "text": "Exercise 21.4"
         },
         {
-          "line": 291,
+          "line": 297,
           "text": "Exercise 21.5"
         },
         {
-          "line": 299,
+          "line": 305,
           "text": "Exercise 21.6"
         }
       ]
@@ -1866,9 +1850,7 @@
         "def-token-embedding",
         "prop-merged-vocab",
         "prop-rate",
-        "prop-row-stochastic-convex",
         "prop-why-discrete",
-        "rem-modality-blind",
         "thm-any-to-any",
         "thm-universal-approx"
       ],
@@ -1882,39 +1864,31 @@
       "proofMarkers": 8,
       "printedNumberHits": [
         {
-          "line": 133,
-          "text": "Ch 20"
-        },
-        {
-          "line": 133,
-          "text": "Ch 21"
-        },
-        {
-          "line": 178,
+          "line": 199,
           "text": "Exercise 22.1"
         },
         {
-          "line": 195,
+          "line": 216,
           "text": "Exercise 22.2"
         },
         {
-          "line": 203,
+          "line": 224,
           "text": "Exercise 22.3"
         },
         {
-          "line": 211,
+          "line": 232,
           "text": "Exercise 22.4"
         },
         {
-          "line": 211,
+          "line": 232,
           "text": "Ch 20"
         },
         {
-          "line": 211,
+          "line": 232,
           "text": "Ch 21"
         },
         {
-          "line": 219,
+          "line": 240,
           "text": "Exercise 22.5"
         }
       ]
@@ -1969,19 +1943,19 @@
       "proofMarkers": 7,
       "printedNumberHits": [
         {
-          "line": 156,
+          "line": 160,
           "text": "Exercise 23.1"
         },
         {
-          "line": 164,
+          "line": 168,
           "text": "Exercise 23.2"
         },
         {
-          "line": 172,
+          "line": 176,
           "text": "Exercise 23.3"
         },
         {
-          "line": 184,
+          "line": 188,
           "text": "Exercise 23.4"
         }
       ]

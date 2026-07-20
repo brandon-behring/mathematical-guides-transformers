@@ -34,6 +34,22 @@ test('two inline assets with converter-generic IDs remain independent', () => {
   assert.match(combined, /href="#fig-second--glyph-0-0"/);
 });
 
+test('uses alt as the accessible name and desc as its separate description', () => {
+  const got = assembleSvg('<svg><title>Converter title</title></svg>', {
+    idBase: 'fig-accessible',
+    caption: 'Visible caption with a different job.',
+    alt: 'Concise diagram name',
+    desc: 'Longer structural explanation of the diagram.',
+  });
+
+  assert.match(got, /<title id="fig-accessible-title">Concise diagram name<\/title>/);
+  assert.match(got, /<desc id="fig-accessible-desc">Longer structural explanation/);
+  assert.match(got, /aria-labelledby="fig-accessible-title"/);
+  assert.match(got, /aria-describedby="fig-accessible-desc"/);
+  assert.doesNotMatch(got, /Visible caption with a different job/);
+  assert.doesNotMatch(got, /Converter title/);
+});
+
 test('all chapter figures use the namespacing wrapper', async () => {
   const chapterDir = new URL('../src/content/transformers/', import.meta.url);
   const chapterFiles = (await readdir(chapterDir)).filter((name) => name.endsWith('.mdx'));

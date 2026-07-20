@@ -3,9 +3,9 @@ name: content-validate
 on:
   push:
     branches: [main]
-    paths: ['src/**', 'bibliography.bib', 'package.json', 'package-lock.json', 'scripts/**', 'tests/**', 'figures/**', 'docs/manifests/**', 'docs/plans/**', '.claude/skills/**', '.gitleaks.toml', '.github/workflows/content-validate.yml']
+    paths: ['src/**', 'public/**', 'README.md', 'CLAUDE.md', 'astro.config.mjs', 'bibliography.bib', 'package.json', 'package-lock.json', 'scripts/**', 'tests/**', 'figures/**', 'docs/manifests/**', 'docs/plans/**', 'docs/notation-style-terminology.md', '.claude/skills/**', '.gitleaks.toml', '.github/workflows/content-validate.yml']
   pull_request:
-    paths: ['src/**', 'bibliography.bib', 'package.json', 'package-lock.json', 'scripts/**', 'tests/**', 'figures/**', 'docs/manifests/**', 'docs/plans/**', '.claude/skills/**', '.gitleaks.toml', '.github/workflows/content-validate.yml']
+    paths: ['src/**', 'public/**', 'README.md', 'CLAUDE.md', 'astro.config.mjs', 'bibliography.bib', 'package.json', 'package-lock.json', 'scripts/**', 'tests/**', 'figures/**', 'docs/manifests/**', 'docs/plans/**', 'docs/notation-style-terminology.md', '.claude/skills/**', '.gitleaks.toml', '.github/workflows/content-validate.yml']
 
 jobs:
   validate:
@@ -30,6 +30,7 @@ jobs:
       - run: npm run check:properties
       - run: npm run test:figure-svg
       - run: npm run test:print-html
+      - run: npm run test:polish
       - run: npm run test:bpe
 
   properties:

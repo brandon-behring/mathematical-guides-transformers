@@ -1,0 +1,103 @@
+---
+/**
+ * Guide-local semantic margin note.
+ *
+ * The formal house style distinguishes formulas, reusable patterns,
+ * cross-references, analogy limits, and computational notes in addition to the
+ * scaffold's note/warning/tip trio. Labels carry the meaning; color and border
+ * treatment are a redundant visual cue.
+ */
+type Variant =
+  | 'note'
+  | 'warning'
+  | 'tip'
+  | 'formula'
+  | 'pattern'
+  | 'cross-ref'
+  | 'analogy-limit'
+  | 'computational-note';
+
+interface Props {
+  variant?: Variant;
+  label?: string;
+}
+
+const { variant = 'note', label } = Astro.props;
+const defaultLabel: Record<Variant, string> = {
+  note: 'Note',
+  warning: 'Caveat',
+  tip: 'Tip',
+  formula: 'Formula',
+  pattern: 'Pattern',
+  'cross-ref': 'Connection',
+  'analogy-limit': 'Analogy limit',
+  'computational-note': 'Computation',
+};
+---
+
+<aside
+  class="margin-note"
+  data-variant={variant}
+  role="note"
+  aria-label={`${label ?? defaultLabel[variant]} note`}
+>
+  <span class="margin-note-label">[{label ?? defaultLabel[variant]}]</span>
+  <slot />
+</aside>
+
+<style>
+  .margin-note {
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3);
+    margin: var(--space-3) 0;
+    border-left: var(--border-bar) solid var(--callout-info);
+    background: var(--warm-blue-tint);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .margin-note[data-variant='warning'],
+  .margin-note[data-variant='analogy-limit'] {
+    border-left-color: var(--callout-warn);
+    background: var(--warm-rose-tint);
+  }
+
+  .margin-note[data-variant='tip'] {
+    border-left-color: var(--callout-tip);
+    background: var(--warm-green-tint);
+  }
+
+  .margin-note[data-variant='formula'] {
+    border-left-color: var(--callout-official);
+    background: var(--warm-plum-tint);
+  }
+
+  .margin-note[data-variant='pattern'] {
+    border-left-color: var(--callout-insight);
+    background: var(--warm-gold-tint);
+  }
+
+  .margin-note[data-variant='cross-ref'] {
+    border-left-color: var(--callout-info);
+    border-left-style: dashed;
+  }
+
+  .margin-note[data-variant='computational-note'] {
+    border-left-color: var(--callout-diagnostic);
+    background: color-mix(in srgb, var(--warm-blue-tint) 50%, var(--warm-green-tint));
+  }
+
+  .margin-note[data-variant='analogy-limit'] {
+    border-left-style: dashed;
+  }
+
+  .margin-note-label {
+    display: inline-block;
+    font-family: var(--font-code);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    margin-right: var(--space-2);
+  }
+</style>

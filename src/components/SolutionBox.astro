@@ -12,14 +12,17 @@
  * Optional `id` gives a deep-link anchor.
  */
 interface Props {
+  exercise: string;
   id?: string;
   expanded?: boolean;
 }
-const { id, expanded = false } = Astro.props;
+const { exercise, id, expanded = false } = Astro.props;
+const solutionId = id ?? `solution-exercise-${exercise.replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
+const accessibleLabel = `Solution to Exercise ${exercise}`;
 ---
-<aside class="callout callout-worked solution-box" id={id} role="note">
+<aside class="callout callout-worked solution-box" id={solutionId} role="note" aria-label={accessibleLabel}>
   <details open={expanded}>
-    <summary>
+    <summary aria-label={accessibleLabel}>
       <span class="solution-marker" aria-hidden="true">▸</span>
       <strong class="callout-title">Solution</strong>
     </summary>

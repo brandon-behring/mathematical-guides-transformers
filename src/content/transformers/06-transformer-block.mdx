@@ -3,7 +3,7 @@ title: "The Transformer Block"
 slug: transformer-block
 chapter: 6
 part: 3
-description: "The transformer block from its parts: the position-wise feed-forward network, LayerNorm and RMSNorm with input-magnitude-independent Jacobian bounds, residual connections, and pre-norm versus post-norm gradient paths."
+description: "Assembles attention, feed-forward layers, normalization, and residual paths into a transformer block, with careful comparison of pre-norm and post-norm behavior."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention, multi-head-attention]
@@ -21,17 +21,15 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# The Transformer Block
-
-**Where we are.** Attention mixes information *across* tokens but is, row by row, only a convex average of value vectors (<XRef id="prop-row-stochastic-convex" />) — it cannot reach outside their hull. A transformer block surrounds it with three more ingredients that supply what attention lacks: a position-wise feed-forward network for per-token nonlinear capacity, layer normalization to fix the scale of each token's features, and residual connections that thread a direct identity path through depth. We define each, bound the layer-norm Jacobian, prove the gradient-highway identity that justifies the skip path, and then read the two standard assemblies — post-norm and pre-norm — off the single question of where normalization sits relative to that path.
+**Where we are.** Each attention head mixes tokens by taking weighted averages of its projected value rows (<XRef id="prop-row-stochastic-convex" />); concatenation and the output projection then remix those head contexts linearly. A complete block adds a position-wise feed-forward network for nonlinear feature processing, normalization for controlled feature scale, and residual connections that preserve a direct path through depth. We define each component, bound the layer-normalization Jacobian, and prove the gradient-highway identity behind the skip connection. The chapter then compares two assemblies: does normalization sit inside the residual branch, as in pre-norm, or wrap the summed skip path, as in post-norm?
 
 ## The position-wise feed-forward network
 
@@ -53,7 +51,7 @@ Applied to a sequence $\mathbf X\in\R^{n\times d}$, the map acts row-wise: $[\op
   src="/figures/ffn-expansion.svg"
   alt="The feed-forward network widens a token from d to d_ff features, applies a nonlinearity, and projects back to d."
   desc="A single token x of dimension d passes through W_1, which widens it into a hidden layer drawn four times taller (d_ff = 4d features) where the nonlinearity σ is applied; W_2 then projects back to dimension d to give y. The box width is constant, so only the height — the feature dimension — changes. Applied independently to every token."
-  caption="The position-wise feed-forward network as widen → activate → project (def-ffn). W_1 widens each token d → d_ff (drawn 4× the height), σ bends, W_2 projects d_ff → d — applied to every token independently, with no cross-token term. This is the block's only per-token nonlinearity."
+  caption="The position-wise feed-forward network widens each token, applies a nonlinearity, and projects back to model width. It processes every row independently and introduces no cross-token mixing."
   id="fig-ffn-expansion"
   width="70%"
 />
@@ -101,9 +99,9 @@ The normalization is what keeps activation scales in check, but it inserts a Jac
 <Theorem kind="proposition" name="Layer-norm Jacobian bound" id="prop-ln-jacobian">
 For fixed $\boldsymbol\gamma$ and $\epsilon>0$, the Jacobian of $\operatorname{LN}$ satisfies, for every $\mathbf x\in\R^{d}$,
 $$
-\Big\lVert \frac{\partial\,\operatorname{LN}(\mathbf x)}{\partial\mathbf x}\Big\rVert_2 \;\le\; \frac{\lVert\boldsymbol\gamma\rVert_\infty}{\sqrt{\epsilon}}.
+\norm{\frac{\partial\,\operatorname{LN}(\mathbf x)}{\partial\mathbf x}}_2 \;\le\; \frac{\norm{\boldsymbol\gamma}_\infty}{\sqrt{\epsilon}}.
 $$
-The bound is independent of $\lVert\mathbf x\rVert$ but does depend on the learned scale $\boldsymbol\gamma$ and the constant $\epsilon$.
+The bound is independent of $\norm{\mathbf x}$ but does depend on the learned scale $\boldsymbol\gamma$ and the constant $\epsilon$.
 </Theorem>
 
 <Theorem kind="proof">
@@ -117,11 +115,11 @@ the three terms being the derivative of $\mathbf x$, of the mean subtraction, an
 
 **Spectral norm of the inner matrix.** Let $\mathbf P=\mathbf I-\tfrac1d\mathbf 1\mathbf 1^\top$. Because $\hat{\mathbf x}$ is centered, $\mathbf P\hat{\mathbf x}=\hat{\mathbf x}$, so $\mathbf P$ commutes with the rank-one correction. Their shared eigenspaces make the bound exact: the inner matrix is $0$ on $\operatorname{span}\{\mathbf 1\}$, is $\epsilon/s^2$ along the centered input when it is nonzero, and is $1$ on directions orthogonal to both. (At a constant input it is simply $\mathbf P$.) Every eigenvalue therefore lies in $[0,1]$, and
 $$
-\Big\lVert\frac{\partial\hat{\mathbf x}}{\partial\mathbf x}\Big\rVert_2 \le \frac{1}{s} \le \frac{1}{\sqrt{\epsilon}},
+\norm{\frac{\partial\hat{\mathbf x}}{\partial\mathbf x}}_2 \le \frac{1}{s} \le \frac{1}{\sqrt{\epsilon}},
 $$
 using $s\ge\sqrt{\epsilon}$.
 
-**Learned scale.** Pre-multiplying by $\operatorname{diag}(\boldsymbol\gamma)$ scales the operator norm by at most $\lVert\boldsymbol\gamma\rVert_\infty$, which gives the stated bound. $\qquad\blacksquare$
+**Learned scale.** Pre-multiplying by $\operatorname{diag}(\boldsymbol\gamma)$ scales the operator norm by at most $\norm{\boldsymbol\gamma}_\infty$, which gives the stated bound. $\qquad\blacksquare$
 </Theorem>
 
 <Theorem kind="remark" name="RMSNorm inherits the Jacobian control" id="rem-rmsnorm">
@@ -144,7 +142,7 @@ $$
 $$
 The inner symmetric matrix has eigenvalue $1$ in directions orthogonal to $\mathbf x$ and eigenvalue $\epsilon/r^2\in(0,1]$ along $\mathbf x$. Its spectral norm is therefore at most $1$, and learned featurewise scaling gives
 $$
-\left\lVert\frac{\partial\,\operatorname{RMSNorm}(\mathbf x)}{\partial\mathbf x}\right\rVert_2
+\norm{\frac{\partial\,\operatorname{RMSNorm}(\mathbf x)}{\partial\mathbf x}}_2
 \le \frac{\norm{\boldsymbol\gamma}_\infty}{r}
 \le \frac{\norm{\boldsymbol\gamma}_\infty}{\sqrt\epsilon}.
 $$
@@ -226,7 +224,7 @@ The distinction is exactly whether the residual path stays *naked*. In pre-norm,
   src="/figures/block-anatomy.svg"
   alt="Pre-norm vs post-norm blocks: pre-norm puts layer-norm inside the residual branch (skip stays naked); post-norm puts it after the add (on the skip sum)."
   desc="Two aligned residual units for a sublayer f. Pre-norm: X taps off to LN then f, rejoining at the add ⊕ to give Y — the skip path from the tap to the add carries no layer-norm. Post-norm: X taps off to f, rejoins at ⊕, then passes through LN to give Y — layer-norm sits on the summed skip path. Only the position of the LN box differs; the two blocks are otherwise identical."
-  caption="Pre-norm vs post-norm, read off one question: where does layer-norm sit relative to the residual skip (def-prenorm, def-postnorm)? Pre-norm Y = X + f(LN X) leaves the skip naked, so the all-skip gradient term reaches the next layer untouched; post-norm Y = LN(X + f X) wraps the sum, so even that route passes through a layer-norm Jacobian each step (thm-gradient-highway). Shown for one sublayer f ∈ {MHA, FFN}."
+  caption="Pre-norm places normalization inside the residual branch and leaves the skip path untouched. Post-norm wraps the completed residual sum, so every route to the next layer passes through normalization."
   id="fig-block-anatomy"
   width="88%"
 />
@@ -244,7 +242,7 @@ Summarizing where the choice bites:
 | Deep training | warmup + residual-scaling; init-sensitive | largely warmup-free |
 | Used by | original transformer, BERT | GPT-2/3, Llama, PaLM |
 
-The training rows are the mean-field/empirical picture (<XRef id="rem-prenorm-init" />, <Cite key="xiong2020layer" />) — a strong tendency at initialization, not a depth-independent guarantee.
+The training rows combine the mean-field and empirical picture (<XRef id="rem-prenorm-init" />, <Cite key="xiong2020layer" />) — a strong tendency at initialization, not a depth-independent guarantee.
 
 We close by checking that the block is shape-preserving, which is what lets blocks stack without any interface adapter.
 
@@ -258,7 +256,7 @@ Attempt each before expanding its solution.
 
 **Exercise 6.1 (Prove).** Show the gradient identity $\partial\mathcal L/\partial\mathbf x_\ell = (\partial\mathcal L/\partial\mathbf x_L)\prod_{i=\ell}^{L-1}(\mathbf I + \partial f_i/\partial\mathbf x_i)$ for a residual stack, and identify the single term in its expansion that contains no sublayer Jacobian.
 
-<SolutionBox>
+<SolutionBox exercise="6.1">
 
 Each residual layer $\mathbf x_{i+1} = \mathbf x_i + f_i(\mathbf x_i)$ has Jacobian $\mathbf I + \partial f_i/\partial\mathbf x_i$ (sum rule). By the chain rule $\partial\mathcal L/\partial\mathbf x_\ell = (\partial\mathcal L/\partial\mathbf x_L)\prod_{i=\ell}^{L-1}(\mathbf I + \mathbf J_i)$ with $\mathbf J_i = \partial f_i/\partial\mathbf x_i$. Expanding the product by distributivity gives a sum over subsets $S\subseteq\{\ell,\dots,L-1\}$ of ordered products $\prod_{i\in S}\mathbf J_i$; the empty subset contributes the empty product $\mathbf I$ — the all-skip term, containing no sublayer Jacobian. $\qquad\blacksquare$
 
@@ -266,7 +264,7 @@ Each residual layer $\mathbf x_{i+1} = \mathbf x_i + f_i(\mathbf x_i)$ has Jacob
 
 **Exercise 6.2 (Derive).** For a post-norm layer $\mathbf y = \operatorname{LN}(\mathbf x + f(\mathbf x))$, write $\partial\mathbf y/\partial\mathbf x$ as a product of the layer-norm Jacobian and the residual Jacobian, and contrast it with the pre-norm layer $\mathbf y = \mathbf x + f(\operatorname{LN}(\mathbf x))$. Which one leaves an unmultiplied $\mathbf I$ in the gradient?
 
-<SolutionBox>
+<SolutionBox exercise="6.2">
 
 For post-norm $\mathbf y = \operatorname{LN}(\mathbf x + f(\mathbf x))$, with $\mathbf u = \mathbf x + f(\mathbf x)$, the chain rule gives $\partial\mathbf y/\partial\mathbf x = \mathbf J_{\operatorname{LN}}(\mathbf u)(\mathbf I + \partial f/\partial\mathbf x)$: the residual $\mathbf I$ sits inside the bracket, multiplied by $\mathbf J_{\operatorname{LN}}$ — no unmultiplied $\mathbf I$ survives. For pre-norm $\mathbf y = \mathbf x + f(\operatorname{LN}(\mathbf x))$, the sum rule gives $\partial\mathbf y/\partial\mathbf x = \mathbf I + (\partial f/\partial\mathbf x)\mathbf J_{\operatorname{LN}}(\mathbf x)$, in which the leading $\mathbf I$ stands alone. Pre-norm leaves the unmultiplied identity in the gradient; post-norm does not. $\qquad\blacksquare$
 
@@ -274,7 +272,7 @@ For post-norm $\mathbf y = \operatorname{LN}(\mathbf x + f(\mathbf x))$, with $\
 
 **Exercise 6.3 (Prove).** Using <XRef id="def-ln" />, show that $\operatorname{LN}$ is invariant to a uniform shift of the input features, $\operatorname{LN}(\mathbf x + c\mathbf 1) = \operatorname{LN}(\mathbf x)$ for every $c\in\R$, and conclude that its Jacobian annihilates $\mathbf 1$.
 
-<SolutionBox>
+<SolutionBox exercise="6.3">
 
 Shifting $\mathbf x\mapsto\mathbf x + c\mathbf 1$ shifts the feature mean to $\mu_{\mathbf x} + c$ and leaves the variance unchanged, so the centered vector $\mathbf x - \mu_{\mathbf x}\mathbf 1$ and the denominator are unchanged: $\operatorname{LN}(\mathbf x + c\mathbf 1) = \operatorname{LN}(\mathbf x)$ for all $c$. Differentiating in $c$ at $c=0$ gives the directional derivative along $\mathbf 1$: $(\partial\operatorname{LN}/\partial\mathbf x)\mathbf 1 = \mathbf 0$ — the Jacobian annihilates $\mathbf 1$, the same null-space structure as the softmax Jacobian. $\qquad\blacksquare$
 
@@ -282,7 +280,7 @@ Shifting $\mathbf x\mapsto\mathbf x + c\mathbf 1$ shifts the feature mean to $\m
 
 **Exercise 6.4 (Compute).** Use the idealized $\epsilon=0$ extension of layer normalization on $\mathbf x = (4, 0, -2, 2)\in\R^{4}$ with $\boldsymbol\gamma = \mathbf 1$ and $\boldsymbol\beta = \mathbf 0$. This extension is well-defined here because the variance is nonzero, but it lies outside <XRef id="def-ln" />, which requires $\epsilon>0$ for all-input stability. Compute $\mu_{\mathbf x}$, $\sigma_{\mathbf x}^2$, and the idealized output, and verify it has zero mean and unit variance across its features.
 
-<SolutionBox>
+<SolutionBox exercise="6.4">
 
 With $\mathbf x = (4,0,-2,2)$: $\mu_{\mathbf x} = 1$, centered $(3,-1,-3,1)$, $\sigma_{\mathbf x}^2 = \tfrac14(9+1+9+1) = 5$. Because $5>0$, the explicitly idealized $\epsilon=0$ extension is defined on this input, and with $\boldsymbol\gamma=\mathbf 1,\boldsymbol\beta=\mathbf 0$ it gives
 $$
@@ -294,7 +292,7 @@ with feature mean $0$ and feature variance $1$, as required. $\qquad\blacksquare
 
 **Exercise 6.5 (Construct).** Exhibit a sublayer $f$ and an input for which the all-skip term of <XRef id="thm-gradient-highway" /> does *not* dominate the gradient — i.e. choose $\partial f/\partial\mathbf x$ so that the full bracket $\mathbf I + \partial f/\partial\mathbf x$ has spectral norm far from $1$ — showing the theorem guarantees a route, not a magnitude.
 
-<SolutionBox>
+<SolutionBox exercise="6.5">
 
 Take $f(\mathbf x) = \mathbf x\mathbf A$ with $\mathbf A = 9\mathbf I$, at any input — say $\mathbf x = \mathbf 0$; $f$ is linear, so its Jacobian is the same at every input — and the layer Jacobian is $\mathbf I + 9\mathbf I = 10\mathbf I$, spectral norm $10$: the all-skip term is the single $\mathbf I$, but the full bracket has norm $10$, so the skip route is a $10\%$ share, not dominant. Conversely $\mathbf A = -\tfrac{9}{10}\mathbf I$ gives bracket $\tfrac{1}{10}\mathbf I$. Either way, <XRef id="thm-gradient-highway" /> guarantees the identity route exists; it does not bound its relative magnitude. $\qquad\blacksquare$
 
@@ -302,7 +300,7 @@ Take $f(\mathbf x) = \mathbf x\mathbf A$ with $\mathbf A = 9\mathbf I$, at any i
 
 **Exercise 6.6 (Derive).** Differentiate $\mathbf x/r(\mathbf x)$ for $r(\mathbf x)=\sqrt{\norm{\mathbf x}^2/d+\epsilon}$, derive the RMSNorm Jacobian in <XRef id="rem-rmsnorm" />, and prove its spectral-norm bound. Compare its eigenspaces with LayerNorm's and identify the invariance that only LayerNorm has.
 
-<SolutionBox>
+<SolutionBox exercise="6.6">
 
 Since $\nabla r=\mathbf x/(dr)$, the product rule gives
 $$

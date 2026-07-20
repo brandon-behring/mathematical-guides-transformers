@@ -14,30 +14,37 @@ Authoring follows the family's dossier-grounded
 
 ## Structure: 24 chapters, 6 parts
 
-Published chapters occupy every display number from **00 through 23**. Source filenames carry those
-display numbers, while frontmatter `slug` values remain number-free so chapter URLs stay stable.
+Published chapters occupy every display number from **0 through 23**. Source filenames use
+zero-padded numeric prefixes, while frontmatter `slug` values remain number-free so chapter URLs
+stay stable.
 
 - **Part 1 — Foundations.** Notation and prerequisites; input representations (reversible text tokenization
-  with BPE, the modality-agnostic embedding interface, positional encodings, RoPE).
-- **Part 2 — Recurrence & Linear State.** Recurrent networks and the seq2seq lineage
-  (BPTT, the vanishing-gradient bound, LSTM/GRU, the fixed-vector bottleneck, additive attention);
-  linear recurrences and state space models (ZOH discretization, the recurrence/convolution/scan
-  trinity, HiPPO, the LTI obstruction).
-- **Part 3 — Transformer Architectures & Objectives.** Scaled dot-product attention; multi-head
+  with byte-pair encoding (BPE), the modality-agnostic embedding interface, positional encodings, and
+  rotary position embedding (RoPE)).
+- **Part 2 — Recurrence and Linear State.** Recurrent networks and the seq2seq lineage
+  (backpropagation through time (BPTT), the vanishing-gradient bound, long short-term memory (LSTM)
+  and gated recurrent unit (GRU) networks, the fixed-vector bottleneck, and additive attention);
+  linear recurrences and state-space models (zero-order-hold (ZOH) discretization, the recurrence,
+  convolution, and scan trinity, high-order polynomial projection operators (HiPPO), and the linear
+  time-invariant (LTI) obstruction).
+- **Part 3 — Transformer Architectures and Objectives.** Scaled dot-product attention; multi-head
   attention; the transformer block; architecture composition; in-context learning through
   associative lookup, copying and induction, and a controlled linear-attention gradient-descent
   construction; encoders and decoders across architecture families (causality as
   prefix-consistency, abstracted over any sequence mixer); token-level training; pairwise preference
-  optimization through RLHF and DPO; encoder readouts, contrastive alignment, and detection.
-- **Part 4 — Efficient & Conditional Computation.** Empirical scaling laws and compute-optimal
-  model/data allocation; training optimizations; inference optimizations
-  (greedy, temperature, top-$k$, and top-$p$ decoding; the KV-cache, quantization, FlashAttention,
+  optimization through reinforcement learning from human feedback (RLHF) and Direct Preference
+  Optimization (DPO); encoder readouts, contrastive alignment, and detection.
+- **Part 4 — Efficient and Conditional Computation.** Empirical scaling laws and compute-optimal
+  parameter-and-data allocation; training optimizations; inference optimizations
+  (greedy, temperature, top-$k$, and top-$p$ decoding; the key–value (KV) cache, quantization, FlashAttention,
   and speculative decoding); mixture-of-experts
   (routing gradients, load balance, expert capacity, cost accounting, and expert parallelism).
-- **Part 5 — Sub-Quadratic & Selective Sequence Models.** Sparse and sub-quadratic attention
-  (static and content-routed patterns, sparse expressiveness, NSA); selective state spaces and state
-  space duality (Mamba, linear-attention/SSM duality, the chunked algorithm); modern recurrent
-  models and hybrid architectures (RWKV, xLSTM, DeltaNet, sliding-window hybrids).
+- **Part 5 — Sub-Quadratic and Selective Sequence Models.** Sparse and sub-quadratic attention
+  (static and content-routed patterns, sparse expressiveness, Native Sparse Attention (NSA)); selective
+  state spaces and State Space Duality (Mamba, the duality between linear attention and state-space
+  models, and the chunked algorithm); modern recurrent models and hybrid architectures
+  (receptance-weighted key–value (RWKV), extended long short-term memory (xLSTM), DeltaNet, and
+  sliding-window hybrids).
 - **Part 6 — Multimodal Models.** Connectors and resamplers; discrete visual tokenization; unified
   multimodal models; multimodal evaluation.
 
@@ -48,7 +55,7 @@ entries live in `src/content/glossary/` and use the scaffold's `glossarySchema`
 
 ## Reference apparatus
 
-Chapter 00 contains the authoritative shared notation index. Chapter-local symbol or orientation
+Chapter 0 contains the authoritative shared notation index. Chapter-local symbol or orientation
 departures are called out with `NotationOverride`; do not silently reuse a standing symbol. The
 site also exposes an alphabetical glossary at `/transformers/glossary/` and a pull-out notation and
 equation card at `/transformers/quick-reference/`. The print edition appends both resources after
@@ -76,6 +83,7 @@ npm run test:properties          # numeric guards for quantitative claims
 npm run test:bpe                 # deterministic BPE merge and accounting tests
 npm run test:figure-svg          # inline-SVG ID/reference isolation
 npm run test:print-html          # chapter-scoped heading IDs in the combined print route
+npm run test:polish              # book-wide notation, style, terminology, and accessibility contract
 npm run check:corpus             # verify tracked corpus structure, labels, and printed-number inventory
 npm run dev                      # local dev server
 ```

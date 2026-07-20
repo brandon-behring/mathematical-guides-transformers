@@ -5,4 +5,4 @@ see: [activated-arithmetic, active-expert-traffic]
 tags: [systems, mixture-of-experts]
 ---
 
-The full parameter capacity that must be addressable by the serving system, whether or not every parameter is used for the current input. For $E$ equal-size experts of $\mu_{\mathrm{FFN}}$ bytes each, expert residency is $E\mu_{\mathrm{FFN}}$. Residency does not by itself determine activated FLOPs or bytes fetched in one batch.
+The full parameter capacity that must be addressable by the serving system, whether or not every parameter is used for the current input. For $E$ equal-size experts of $\mu_{\mathrm{FFN}}$ bytes each, expert residency is $E\mu_{\mathrm{FFN}}$. Residency does not by itself determine activated floating-point operations (FLOPs) or bytes fetched in one batch.

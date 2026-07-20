@@ -3,15 +3,15 @@ title: "Architecture Composition"
 slug: architecture-composition
 chapter: 7
 part: 3
-description: "Stacking transformer blocks into encoders and decoders: bidirectional vs causal self-attention, cross-attention (and vision-language fusion as an instance of it), the three standard architectures, the Vision Transformer as an encoder over patch embeddings, the universal-approximation theorem and what depth buys, and the per-layer complexity that makes attention the quadratic bottleneck."
+description: "Stacks transformer blocks into encoder, decoder, and encoder–decoder systems, introduces cross-attention, and connects architecture choices to expressiveness, parameter counts, and computational cost."
 last_verified: 2026-07-13
 rigor_level: rigorous
-prerequisites: [notation, input-representations, attention]
+prerequisites: [notation, input-representations, attention, multi-head-attention, transformer-block]
 notation_introduced: ['\operatorname{CrossAttn}', '\mathbf H^{(\ell)}', 'N', 'd_{\text{ff}}']
 theorems: ['rem-vit', 'thm-universal-approx', 'prop-complexity', 'prop-params', 'rem-multimodal-crossattn', 'rem-unified-sequence']
 los:
   - id: lo-transformer-architecture-families
-    statement: "Define the encoder, decoder, and encoder-decoder transformer architectures, and state what distinguishes them."
+    statement: "Define the encoder, decoder, and encoder–decoder transformer architectures, and state what distinguishes them."
   - id: lo-transformer-universal-approximation
     statement: "State the universal-approximation theorem for transformers and explain its quantize-route-lookup proof strategy."
   - id: lo-transformer-layer-complexity
@@ -23,17 +23,15 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Architecture Composition
-
-**Where we are.** A single transformer block — multi-head attention, a position-wise feed-forward network, layer normalization, and a residual connection — is by itself a shallow map. This chapter composes blocks into the architectures that are actually trained: we stack $N$ blocks into an encoder and a decoder, introduce **cross-attention** as the one new operation that couples them, organize the three standard architectures (encoder-only, encoder-decoder, decoder-only) by their design choices, state what depth and composition buy through the universal-approximation theorem, and count the per-layer cost that makes attention the quadratic bottleneck. We write $\operatorname{MHA}$, $\operatorname{FFN}$, and $\operatorname{LN}$ for the block's sublayers and $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ for scaled dot-product attention, all fixed in earlier chapters.
+**Where we are.** The previous chapter assembled one shape-preserving transformer block; this chapter composes those blocks into complete model families. An encoder lets every position read the whole input, a decoder uses causal visibility, and an encoder–decoder couples the two streams through cross-attention. Those choices organize the standard encoder-only, decoder-only, and sequence-to-sequence architectures, including vision models built from patch embeddings. After fixing the architectures, we examine what depth can represent, count the dominant operations and activations, and finish with a concrete parameter and compute budget. All attention, feed-forward, normalization, and residual ingredients are inherited unchanged.
 
 ## The encoder
 
@@ -86,14 +84,14 @@ Because cross-attention uses scaled dot-product attention, each weight row is ro
 
 <Figure
   src="/figures/cross-attention-wiring.svg"
-  alt="Cross-attention: the decoder supplies queries; the encoder supplies keys and values. Scores are m×n and each pre-projection context row is a convex combination of the encoder values."
-  desc="Two source streams feed one attention block. The decoder stream X_dec (m×d) projects by W^Q to Q; the encoder stream H_enc (n×d) projects by W^K and W^V to K and V. Q, K, V enter the cross-attention block, whose scores QKᵀ are m×n, producing a context C of length m (m×d_v). Edge labels mark the decoder length m and encoder length n."
-  caption="Cross-attention wiring (def-cross-attention): queries come from the decoder, keys and values from the encoder. The scores are m×n, and the pictured pre-projection context C is m×d_v with each row a convex combination of encoder values (prop-row-stochastic-convex); the definition's output projection W^O then maps C to residual-compatible width d."
+  alt="Cross-attention using decoder rows as queries and encoder rows as keys and values."
+  desc="The decoder stream projects into queries while the encoder output projects into keys and values. Their rectangular score matrix produces one pre-projection context row per decoder position."
+  caption="Cross-attention takes queries from the decoder and keys and values from the encoder. Its rectangular score matrix gives every decoder position a weighted read over the encoded input."
   id="fig-cross-attention"
   width="88%"
 />
 
-<Theorem kind="remark" name="Vision-language fusion is cross-attention" id="rem-multimodal-crossattn">
+<Theorem kind="remark" name="Vision–language fusion is cross-attention" id="rem-multimodal-crossattn">
 The "separate input sequence" the decoder conditions on need not be text. Let $\mathbf H_{\text{img}}\in\R^{n_v\times d}$ be patch features from a Vision Transformer (<XRef id="rem-vit" />) and $\mathbf X_{\text{txt}}\in\R^{m\times d}$ a text stream. Conditioning text generation on the image is exactly <XRef id="def-cross-attention" /> with the encoder stream taken to be vision:
 $$
 \operatorname{CrossAttn}(\mathbf X_{\text{txt}},\mathbf H_{\text{img}})
@@ -120,8 +118,8 @@ The masked self-attention lets position $i$ attend only to decoder positions $j\
 
 Stacking the encoder of <XRef id="def-encoder" /> against a stack of these blocks gives the original architecture.
 
-<Theorem kind="definition" name="Encoder-decoder transformer" id="def-enc-dec">
-An **encoder-decoder transformer** <Cite key="vaswani2017attention" /> pairs:
+<Theorem kind="definition" name="Encoder–decoder transformer" id="def-enc-dec">
+An **encoder–decoder transformer** <Cite key="vaswani2017attention" /> pairs:
 <Sidenote>This is the architecture of the original "Attention Is All You Need," and of sequence-to-sequence models such as T5 <Cite key="raffel2020t5" />.</Sidenote>
 - an **encoder** (<XRef id="def-encoder" />) that maps the input sequence to $\mathbf H_{\text{enc}} = \mathbf H^{(N)}$, computed **once**; and
 - a **decoder**, a stack of $N$ decoder blocks (<XRef id="def-decoder-block" />) sharing that single $\mathbf H_{\text{enc}}$, that generates output tokens autoregressively, each step conditioned on $\mathbf H_{\text{enc}}$ and on all previously generated tokens.
@@ -136,33 +134,35 @@ A **decoder-only transformer** is a single stack of $N$ blocks with causal self-
 <MarginNote variant="tip" label="Conditioning">A decoder-only model has no separate encoder stream, so demonstrations and queries can condition one another inside the causal prompt. The next chapter constructs what attention can compute from that shared context (<XRef id="def-in-context-learning" />).</MarginNote>
 
 <Theorem kind="remark" name="The three architectures as design choices" id="rem-three-archs">
-The three standard encoder/generator architectures are three settings of two binary switches — is the output stack's self-attention bidirectional or causal, and does it have cross-attention to a separate source?
+The three standard representation and generation architectures are three settings of two binary switches — is the output stack's self-attention bidirectional or causal, and does it have cross-attention to a separate source?
 
 | Architecture | Self-attention | Cross-attention | Typical use |
 |---|---|---|---|
 | Encoder-only | bidirectional | none | classification, embeddings (BERT <Cite key="devlin2019bert" />) |
-| Encoder-decoder | causal decoder + bidirectional encoder | decoder → encoder | sequence-to-sequence (T5 <Cite key="raffel2020t5" />, the original transformer <Cite key="vaswani2017attention" />) |
+| Encoder–decoder | causal decoder + bidirectional encoder | decoder → encoder | sequence-to-sequence (T5 <Cite key="raffel2020t5" />, the original transformer <Cite key="vaswani2017attention" />) |
 | Decoder-only | causal | none | autoregressive generation (GPT, LLaMA <Cite key="touvron2023llama" />) |
 
-The table names the three standard *representation or autoregressive-generation* patterns, not every usable cell of the switch space. A bidirectional output stack with cross-attention is perfectly valid for two-stream fusion or reranking; it is non-autoregressive because its output rows can read future output positions. This is distinct from the usual **cross-encoder**, which concatenates both inputs into one bidirectional self-attention stack and therefore occupies the bidirectional/no-cross-attention cell. The encoder–decoder-families chapter abstracts the causal/bidirectional and conditioning choices to arbitrary sequence mixers (<XRef id="def-patterns" />) and instantiates the same three standard patterns across attention, recurrent, and state-space families.
+The table names the three standard *representation or autoregressive-generation* patterns, not every usable cell of the switch space. A bidirectional output stack with cross-attention is perfectly valid for two-stream fusion or reranking; it is non-autoregressive because its output rows can read future output positions. This is distinct from the usual **cross-encoder**, which concatenates both inputs into one bidirectional self-attention stack and therefore occupies the bidirectional cell without cross-attention. The Encoders and Decoders Across Architecture Families chapter abstracts the choice between causal and bidirectional mixing, together with the conditioning choice, to arbitrary sequence mixers (<XRef id="def-patterns" />) and instantiates the same three standard patterns across attention, recurrent, and state-space families.
 
 An encoder-only model typically adds a learned summary position (a $\texttt{[CLS]}$ token) and trains a small head on that position's final hidden state. It is itself an encoder despite having no cross-attention. In an encoder–decoder model, a *separate source encoder* feeds the decoder through cross-attention; a concatenation-based multimodal model may likewise use an upstream vision encoder even though its language stack has no cross-attention.
 </Theorem>
 
 <Figure
   src="/figures/three-architectures.svg"
-  alt="A 2×2 grid over output-stack self-attention and cross-attention. Encoder-only, decoder-only, and encoder-decoder are the three standard representation or generative patterns; bidirectional cross-attention is shown as a valid non-autoregressive two-stream fusion pattern."
-  desc="A 2×2 grid. Rows are the output stack's self-attention (bidirectional, causal); columns are cross-attention (absent, present). Encoder-only sits at bidirectional/absent (BERT); Decoder-only at causal/absent (GPT, LLaMA); Encoder-decoder at causal/present (T5, the original transformer), its cell showing a bidirectional encoder feeding a causal decoder. The bidirectional/present cell shows two-stream cross-attention fusion or reranking and is labeled valid but non-autoregressive. Mask icons distinguish full from lower-triangular self-attention."
-  caption="Three standard representation/generation patterns within a larger switch space (rem-three-archs). Encoder-only, Decoder-only, and Encoder-decoder occupy three cells. The fourth is not unused: a bidirectional stack may cross-attend for fusion or reranking, but it is not an autoregressive generator because it is not prefix-consistent. The mask icons show what each output-stack self-attention setting reads."
+  alt="A two-by-two architecture grid crossing causal or bidirectional mixing with absent or present cross-attention."
+  desc="The four cells contain encoder-only, decoder-only, encoder–decoder, and bidirectional two-stream fusion patterns. Mask icons distinguish full from lower-triangular self-attention, and arrows mark when a separate encoded stream supplies context."
+  caption="Self-attention visibility and the presence of cross-attention form a two-switch design space. Three cells give the standard encoder-only, decoder-only, and encoder–decoder patterns; the fourth supports non-autoregressive fusion."
   id="fig-three-architectures"
   width="82%"
 />
 
 <Theorem kind="remark" name="Two fusion routes are two switch settings" id="rem-unified-sequence">
-A generative vision-language model couples the two modalities by one of two routes, corresponding to the two settings of the language stack's cross-attention switch in <XRef id="rem-three-archs" />. **Cross-attention present:** a decoder attends to a separate image stream (<XRef id="rem-multimodal-crossattn" />) — the encoder-decoder pattern with a vision encoder in place of a text one. **Cross-attention absent:** project the image features — in practice a frozen vision encoder's output features, as in LLaVA, not raw patch embeddings — into the token space and **concatenate** them with the text tokens into one sequence $\mathbf X = [\,\mathbf X_{\text{img}};\,\mathbf X_{\text{txt}}\,]$, processed by a single decoder-only stack (<XRef id="def-decoder-only" />) — the embedding interface of <XRef id="def-embedding-interface" /> used twice, with no new operation <Cite key="liu2023llava" />. Thus cross-attention decides *how the already-encoded visual features enter the language stack*, not whether an upstream encoder exists. Both routes are built out in full later: the projector and learned-query resampler that fill the concatenation route (<XRef id="def-connector" />), and the single interleaved stream that subsumes both into one decoder (<XRef id="def-interleaved" />).
+A generative vision–language model couples the two modalities by one of two routes, corresponding to the two settings of the language stack's cross-attention switch in <XRef id="rem-three-archs" />. **Cross-attention present:** a decoder attends to a separate image stream (<XRef id="rem-multimodal-crossattn" />) — the encoder–decoder pattern with a vision encoder in place of a text one. **Cross-attention absent:** project the image features — in practice a frozen vision encoder's output features, as in LLaVA, not raw patch embeddings — into the token space and **concatenate** them with the text tokens into one sequence $\mathbf X = [\,\mathbf X_{\text{img}};\,\mathbf X_{\text{txt}}\,]$, processed by a single decoder-only stack (<XRef id="def-decoder-only" />) — the embedding interface of <XRef id="def-embedding-interface" /> used twice, with no new operation <Cite key="liu2023llava" />. Thus cross-attention decides *how the already-encoded visual features enter the language stack*, not whether an upstream encoder exists. Both routes are built out in full later: the projector and learned-query resampler that fill the concatenation route (<XRef id="def-connector" />), and the single interleaved stream that subsumes both into one decoder (<XRef id="def-interleaved" />).
 </Theorem>
 
 ## Universal approximation
+
+**Optional on a first pass.** The practical takeaway is that attention can route information across positions while feed-forward layers implement local lookup, so finite-depth compositions can approximate broad classes of fixed-length sequence maps. Readers following the core architecture route may continue at **Computational complexity**; the theorem and proof sketch below preserve the exact hypotheses and the limits of that expressivity claim.
 
 A composition of blocks is only worth stacking if depth and width buy representational power. The classical universal-approximation theorems concern a single-hidden-layer network approximating a continuous function on a compact set; they say nothing about *sequence-to-sequence* maps or about the specific attention-plus-FFN architecture. The theorem below supplies the missing statement, and — more useful for intuition — its proof strategy says *why* the architecture is expressive: attention routes information across positions while the FFN stores function values, so together they implement an approximate quantize-route-lookup pipeline.
 
@@ -175,7 +175,7 @@ d_{p,D}(f,g)
 $$
 where $\norm{\cdot}_p$ is the entrywise matrix $\ell^p$ norm and $d\mathbf X$ is Lebesgue measure. Let $\mathcal T^{2,1,4}$ be the class of arbitrary finite-depth compositions of blocks, each block applying in order:
 
-- residual dot-product self-attention sublayers with exactly two heads, scalar query/key/value width per head, and a learned output projection back to width $d$; and
+- residual dot-product self-attention sublayers with exactly two heads, scalar query, key, and value widths per head, and a learned output projection back to width $d$; and
 - residual position-wise two-layer ReLU FFNs of hidden width $4$,
 
 with learned FFN biases and query-projection biases, and **no layer normalization**. Then:<Sidenote>These fixed-width $L^p$ density results are Theorems 2 and 3 of <Cite key="yun2020transformers" />. They are representation theorems for a deliberately idealized residual attention-plus-ReLU class, not for the normalized pre-norm block defined earlier.</Sidenote>
@@ -215,11 +215,11 @@ The theorem is **existential**: it guarantees that a finite, potentially very de
 Expressivity says depth is worth having; cost says where the bill is paid. We count, per layer, the time and the activation memory of the two dominant operations — self-attention and the FFN — and locate the sequence length at which the quadratic attention term overtakes the linear-in-$n$ FFN term.
 
 <Theorem kind="proposition" name="Per-layer complexity" id="prop-complexity">
-For sequence length $n$, model dimension $d$, $h$ heads of query/key width $d_k$ and value width $d_v$, and feed-forward hidden dimension $d_{\text{ff}}$, a dense multi-head block has the following leading time and materialized-activation memory costs:
+For sequence length $n$, model dimension $d$, $h$ heads of query and key width $d_k$ and value width $d_v$, and feed-forward hidden dimension $d_{\text{ff}}$, a dense multi-head block has the following leading time and materialized-activation memory costs:
 
 | Component | Time | Memory |
 |---|---|---|
-| Q/K/V and output projections | $\Theta\!\big(n h d(d_k+d_v)\big)$ | $\Theta\!\big(nh(d_k+d_v)+nd\big)$ |
+| Query, key, value, and output projections | $\Theta\!\big(n h d(d_k+d_v)\big)$ | $\Theta\!\big(nh(d_k+d_v)+nd\big)$ |
 | Scores and softmax, $\mathbf Q\mathbf K^\top$ | $\Theta(hn^2d_k)$ | $\Theta(hn^2)$ |
 | Weight–value products, $\mathbf A\mathbf V$ | $\Theta(hn^2d_v)$ | $\Theta(hnd_v)$ beyond the stored weights |
 | Feed-forward network | $\Theta(n d d_{\text{ff}})$ | $\Theta(nd_{\text{ff}}+nd)$ |
@@ -241,7 +241,7 @@ Count each matrix product at its displayed general width; constants are retained
 
 **Attention mixing.** Each head's $\mathbf Q\mathbf K^\top$ costs $n^2d_k$ and its $\mathbf A\mathbf V$ costs $n^2d_v$, for $hn^2(d_k+d_v)$ across heads. Materializing one attention-weight array costs $\Theta(hn^2)$; projected values and head contexts add $\Theta(hnd_v)$ and are already represented in the total's linear terms.
 
-**Feed-forward.** The two position-wise maps cost $2ndd_{\text{ff}}$ scalar multiplications and store the $n\times d_{\text{ff}}$ hidden activation plus residual-width input/output, giving the table's FFN row.
+**Feed-forward.** The two position-wise maps cost $2ndd_{\text{ff}}$ scalar multiplications and store the $n\times d_{\text{ff}}$ hidden activation plus residual-width input and output, giving the table's FFN row.
 
 **Crossover.** Equating quadratic mixing with the two FFN products gives
 $$
@@ -265,7 +265,7 @@ If the softmax kernel is replaced by an explicit feature map $\phi:\R^{d_k}\to\R
 $$
 \text{output}_i = \frac{\phi(\mathbf q_i)^\top\sum_{j}\phi(\mathbf k_j)\mathbf v_j^\top}{\phi(\mathbf q_i)^\top\sum_{j}\phi(\mathbf k_j)}.
 $$
-The matrix $\sum_j\phi(\mathbf k_j)\mathbf v_j^\top\in\R^{D\times d_v}$ is computed **once** and shared across queries, so each output costs $O(D d_v)$ and the total is $O(n D d_v)$ — *linear* in $n$ <Cite key="katharopoulos2020transformers" />. This is a different function: with the standard choice $\phi(x) = \operatorname{elu}(x)+1 > 0$ the weights remain non-negative and row-normalized, so convexity survives; what is given up is the exponential kernel's temperature-controlled sharpness, trading approximation quality for the asymptotic gain. In the causal case the shared sums become *running* sums — a state updated token by token — and that observation is upgraded to a theorem later: causal linear attention **is** a matrix-state recurrence (<XRef id="thm-linattn-rnn" />), and with decay it is exactly a selective state space model (<XRef id="thm-ssd" />).
+The matrix $\sum_j\phi(\mathbf k_j)\mathbf v_j^\top\in\R^{D\times d_v}$ is computed **once** and shared across queries, so each output costs $O(D d_v)$ and the total is $O(n D d_v)$ — *linear* in $n$ <Cite key="katharopoulos2020transformers" />. This is a different function: with the standard choice $\phi(x) = \operatorname{elu}(x)+1 > 0$ the weights remain nonnegative and row-normalized, so convexity survives; what is given up is the exponential kernel's temperature-controlled sharpness, trading approximation quality for the asymptotic gain. In the causal case the shared sums become *running* sums — a state updated token by token — and that observation is upgraded to a theorem later: causal linear attention **is** a matrix-state recurrence (<XRef id="thm-linattn-rnn" />), and with decay it is exactly a selective state-space model (<XRef id="thm-ssd" />).
 </Theorem>
 
 <Theorem kind="remark" name="FlashAttention changes only the algorithm" id="rem-flash-attention">
@@ -309,7 +309,7 @@ Take $d=512$, $h=8$, $d_k=d_v=64$, $d_{\text{ff}}=2048$, $N=6$, $|\mathcal V| = 
 
 **Model.** Embedding $16.4\text{M}$, plus $N=6$ blocks at $3.15\text{M}$ giving $18.9\text{M}$, plus an output projection of $0$ when tied to the embedding. **Total $\approx 35.3\text{M}$ parameters.**
 
-**Forward FLOPs at $n=1024$.** Count one multiply-add as two FLOPs. The Q/K/V/output projections cost $8nd^2=8\cdot1024\cdot512^2\approx2.15\times10^9$ FLOPs. The two quadratic attention products (<XRef id="prop-complexity" />) cost $2n^2d$ each — $\mathbf Q\mathbf K^\top$ and $\mathbf A\mathbf V$ — totalling $4n^2d\approx2.15\times10^9$. The two FFN maps cost $4ndd_{\text{ff}}\approx4.29\times10^9$. Thus the complete block costs about $8.59\times10^9$ FLOPs and the six blocks about $51.5$ GFLOPs. Here the FFN is about half of total block FLOPs; the quadratic mixing term alone is about one quarter. Since $n=1024<d_{\text{ff}}=2048$, that quadratic term has not yet overtaken the FFN, although projection work means **total** attention already matches it in this example. The $O(n^2)$ materialized-memory pressure persists at every length.
+**Forward FLOPs at $n=1024$.** Count one multiply-add as two FLOPs. The query, key, value, and output projections cost $8nd^2=8\cdot1024\cdot512^2\approx2.15\times10^9$ FLOPs. The two quadratic attention products (<XRef id="prop-complexity" />) cost $2n^2d$ each — $\mathbf Q\mathbf K^\top$ and $\mathbf A\mathbf V$ — totalling $4n^2d\approx2.15\times10^9$. The two FFN maps cost $4ndd_{\text{ff}}\approx4.29\times10^9$. Thus the complete block costs about $8.59\times10^9$ FLOPs and the six blocks about $51.5$ GFLOPs. Here the FFN is about half of total block FLOPs; the quadratic mixing term alone is about one quarter. Since $n=1024<d_{\text{ff}}=2048$, that quadratic term has not yet overtaken the FFN, although projection work means **total** attention already matches it in this example. The $O(n^2)$ materialized-memory pressure persists at every length.
 </Theorem>
 
 ## Exercises
@@ -318,7 +318,7 @@ Attempt each before expanding its solution.
 
 **Exercise 7.1 (Prove).** Show that the pre-projection context in <XRef id="def-cross-attention" /> is, in every row, a convex combination of the encoder value rows, and that the residual-width output is a convex combination of their rows after $\mathbf W^O$.
 
-<SolutionBox>
+<SolutionBox exercise="7.1">
 
 Write $\mathbf A=\softmax(\mathbf Q\mathbf K^\top/\sqrt{d_k})$. Each row is row-stochastic, so pre-projection context row $i$ is $\mathbf c_i=\sum_jA_{ij}\mathbf v_j$, a convex combination of the encoder value rows (<XRef id="prop-row-stochastic-convex" />). Linearity of the output projection gives
 $$
@@ -328,33 +328,33 @@ with the same nonnegative coefficients summing to one. Thus the cross-attention 
 
 </SolutionBox>
 
-**Exercise 7.2 (Construct).** Specify the two binary switches — self-attention causal vs bidirectional, cross-attention present vs absent — and exhibit the setting that yields each of the encoder-only, encoder-decoder, and decoder-only architectures.
+**Exercise 7.2 (Construct).** Specify the two binary switches — self-attention causal vs bidirectional, cross-attention present vs absent — and exhibit the setting that yields each of the encoder-only, encoder–decoder, and decoder-only architectures.
 
-<SolutionBox>
+<SolutionBox exercise="7.2">
 
-The switches are (a) output-stack self-attention causal vs bidirectional and (b) cross-attention present vs absent. **Encoder-only:** bidirectional, no cross-attention (BERT). **Encoder-decoder:** bidirectional source encoder + causal decoder with cross-attention pulling $\mathbf K,\mathbf V$ from $\mathbf H_{\text{enc}}$ (original transformer, T5). **Decoder-only:** causal, no cross-attention; prompt tokens occupy the same stream and can supply demonstrations before the query, the setting formalized by <XRef id="def-in-context-learning" /> (GPT, LLaMA). The fourth setting, bidirectional + cross-attention, is valid for fusion or reranking but is not a fourth autoregressive architecture: bidirectional output self-attention can read future output positions, so the stack is not prefix-consistent. $\qquad\blacksquare$
+The switches are (a) output-stack self-attention causal vs bidirectional and (b) cross-attention present vs absent. **Encoder-only:** bidirectional, no cross-attention (BERT). **Encoder–decoder:** bidirectional source encoder + causal decoder with cross-attention pulling $\mathbf K,\mathbf V$ from $\mathbf H_{\text{enc}}$ (original transformer, T5). **Decoder-only:** causal, no cross-attention; prompt tokens occupy the same stream and can supply demonstrations before the query, the setting formalized by <XRef id="def-in-context-learning" /> (GPT, LLaMA). The fourth setting, bidirectional + cross-attention, is valid for fusion or reranking but is not a fourth autoregressive architecture: bidirectional output self-attention can read future output positions, so the stack is not prefix-consistent. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 7.3 (Compute).** For $d = 1024$, $d_{\text{ff}} = 4096$, $h\mid d$, and the standard $d_k=d_v=d/h$, find the sequence length at which the **quadratic attention-mixing term** overtakes the FFN in leading matrix-multiplication work, and explain why FlashAttention does not move that asymptotic crossover.
 
-<SolutionBox>
+<SolutionBox exercise="7.3">
 
-Across heads, the two quadratic products require $2n^2d$ scalar multiplications, while the two FFN maps require $2ndd_{\text{ff}}$. Equating them and cancelling $2nd>0$ gives $n=d_{\text{ff}}=4096$. This is the crossover of the quadratic mixing term with the FFN; Q/K/V/output projections are additional work linear in $n$, so total attention can cross earlier. FlashAttention does not move the stated asymptotic crossover: it computes the same quadratic operator while changing the tiling and materialized-memory schedule. $\qquad\blacksquare$
+Across heads, the two quadratic products require $2n^2d$ scalar multiplications, while the two FFN maps require $2ndd_{\text{ff}}$. Equating them and cancelling $2nd>0$ gives $n=d_{\text{ff}}=4096$. This is the crossover of the quadratic mixing term with the FFN; the query, key, value, and output projections are additional work linear in $n$, so total attention can cross earlier. FlashAttention does not move the stated asymptotic crossover: it computes the same quadratic operator while changing the tiling and materialized-memory schedule. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 7.4 (Compute).** Using $4d^2 + 2 d\, d_{\text{ff}}$ per block with $d_{\text{ff}} = 4d$, derive the $\approx 12 N d^2$ block-parameter scaling, and state which model component the embedding term $|\mathcal V|\, d$ instead governs.
 
-<SolutionBox>
+<SolutionBox exercise="7.4">
 
-Per block, MHA contributes $4d^2$ and the FFN $2 d\,d_{\text{ff}}$ (layer-norm scale/shift are $O(d)$, lower order), so one block is $4d^2 + 2 d\,d_{\text{ff}}$. With $d_{\text{ff}} = 4d$ this is $4d^2 + 8d^2 = 12d^2$, and $N$ blocks give $\approx 12 N d^2$. The term $|\mathcal V|\,d$ is separate: it governs the embedding (and tied output projection), scaling with vocabulary rather than depth. $\qquad\blacksquare$
+Per block, MHA contributes $4d^2$ and the FFN $2 d\,d_{\text{ff}}$ (layer-normalization scale and shift are $O(d)$, lower order), so one block is $4d^2 + 2 d\,d_{\text{ff}}$. With $d_{\text{ff}} = 4d$ this is $4d^2 + 8d^2 = 12d^2$, and $N$ blocks give $\approx 12 N d^2$. The term $|\mathcal V|\,d$ is separate: it governs the embedding (and tied output projection), scaling with vocabulary rather than depth. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 7.5 (Derive).** Explain why the no-position class in <XRef id="thm-universal-approx" /> is permutation-equivariant. Using the theorem's global $L^p$ metric, prove that an $L^p$ limit of such maps is equivariant almost everywhere, and give a continuous compactly supported target excluded by that closure.
 
-<SolutionBox>
+<SolutionBox exercise="7.5">
 
 Let $\mathbf P$ be a permutation matrix. Shared row-wise projections send $\mathbf X\mapsto\mathbf P\mathbf X$ to $\mathbf Q,\mathbf K,\mathbf V\mapsto\mathbf P\mathbf Q,\mathbf P\mathbf K,\mathbf P\mathbf V$; logits become $\mathbf P(\mathbf Q\mathbf K^\top)\mathbf P^\top$, row-wise softmax transforms the same way, and residual attention and row-wise FFNs therefore satisfy $g(\mathbf P\mathbf X)=\mathbf P g(\mathbf X)$.
 

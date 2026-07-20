@@ -1,9 +1,9 @@
 ---
-title: "Sparse & Sub-Quadratic Attention"
+title: "Sparse and Sub-Quadratic Attention"
 slug: sparse-attention
 chapter: 17
 part: 5
-description: "Sparse attention as an edge-selection problem: exact work in terms of retained query-key pairs, sliding-window reach and cache size, factorized and global patterns, content routing, sparsemax's exact-zero distribution with its quadratic-score caveat, and honest support accounting for Native Sparse Attention."
+description: "Develops sparse attention as pair selection, deriving edge-count, sliding-window, routed-pattern, and sparse-normalizer conditions for genuinely sub-quadratic work."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention, multi-head-attention, architecture-composition, inference-optimizations, mixture-of-experts]
@@ -11,7 +11,7 @@ notation_introduced: ['\mathcal E', 'm_{\mathcal E}', 'r_i', 'r_{\max} (maximum 
 theorems: ['def-sparse-attention', 'prop-sparse-edge-complexity', 'def-swa', 'prop-swa-edge-cache', 'prop-swa-receptive-field', 'prop-static-sparse-counts', 'rem-bigbird-universality', 'def-sparsemax', 'prop-sparsemax-support', 'def-nsa-branches', 'prop-nsa-work', 'rem-trainable-sparse-frontier']
 los:
   - id: lo-sparse-edge-accounting
-    statement: "Define computationally sparse attention by its retained query-key edges, derive score, value, and materialized-weight costs from the edge count, and compare a sparse mask with a sparse implementation."
+    statement: "Define computationally sparse attention by its retained query–key edges, derive score, value, and materialized-weight costs from the edge count, and compare a sparse mask with a sparse implementation."
   - id: lo-static-sparse-patterns
     statement: "Derive sliding-window complexity, cache size, and finite-depth receptive field, then count the edges in dilated, factorized, block-sparse, and global-token patterns."
   - id: lo-sparse-expressiveness
@@ -23,22 +23,20 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import MarginNote from '../../components/MarginNote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Sparse & Sub-Quadratic Attention
-
-**Where we are.** Dense attention compares every query row with every key row. Its attention core therefore contributes the quadratic term in <XRef id="prop-complexity" />. Part 4 changed how that computation is trained, stored, and streamed: FlashAttention evaluates the same dense map without materializing it (<XRef id="thm-online-softmax-exact" />), while mixture-of-experts conditionally selects feed-forward parameters (<XRef id="def-moe" />). This chapter opens Part 5 by changing the sequence mixer itself. **Structural sparse attention usually keeps the score–normalize–average recipe but chooses which query-key pairs exist; distributional sparsity instead changes the normalizer.** The next chapter takes the other route: linear attention and selective state spaces replace the pairwise softmax operator with a recurrent state.
+**Where we are.** Dense attention evaluates every query–key pair, which gives its core the quadratic term in <XRef id="prop-complexity" />. FlashAttention changes storage and execution without changing that dense map (<XRef id="thm-online-softmax-exact" />); sparse attention changes which pairs are evaluated. We count retained edges, derive windowed cache and receptive-field bounds, compare static and content-routed supports, and distinguish structural sparsity from normalizers that return zero weights only after dense scoring. The central discipline is operational: a sparse mask lowers work only when a kernel actually skips masked pairs. Selective recurrent mixers take a different route by carrying history in state rather than revisiting chosen keys.
 
 The distinction is mathematical, not merely terminological:
 
 | Route around the quadratic wall | Scores evaluated | Exact dense softmax map? | Destination |
 |---|---:|---:|---|
-| IO-aware dense attention | all $\Theta(n^2)$ | yes | FlashAttention, <XRef id="thm-online-softmax-exact" /> |
+| input–output (I/O)-aware dense attention | all $\Theta(n^2)$ | yes | FlashAttention, <XRef id="thm-online-softmax-exact" /> |
 | computationally sparse attention | a chosen subset | generally no | this chapter |
-| kernel/state-space replacement | no dense score matrix | no | <XRef id="thm-linattn-rnn" />, <XRef id="def-selective-ssm" /> |
+| kernel or state-space replacement | no dense score matrix | no | <XRef id="thm-linattn-rnn" />, <XRef id="def-selective-ssm" /> |
 
 All definitions remain over rows $\mathbf x_i\in\R^d$. A row may represent a word, an image patch, an audio frame, or any other sequence unit; only the geometry used to choose its neighbors changes.
 
@@ -78,7 +76,7 @@ If every row has $r_i\le r_{\max}$, the attention core is $O(nr_{\max}(d_k+d_v))
 <Theorem kind="proof">
 **Scores.** Each retained pair computes $\mathbf q_i^\top\mathbf k_j$, a $d_k$-coordinate inner product. Exactly $m_{\mathcal E}$ such pairs therefore cost $\Theta(m_{\mathcal E}d_k)$.
 
-**Values.** After rowwise normalization over $\mathcal E_i$, each retained scalar multiplies and accumulates one $d_v$-vector, costing $\Theta(d_v)$ per pair and $\Theta(m_{\mathcal E}d_v)$ in total.
+**Values.** After row-wise normalization over $\mathcal E_i$, each retained scalar multiplies and accumulates one $d_v$-vector, costing $\Theta(d_v)$ per pair and $\Theta(m_{\mathcal E}d_v)$ in total.
 
 **Storage and specializations.** One stored scalar weight and one index per edge give $\Theta(m_{\mathcal E})$. If $r_i\le r_{\max}$, then $m_{\mathcal E}=\sum_i r_i\le nr_{\max}$. Under the causal mask, row $i$ has $i$ keys, so $m_{\mathcal E}=\sum_{i=1}^{n}i=n(n+1)/2$. Dividing the sparse upper bound $nr_{\max}$ by $n^2$ shows that $r_{\max}=o(n)$ makes the attention core sub-quadratic. The $ndd_k$ and $ndd_v$ projection terms remain because every row still produces a query, key, and value. $\qquad\blacksquare$
 </Theorem>
@@ -89,7 +87,7 @@ The architect can choose $\mathcal E$ before seeing the input. Static patterns a
 
 ### Sliding windows
 
-The most important static pattern is also the bridge to the hybrid architectures later in Part 5. We preserve the causal, one-sided convention used by those decoders: $w$ includes the current token.
+The most important static pattern also appears in the hybrid stacks of <XRef id="def-hybrid-stack" />. We preserve the causal, one-sided convention used by those decoders: $w$ includes the current token.
 
 <Theorem kind="definition" name="Sliding-window attention" id="def-swa">
 For a **positive-integer window size** $w\in\N$, **causal sliding-window attention** uses
@@ -133,7 +131,7 @@ $$
 $$
 The work bound follows from <XRef id="prop-sparse-edge-complexity" />.
 
-**Cache.** Once a key is more than $w-1$ positions behind the newest query, it belongs to no future sliding window. Retaining only the most recent $\min(t,w)$ key/value rows is therefore sufficient, and multiplying their per-row width by $d_{\text{cache}}$ gives the cap. This is the quantity used by the hybrid accounting in <XRef id="prop-decode-state" />. $\qquad\blacksquare$
+**Cache.** Once a key is more than $w-1$ positions behind the newest query, it belongs to no future sliding window. Retaining only the most recent $\min(t,w)$ key and value rows is therefore sufficient, and multiplying their per-row width by $d_{\text{cache}}$ gives the cap. This is the quantity used by the hybrid accounting in <XRef id="prop-decode-state" />. $\qquad\blacksquare$
 </Theorem>
 
 Locality in one layer does not mean locality forever. Information can hop through intermediate rows as layers compose.
@@ -148,7 +146,7 @@ $$
 Its size is $\min(i,1+L(w-1))\le\min(n,1+L(w-1))$. Thus fixed-width local reach grows linearly with depth until it saturates at the available prefix.
 </Theorem>
 
-<MarginNote variant="tip" label="Self-explanation">Before the proof: one layer can move information backward by any distance from $0$ to $w-1$. What distances can a path of $L$ such moves realize, and where does the beginning of the sequence truncate them?</MarginNote>
+<MarginNote variant="tip" label="Self-explanation">One layer moves information back by $0$ through $w-1$ positions. Which offsets can $L$ layers realize, and how does the sequence boundary truncate them?</MarginNote>
 
 <Theorem kind="proof">
 **Base case.** For $L=0$, row $i$ depends only on itself, matching (4).
@@ -183,7 +181,7 @@ Let $w,\Delta_{\mathrm{dil}},b,\rho$ be positive integers and $g$ a nonnegative 
 <Theorem kind="proof">
 **Dilated and factorized.** A dilated row lists at most $w$ integers, so summing degrees gives at most $nw$; its earliest listed index is $i-(w-1)\Delta_{\mathrm{dil}}$. The factorized row lists at most $b+\lceil n/b\rceil$ keys. Summing over $n$ rows gives the bound, while AM-GM gives $b+n/b\ge2\sqrt n$ and the choice $b=\lceil\sqrt n\rceil$ attains the same order.
 
-**Blocks and globals.** There are $\lceil n/b\rceil$ query blocks. Each of at most $\rho$ admitted key blocks contributes no more than $b^2$ query-key pairs, yielding the block bound. Each global row can send at most $n$ edges and receive at most $n$ edges, so $g$ of them add no more than $2gn$. $\qquad\blacksquare$
+**Blocks and globals.** There are $\lceil n/b\rceil$ query blocks. Each of at most $\rho$ admitted key blocks contributes no more than $b^2$ query–key pairs, yielding the block bound. Each global row can send at most $n$ edges and receive at most $n$ edges, so $g$ of them add no more than $2gn$. $\qquad\blacksquare$
 </Theorem>
 
 Sparse Transformer instantiated the local-plus-strided idea and reported the $O(n\sqrt n)$ factorization <Cite key="child2019sparse" />. Longformer combined local windows, optional dilation, and task-chosen global rows for an encoder whose attention scales linearly at fixed budgets <Cite key="beltagy2020longformer" />. BigBird combined window, random, and global edges, leaving $O(n)$ retained pairs when the window and random degrees and the number of global rows are fixed <Cite key="zaheer2020bigbird" />. These names describe graph families, not one interchangeable mask: a causal decoder cannot let an early global row read future tokens, whereas a bidirectional document encoder can.
@@ -193,7 +191,7 @@ Sparse Transformer instantiated the local-plus-strided idea and reported the $O(
 Fewer edges need not mean a smaller representable function class, but the theorem needs its own hypotheses. It is not inherited automatically from dense attention.
 
 <Theorem kind="remark" name="Cited fixed-length sparse universality with a global-star graph" id="rem-bigbird-universality">
-Fix sequence length $n$, width $d$, and $1<p<\infty$. Let $f:[0,1]^{n\times d}\to\R^{n\times d}$ be continuous. Consider a sparse Transformer with positional information and an auxiliary global row whose attention graph contains the star in which the global row reads every sequence row and every sequence row reads itself and the global row. Then, for every $\varepsilon>0$, the BigBird construction gives a sparse Transformer $g$ such that
+Fix sequence length $n$, width $d$, and $1<p<\infty$. Let $f:[0,1]^{n\times d}\to\R^{n\times d}$ be continuous. Consider a sparse transformer with positional information and an auxiliary global row whose attention graph contains the star in which the global row reads every sequence row and every sequence row reads itself and the global row. Then, for every $\varepsilon>0$, the BigBird construction gives a sparse transformer $g$ such that
 $$
 \left(\int_{[0,1]^{n\times d}}
 \norm{f(\mathbf X)-g(\mathbf X)}_p^p\,d\mathbf X\right)^{1/p}
@@ -207,7 +205,7 @@ Choosing the star graph itself gives $O(n)$ edges per attention layer <Cite key=
 
 **Proof strategy of the cited construction.** First approximate $f$ in $L^p$ by a piecewise-constant map on a sufficiently fine grid. Next, use sparse attention through the global row to construct a distinct contextual code for each grid input and output position: information is gathered into the global row and then made available to every ordinary row. Position-wise feed-forward maps send each contextual code to the required constant output. Finally, replace the construction's idealized hard selection and piecewise maps by softmax and ReLU approximations, allocating the error across the three stages to remain below $\varepsilon$. The star contributes only $O(n)$ edges. The detailed grid, code-separation, and error estimates are in the cited BigBird proof; random edges are not required for this universality construction.
 
-This result is **parallel** to the dense result <XRef id="thm-universal-approx" />, not a refinement or corollary. It is fixed-length, $L^p$, noncausal, and uses a special global row. It says neither that one sparse layer equals one dense layer nor that every sparse mask is universal. A broader theorem gives sufficient conditions for sparse universality: self-loops, a Hamiltonian path in the union of cycling patterns, finite multi-hop reach from every row to every other row, and a probability map that can approach hardmax. Under those conditions, sparse Transformers with only $O(n)$ connections per layer can approximate the same fixed-length continuous function class <Cite key="yun2020oconnections" />. The connectivity hypotheses are the substance; the edge count alone is not.
+This result is **parallel** to the dense result <XRef id="thm-universal-approx" />, not a refinement or corollary. It is fixed-length, $L^p$, noncausal, and uses a special global row. It says neither that one sparse layer equals one dense layer nor that every sparse mask is universal. A broader theorem gives sufficient conditions for sparse universality: self-loops, a Hamiltonian path in the union of cycling patterns, finite multi-hop reach from every row to every other row, and a probability map that can approach hardmax. Under those conditions, sparse transformers with only $O(n)$ connections per layer can approximate the same fixed-length continuous function class <Cite key="yun2020oconnections" />. The connectivity hypotheses are the substance; the edge count alone is not.
 
 ## Content-routed and distributional sparsity
 
@@ -248,7 +246,7 @@ Consequently every logit with $z_i\le\tau$ receives probability exactly zero. Sp
 <Theorem kind="proof">
 **Existence and uniqueness.** The objective is strictly convex and the simplex is compact and convex, so the minimizer exists and is unique.
 
-**KKT support.** With equality multiplier $\tau$ and inequality multipliers $\nu_i\ge0$, stationarity of
+**Karush–Kuhn–Tucker (KKT) support.** With equality multiplier $\tau$ and inequality multipliers $\nu_i\ge0$, stationarity of
 $$
 \frac12\sum_i(p_i-z_i)^2+\tau\left(\sum_i p_i-1\right)-\sum_i\nu_i p_i
 $$
@@ -257,7 +255,7 @@ gives $p_i-z_i+\tau-\nu_i=0$. If $p_i>0$, complementary slackness forces $\nu_i=
 **Threshold and translation.** The simplex equality determines the unique threshold through $\sum_i[z_i-\tau]_+=1$. Replacing every $z_i$ by $z_i+c$ and $\tau$ by $\tau+c$ preserves every difference and proves translation invariance. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="warning" label="Exact zeros, still dense scores">If sparsemax or $\alpha$-entmax is applied rowwise *after* forming $\mathbf Q\mathbf K^\top$, all $n^2$ scores were already computed. The distribution is sparse, but the attention is not computationally sub-quadratic.</MarginNote>
+<MarginNote variant="warning" label="Exact zeros, still dense scores">If sparsemax or $\alpha$-entmax is applied row-wise *after* forming $\mathbf Q\mathbf K^\top$, all $n^2$ scores were already computed. The distribution is sparse, but the attention is not computationally sub-quadratic.</MarginNote>
 
 Adaptively Sparse Transformers learn a per-head $\alpha$ in $\alpha$-entmax, interpolating from softmax at $\alpha=1$ to sparsemax at $\alpha=2$ and assigning exact zeros for suitable logits <Cite key="correia2019adaptively" />. This can change focus, gradients, and interpretability. It becomes a computational saving only if an implementation can identify the support without first scoring every key; exact-zero output alone does not supply that algorithm.
 
@@ -266,7 +264,7 @@ Adaptively Sparse Transformers learn a per-head $\alpha$ in $\alpha$-entmax, int
 Modern systems learn the support during pretraining and co-design its granularity with the kernel. Native Sparse Attention (NSA) combines three separately normalized branches: coarse compression for global coverage, selected raw blocks for fine detail, and a recent window for local context <Cite key="yuan2025nsa" />. Formalizing the branch sizes reveals a distinction that the name *sparse* can hide: a small finite density need not be asymptotically sub-quadratic.
 
 <Theorem kind="definition" name="Three-branch Native Sparse Attention support" id="def-nsa-branches">
-Let $\ell_c,\delta,r,b,w$ be positive integers. For causal query $\mathbf q_t$, treated as a one-row query matrix, let $c\in\{\mathrm{cmp},\mathrm{slc},\mathrm{win}\}$ index three branch-specific key/value collections $(\widetilde{\mathbf K}_t^c,\widetilde{\mathbf V}_t^c)$. Define an inactive empty branch to return the zero vector:
+Let $\ell_c,\delta,r,b,w$ be positive integers. For causal query $\mathbf q_t$, treated as a one-row query matrix, let $c\in\{\mathrm{cmp},\mathrm{slc},\mathrm{win}\}$ index three branch-specific key and value collections $(\widetilde{\mathbf K}_t^c,\widetilde{\mathbf V}_t^c)$. Define an inactive empty branch to return the zero vector:
 $$
 \mathbf o_t^c
 \defeq
@@ -283,7 +281,7 @@ g_t^c\in[0,1].
 \tag{8}
 $$
 
-- **Compression.** Blocks of length $\ell_c$ beginning every $\delta$ positions are mapped to summary key/value rows, giving
+- **Compression.** Blocks of length $\ell_c$ beginning every $\delta$ positions are mapped to summary key and value rows, giving
   $$
   c_t=\max\!\left(0,1+\left\lfloor\frac{t-\ell_c}{\delta}\right\rfloor\right)
   $$
@@ -337,7 +335,7 @@ which is (10).
 **Fixed-parameter lower bound.** With fixed $\ell_c$ and $\delta$, the compression count satisfies $c_t\ge(t-\ell_c)/\delta$ for all $t\ge\ell_c$, so $\sum_t c_t=\Theta(n^2/\delta)=\Theta(n^2)$. Fixed $r,b,w$ add at most $O(n)$ support and do not change that order. $\qquad\blacksquare$
 </Theorem>
 
-For example, the explicit scaling choice $\delta\asymp\sqrt n$ and $rb+w=O(\sqrt n)$ yields $M_n=O(n^{3/2})$. This is a conditional asymptotic example, not the configuration reported by NSA: its finite experiments use fixed branch budgets and establish measured savings, not a new asymptotic class. NSA reports end-to-end training and hardware-aligned kernels, including speedups over its full-attention baseline at $64$K context; those are scoped empirical results of that implementation <Cite key="yuan2025nsa" />. Edge count alone cannot imply wall-clock speed because gather/scatter, branch construction, top-$r$ selection, and memory traffic still enter the roofline equation <XRef id="def-cost-eq" />.
+For example, the explicit scaling choice $\delta\asymp\sqrt n$ and $rb+w=O(\sqrt n)$ yields $M_n=O(n^{3/2})$. This is a conditional asymptotic example, not the configuration reported by NSA: its finite experiments use fixed branch budgets and establish measured savings, not a new asymptotic class. NSA reports end-to-end training and hardware-aligned kernels, including speedups over its full-attention baseline at $64$K context; those are scoped empirical results of that implementation <Cite key="yuan2025nsa" />. Edge count alone cannot imply wall-clock speed because gather and scatter operations, branch construction, top-$r$ selection, and memory traffic still enter the roofline equation <XRef id="def-cost-eq" />.
 
 <Theorem kind="remark" name="The trainable sparse-attention frontier" id="rem-trainable-sparse-frontier">
 As last verified on **2026-07-13**, three designs illustrate the current progression:
@@ -349,7 +347,7 @@ As last verified on **2026-07-13**, three designs illustrate the current progres
 | **DeepSeek Sparse Attention** | a lightweight indexer selects $k$ fine-grained historical tokens per query for the main attention on an MLA-based model | introduced in DeepSeek-V3.2; the main attention is $O(nk)$, while the report's lower-cost lightning indexer remains $O(n^2)$ <Cite key="deepseek2025dsa" />; its reasoning gains are whole-model post-training results, not a causal effect of sparsity |
 </Theorem>
 
-This frontier moves quickly, but the accounting does not. Every method must say which pairs are scored, what it costs to choose them, whether the sparse kernel realizes the count, and what approximation boundary replaced the dense map. The next chapter avoids enumerating query-key edges during recurrent execution: a selective state carries history forward instead of revisiting chosen key rows.
+This frontier moves quickly, but the accounting does not. Every method must say which pairs are scored, what it costs to choose them, whether the sparse kernel realizes the count, and what approximation boundary replaced the dense map. <XRef id="def-selective-ssm" /> instead carries history in a recurrent state, avoiding query–key edge enumeration during recurrent evaluation.
 
 ## Exercises
 
@@ -357,7 +355,7 @@ Attempt each before expanding its solution.
 
 **Exercise 17.1 (Compute).** For a causal sequence with $n=8$ and sliding-window width $w=3$, list the row degrees, compute $m_{\mathrm{SWA}}$ from both the sum and (3), and compare it with the dense causal edge count. If $d_k=d_v=64$, how many scalar multiply-accumulate coordinates do the score and value stages use under the edge model?
 
-<SolutionBox>
+<SolutionBox exercise="17.1">
 
 The degrees are $(1,2,3,3,3,3,3,3)$, so $m_{\mathrm{SWA}}=1+2+6\cdot3=21$. Equation (3) agrees: $8\cdot3-3\cdot2/2=21$. Dense causal attention has $8\cdot9/2=36$ edges. Score formation uses $21\cdot64=1{,}344$ coordinate products, and applying values uses another $21\cdot64=1{,}344$, for $2{,}688$ across the two stages, excluding projections and scalar softmax work. $\qquad\blacksquare$
 
@@ -365,7 +363,7 @@ The degrees are $(1,2,3,3,3,3,3,3)$, so $m_{\mathrm{SWA}}=1+2+6\cdot3=21$. Equat
 
 **Exercise 17.2 (Derive).** A depth-$4$ causal stack has $w=5$. Give the exact structural receptive field of row $i=20$ and its size. Then compute the exact clipped edge count on a $14\times14$ image-patch grid whose encoder attention uses a radius-$1$ square neighborhood, and compare it with the uniform per-query upper bound.
 
-<SolutionBox>
+<SolutionBox exercise="17.2">
 
 Equation (4) gives the earliest row $20-4(5-1)=4$, so $\mathcal R_4(20)=\{4,5,\dots,20\}$ and its size is $17$. Along either grid axis, the two boundary positions have neighborhood width $2$ and the other $12$ positions have width $3$, so the sum of one-dimensional degrees is $2+12\cdot3+2=40$. Square neighborhoods factor across the two axes, giving exactly $40^2=1{,}600$ directed edges. The uniform interior bound is $14^2\cdot3^2=1{,}764$, which is larger because it ignores boundary clipping. The exact attention-core work is $\Theta(1{,}600(d_k+d_v))$ for that fixed grid. $\qquad\blacksquare$
 
@@ -373,7 +371,7 @@ Equation (4) gives the earliest row $20-4(5-1)=4$, so $\mathcal R_4(20)=\{4,5,\d
 
 **Exercise 17.3 (Compute).** For the local-plus-strided factorization with $n=4096$, choose $b=64$. Compute the per-row edge upper bound and total edge upper bound. Compare with $n^2$, and prove that $b=\sqrt n$ minimizes the continuous surrogate $b+n/b$.
 
-<SolutionBox>
+<SolutionBox exercise="17.3">
 
 Here $\lceil n/b\rceil=64$, so each row has at most $64+64=128$ edges and the total is at most $4096\cdot128=524{,}288$. The dense square has $4096^2=16{,}777{,}216$ pairs, exactly $32$ times as many as this upper bound. For $b>0$, AM-GM gives
 $$
@@ -385,15 +383,15 @@ with equality exactly at $b=n/b$, hence $b=\sqrt n=64$. $\qquad\blacksquare$
 
 **Exercise 17.4 (Compute).** Compute $\operatorname{sparsemax}(1,0.5,-1)$. Then add $7$ to every logit and recompute. Why do the exact zeros not reduce the cost of an attention layer that already formed its dense score matrix?
 
-<SolutionBox>
+<SolutionBox exercise="17.4">
 
-Assume the first two coordinates are active. Their threshold must satisfy $(1-\tau)+(0.5-\tau)=1$, so $\tau=0.25$. This is consistent because $1,0.5>0.25$ and $-1\le0.25$. Thus sparsemax is $(0.75,0.25,0)$. After adding $7$, the threshold becomes $7.25$ and the differences are unchanged, so the result remains $(0.75,0.25,0)$. The zero arises only during normalization; if all query-key dot products were already formed, the $n^2$ scoring work has already been paid. $\qquad\blacksquare$
+Assume the first two coordinates are active. Their threshold must satisfy $(1-\tau)+(0.5-\tau)=1$, so $\tau=0.25$. This is consistent because $1,0.5>0.25$ and $-1\le0.25$. Thus sparsemax is $(0.75,0.25,0)$. After adding $7$, the threshold becomes $7.25$ and the differences are unchanged, so the result remains $(0.75,0.25,0)$. The zero arises only during normalization; if all query–key dot products were already formed, the $n^2$ scoring work has already been paid. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 17.5 (Analyze).** Why is <XRef id="rem-bigbird-universality" /> neither a corollary of <XRef id="thm-universal-approx" /> nor a result about every causal sparse decoder? Identify three hypotheses that must be carried with the claim.
 
-<SolutionBox>
+<SolutionBox exercise="17.5">
 
 The dense theorem does not imply that deleting edges preserves its construction; the cited sparse result supplies a different construction through a global-star graph. Its claim fixes the sequence length, measures approximation in $L^p$ for $1<p<\infty$, and assumes positional information plus an auxiliary global row that gathers from and broadcasts to all sequence rows. That graph is noncausal: an early row may obtain information that originated later through the global row. Therefore the result does not automatically apply to a causal decoder or to an arbitrary sparse mask. $\qquad\blacksquare$
 
@@ -401,7 +399,7 @@ The dense theorem does not imply that deleting edges preserves its construction;
 
 **Exercise 17.6 (Compute).** Apply the upper-bound count in <XRef id="prop-nsa-work" /> at $n=65{,}536$, compression stride $\delta=16$, $r=16$ selected blocks of width $b=64$, and window $w=512$. Ignore the additive $n$ ceiling term. Compute the compression and selected-plus-window contributions to $M_n$, compare their sum with dense causal attention, and classify the asymptotic order when these four budgets and the compression-block length $\ell_c$ all remain fixed as $n$ grows.
 
-<SolutionBox>
+<SolutionBox exercise="17.6">
 
 The compression contribution is
 $$

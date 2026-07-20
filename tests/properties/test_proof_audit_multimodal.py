@@ -3,7 +3,8 @@
 Covered targets: prop-selective-scan, thm-semiseparable,
 prop-mlstm-gated-state, def-resampler, prop-resampler-convex,
 prop-resampler-cost, prop-connector-data-processing-bound,
-prop-vq-gradient, thm-codebook-kmeans, def-mixed-mask, def-retrieval,
+thm-ste-identity, prop-vq-gradient, thm-codebook-kmeans, prop-merged-vocab,
+def-mixed-mask, def-retrieval,
 prop-recall-accuracy, and prop-perplexity-kl.
 """
 
@@ -308,6 +309,32 @@ def vq_routed_gradients(
     return code_gradients, encoder_gradients, reconstruction_gradients[:]
 
 
+def merged_softmax_factorization(
+    block_logits: dict[str, list[float]],
+) -> tuple[dict[str, float], dict[str, list[float]], list[float]]:
+    """Factor a merged softmax into block mass and within-block softmax."""
+    if not block_logits or any(not logits for logits in block_logits.values()):
+        raise ValueError("each modality block needs at least one logit")
+    shift = max(max(logits) for logits in block_logits.values())
+    exponentials = {
+        block: [math.exp(logit - shift) for logit in logits]
+        for block, logits in block_logits.items()
+    }
+    block_sums = {block: sum(values) for block, values in exponentials.items()}
+    total = sum(block_sums.values())
+    route = {block: value / total for block, value in block_sums.items()}
+    conditional = {
+        block: [value / block_sums[block] for value in values]
+        for block, values in exponentials.items()
+    }
+    merged = [
+        value / total
+        for values in exponentials.values()
+        for value in values
+    ]
+    return route, conditional, merged
+
+
 class MultimodalProofAuditTests(unittest.TestCase):
     def test_dense_and_diagonal_transition_costs_have_different_width_scaling(self):
         """prop-selective-scan does not turn generic dense transitions linear."""
@@ -425,7 +452,7 @@ class MultimodalProofAuditTests(unittest.TestCase):
         self.assertEqual(centroid_or_none([1.0, 2.0, 3.0]), 2.0)
 
     def test_vq_stop_gradient_routes_codebook_and_commitment_terms(self):
-        """prop-vq-gradient sends codebook gradients only to codes and commitment to encoder."""
+        """thm-ste-identity copies downstream gradients; prop-vq-gradient adds direct terms."""
         encoder_rows = [1.0, 2.0, 8.0]
         assignments = [0, 0, 1]
         codes = [0.5, 10.0]
@@ -440,6 +467,28 @@ class MultimodalProofAuditTests(unittest.TestCase):
         self.assertEqual(code_gradients, [-4.0, 4.0])
         self.assertEqual(encoder_gradients, [0.25, 0.75, -1.0])
         self.assertEqual(reconstruction_to_encoder, reconstruction_gradient)
+        total_encoder_gradient = [
+            direct + copied
+            for direct, copied in zip(encoder_gradients, reconstruction_to_encoder)
+        ]
+        self.assertEqual(total_encoder_gradient, [3.25, -1.25, 4.0])
+        self.assertNotEqual(total_encoder_gradient, reconstruction_gradient)
+
+    def test_merged_softmax_factors_exactly_through_block_mass(self):
+        """prop-merged-vocab uses the exact route probability Z_c / sum Z_c'."""
+        logits = {"text": [1.5, -0.5], "image": [0.25, 2.0, -1.0]}
+        route, conditional, merged = merged_softmax_factorization(logits)
+        reconstructed = [
+            route[block] * probability
+            for block in logits
+            for probability in conditional[block]
+        ]
+        self.assertTrue(math.isclose(sum(route.values()), 1.0))
+        self.assertTrue(all(math.isclose(sum(row), 1.0) for row in conditional.values()))
+        self.assertEqual(len(reconstructed), len(merged))
+        self.assertTrue(
+            all(math.isclose(left, right) for left, right in zip(reconstructed, merged))
+        )
 
     def test_only_observed_image_context_is_bidirectional(self):
         """def-mixed-mask keeps tokenwise-generated image spans causal."""

@@ -23,11 +23,11 @@ const termById = new Map(renderedGlossary.map((entry) => [entry.id, entry.data.t
 ---
 
 <Base
-  title="Book (print edition)"
+  title="Transformer Mathematics — Print Edition"
   description="Full book with glossary and pull-out quick reference, rendered as one paginated document."
   showSidebar={false}
 >
-  <div class="prose print-edition">
+  <div class="prose print-edition" data-print-chapter-count={renderedChapters.length}>
     {renderedChapters.map(({ entry, Content }) => (
       <PrintChapter prefix={`chapter-${String(entry.data.chapter).padStart(2, '0')}`}>
         <ChapterHeader data={entry.data} />

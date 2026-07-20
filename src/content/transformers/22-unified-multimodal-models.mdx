@@ -3,7 +3,7 @@ title: "Unified Multimodal Models"
 slug: unified-multimodal-models
 chapter: 22
 part: 6
-description: "One decoder-only body over interleaved image-text sequences, with modality confined to the embedding and unembedding interfaces: the interleaved sequence and its modality-tagged units, modality-specific embeddings and routed heads, the any-to-any factorization that realizes every cross-modal conditional from one model, the merged-vocabulary reduction proving a unified model is exactly the autoregressive transformer of the training chapter, the reason generation must be discretized while conditioning need not, and the mixed block-causal mask."
+description: "Explains how one decoder processes interleaved text and image units, routes modality-specific inputs and outputs, realizes cross-modal conditionals, and combines discrete generation with continuous conditioning."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, input-representations, architecture-composition, training, connectors-resamplers, discrete-visual-tokenization]
@@ -15,7 +15,7 @@ los:
   - id: lo-any-to-any-factorization
     statement: "Prove that one decoder-only body realizes every cross-modal conditional — text-to-image, image-to-text, interleaved — because the chain-rule factorization is alphabet-agnostic."
   - id: lo-merged-vocabulary-reduction
-    statement: "Prove that a unified model with a merged vocabulary and shared head is exactly the autoregressive transformer of the training chapter."
+    statement: "Prove that a unified model with a merged vocabulary and shared head is exactly the autoregressive transformer defined in the Training chapter."
   - id: lo-finite-discrete-generation-head
     statement: "Compare finite-vector softmax heads with countably infinite categoricals and continuous densities, explain why the standard generation head uses a finite discrete alphabet while conditioning may stay continuous, and relate modality routing to mixture-of-experts."
   - id: lo-mixed-block-causal-mask
@@ -23,16 +23,14 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import Figure from '../../components/Figure.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Unified Multimodal Models
-
-**Where we are.** The connector chapter injected continuous visual tokens into a language model; the tokenization chapter turned images into discrete sequences. A **unified multimodal model** takes the second idea to its conclusion: put text and image symbols into *one* interleaved stream and run a single decoder-only transformer (<XRef id="def-decoder-only" />) over it, predicting the next symbol whatever its modality. The architecture is a striking confirmation of the dual-footing thesis (<XRef id="rem-modality-blind" />): once both modalities are sequences over finite alphabets, modality survives only at the two ends of the model — the embedding that reads symbols in and the head that writes them out — plus one structural touch, the mixed attention mask over image segments; the body's *weights* are the modality-blind core we have already built and analyzed. This chapter makes that precise. We define the interleaved sequence, place modality at the embedding and unembedding interfaces, and prove three things: one body realizes *every* cross-modal conditional (any-to-any); with a merged vocabulary the unified model is *literally* the autoregressive transformer of the training chapter (the Chameleon reduction); and a categorical generation head forces the generated modality to be discrete, while a merely-conditioned modality may stay continuous — the formal basis of the common continuous-in/discrete-out design. We write $u_t=(c_t,x_t)$ for a tagged unit, $c_t\in\{\mathrm{txt},\mathrm{img}\}$ for its modality, $\mathbf m_c$ for a modality offset, and $\mathcal V_{\mathrm{txt}},\mathcal V_{\mathrm{img}}$ for the two alphabets.
+**Where we are.** Connectors permit continuous visual conditioning, while vector quantization yields discrete image symbols. A **unified multimodal model** places text and image units in one interleaved causal stream and runs a single decoder body across both. Modality-specific embeddings and output heads handle symbols at the boundaries; the chain rule supplies cross-modal conditionals for any chosen serialization. We then reduce a merged vocabulary to an ordinary autoregressive model, explain why finite categorical generation needs a discrete alphabet while conditioning may remain continuous, and define a mixed block-causal mask that permits bidirectional attention only inside fully observed image spans.
 
 ## The interleaved sequence
 
@@ -48,7 +46,7 @@ $$
 
 ## Modality at the two interfaces
 
-Modality enters when a symbol is read into the stream and when one is written out — nowhere else. Reading uses a per-modality embedding table; writing uses a per-modality head. Both are the token-embedding and softmax constructions of earlier chapters, indexed by modality.
+Modality is explicit at the input and output interfaces. Reading uses a per-modality embedding table; writing uses a per-modality head. Between those interfaces, the decoder shares one parameterized operator stack across modalities: it has no modality-specific branch, although modality information remains present in the embeddings and may also affect the attention mask.
 
 <Theorem kind="definition" name="Modality-specific embedding" id="def-modality-embedding">
 Each modality carries its own embedding table, $\mathbf E_{\mathrm{txt}}\in\R^{|\mathcal V_{\mathrm{txt}}|\times d}$ and $\mathbf E_{\mathrm{img}}\in\R^{K\times d}$, and a learned **modality offset** $\mathbf m_c\in\R^{d}$. Unit $u_t=(c_t,x_t)$ is embedded by
@@ -59,7 +57,7 @@ the modality table lookup plus the offset plus a position code $\mathbf P[t,:]$ 
 </Theorem>
 
 <Theorem kind="definition" name="Routed generation heads" id="def-routed-heads">
-At each position the model produces a hidden state $\mathbf h_t$ and emits next-symbol logits through the head of the *predicted next modality*; the tag $c_{t+1}$ itself is predicted as part of the sequence (in practice via sentinel begin/end-image tokens in the merged vocabulary, or a small tag head), supplying the factor $p_\theta(c_{t+1}\mid u_{\le t})$ that completes the chain rule of <XRef id="def-interleaved" />. With unembeddings $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}\in\R^{d\times|\mathcal V_{\mathrm{txt}}|}$ and $\mathbf W^{\mathrm{out}}_{\mathrm{img}}\in\R^{d\times K}$,
+At each position the model produces a hidden state $\mathbf h_t$ and emits next-symbol logits through the head of the *predicted next modality*; the tag $c_{t+1}$ itself is predicted as part of the sequence (in practice via sentinel begin- and end-image tokens in the merged vocabulary, or a small tag head), supplying the factor $p_\theta(c_{t+1}\mid u_{\le t})$ that completes the chain rule of <XRef id="def-interleaved" />. With unembeddings $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}\in\R^{d\times|\mathcal V_{\mathrm{txt}}|}$ and $\mathbf W^{\mathrm{out}}_{\mathrm{img}}\in\R^{d\times K}$,
 $$
 \begin{aligned}
 p_\theta(u_{t+1}\mid u_{\le t})
@@ -74,12 +72,14 @@ The first factor predicts the route; the second is a softmax over the selected m
 
 <Figure
   src="/figures/unified-decoder.svg"
-  caption="A unified multimodal model. One decoder-only body runs over an interleaved text/image-code stream; modality lives only at the modality-indexed embedding (first stage, under the input) and the routed heads (last stage). The body is the modality-blind core unchanged. Rendered from TikZ via the figures pipeline."
+  alt="Interleaved text and image codes passing through one shared decoder with modality-specific input and output layers."
+  desc="Text tokens and image codes enter separate embedding tables, merge into one interleaved hidden sequence, traverse a shared decoder stack, and split at routed text and image prediction heads."
+  caption="One decoder processes an interleaved stream of text and image codes. Modality-specific embeddings read the symbols, routed heads predict them, and the shared body operates on a common hidden representation."
   id="fig-unified-decoder"
   width="70%"
 />
 
-<MarginNote variant="pattern" label="Modality at the ends">Embedding (in) and head (out) are Interfaces (1) and (3) of <XRef id="rem-modality-blind" />. Between them the body never learns which symbols are pixels and which are words.</MarginNote>
+<MarginNote variant="pattern" label="Shared, not unaware">The decoder body shares weights across modalities; it can still infer modality from offsets, symbol embeddings, and the mask. “Shared” does not mean modality information disappears.</MarginNote>
 
 ## Any-to-any: one body, every conditional
 
@@ -96,6 +96,8 @@ $$
 and these are the same tag and routed-symbol factors the model already computes. Choosing a serialization for the prefix and suffix instantiates **image-to-text** (observe image codes, generate text), **text-to-image** (observe text, generate image codes), and **interleaved** generation — all from the one body $f_\theta$, with no task-specific parameters. A serialization may prescribe the modality tags (making their factors point masses) or let the model generate them; in either case the factorization includes them.
 </Theorem>
 
+<MarginNote variant="tip" label="Self-explanation">Before the proof: split the chain-rule product at the end of the observed prefix. Which factors cancel in the conditional ratio, and which remain for generation?</MarginNote>
+
 <Theorem kind="proof">
 **Proof.**
 By the chain rule (<XRef id="def-autoregressive-lm" />) and $u_t=(c_t,x_t)$, each joint factor splits as
@@ -110,65 +112,84 @@ p_\theta(u_{>s}\mid u_{\le s})
         {\prod_{t=1}^{s}p_\theta(c_t\mid u_{<t})p_\theta(x_t\mid u_{<t},c_t)}
 = \prod_{t=s+1}^{n}p_\theta(c_t\mid u_{<t})p_\theta(x_t\mid u_{<t},c_t),
 $$
-the trailing factors of the same product. At each generated position, the tag factor selects the route and the symbol factor is the selected head's softmax (<XRef id="def-routed-heads" />); both belong to the output interface. Modality affects the input through its embedding table and the output through this tag-and-head route, never through the body's weights. Hence assigning the prefix to one modality and the suffix to another yields a valid conditional, in the fixed serialization order, realized by evaluating $f_\theta$ with those positions observed; image-to-text and text-to-image are two of the four ordered choices of (prefix modality, suffix modality) — the other two are the same-modality continuations — and interleaved generation is the general mixed case with no single modality per side. A conditional in the opposite order (generating a prefix from a later suffix) is obtained by presenting that serialization at training time. $\qquad\blacksquare$
+the trailing factors of the same product. At each generated position, the tag factor selects the route and the symbol factor is the selected head's softmax (<XRef id="def-routed-heads" />); both belong to the output interface. Modality affects the input vectors, may affect the attention mask, and selects the output route, but it does not select modality-specific body weights or operators. Hence assigning the prefix to one modality and the suffix to another yields a valid conditional, in the fixed serialization order, realized by evaluating $f_\theta$ with those positions observed; image-to-text and text-to-image are two of the four ordered choices of (prefix modality, suffix modality) — the other two are the same-modality continuations — and interleaved generation is the general mixed case with no single modality per side. A conditional in the opposite order (generating a prefix from a later suffix) is obtained by presenting that serialization at training time. $\qquad\blacksquare$
 </Theorem>
 
 ## The merged-vocabulary reduction
 
-The cleanest unified model erases even the routing: merge the two alphabets into one vocabulary, stack the two tables into one, and use a single head over the union. Then there is no modality bookkeeping at all — the model is, symbol for symbol, the autoregressive transformer of the training chapter.
+The cleanest unified model erases explicit output-head routing: merge the two alphabets into one vocabulary, stack the two tables into one, and use a single head over the union. The vocabulary partition and any mixed attention mask still record modality or span structure, but the output interface is one softmax. The result is, symbol for symbol, the autoregressive transformer of <XRef id="def-autoregressive-lm" />.
 
-<Theorem kind="proposition" name="A merged-vocabulary unified model is the training-chapter transformer" id="prop-merged-vocab">
-Let $\mathcal V = \mathcal V_{\mathrm{txt}}\sqcup\mathcal V_{\mathrm{img}}$ be the disjoint union, of size $|\mathcal V|=|\mathcal V_{\mathrm{txt}}|+K$, with the bijection $\iota$ sending a text token $x$ to itself and an image code $z$ to $|\mathcal V_{\mathrm{txt}}|+z$. Stack the embeddings into $\mathbf E\in\R^{|\mathcal V|\times d}$ (row $\iota(c,x)$ equal to $\mathbf E_{c}[x,:]+\mathbf m_c$) and the unembeddings into $\mathbf W^{\mathrm{out}}\in\R^{d\times|\mathcal V|}$. Then the modality-specific embedding (<XRef id="def-modality-embedding" />) is a single lookup in $\mathbf E$ — the token embedding of <XRef id="def-token-embedding" /> — and a single shared head $\softmax(\mathbf h_t\mathbf W^{\mathrm{out}})$ over $\mathcal V$ is the autoregressive transformer of <XRef id="def-autoregressive-lm" /> with $|\mathcal V|=|\mathcal V_{\mathrm{txt}}|+K$. A unified model with merged vocabulary and shared head is therefore *exactly* the training-chapter model: image and text are one language.
+<Theorem kind="proposition" name="A merged-vocabulary unified model is an autoregressive transformer" id="prop-merged-vocab">
+Let $\mathcal V = \mathcal V_{\mathrm{txt}}\sqcup\mathcal V_{\mathrm{img}}$ be the disjoint union, of size $|\mathcal V|=|\mathcal V_{\mathrm{txt}}|+K$, with the bijection $\iota$ sending a text token $x$ to itself and an image code $z$ to $|\mathcal V_{\mathrm{txt}}|+z$. Stack the embeddings into $\mathbf E\in\R^{|\mathcal V|\times d}$ (row $\iota(c,x)$ equal to $\mathbf E_{c}[x,:]+\mathbf m_c$) and the unembeddings into $\mathbf W^{\mathrm{out}}\in\R^{d\times|\mathcal V|}$. Then the modality-specific embedding (<XRef id="def-modality-embedding" />) is a single lookup in $\mathbf E$ — the token embedding of <XRef id="def-token-embedding" /> — and a single shared head $\softmax(\mathbf h_t\mathbf W^{\mathrm{out}})$ over $\mathcal V$ is the autoregressive transformer of <XRef id="def-autoregressive-lm" /> with $|\mathcal V|=|\mathcal V_{\mathrm{txt}}|+K$. A unified model with merged vocabulary and shared head is therefore *exactly* that autoregressive model over a joint image–text alphabet.
 </Theorem>
 
 <Theorem kind="proof">
 **Proof.**
-The map $\iota:(c,x)\mapsto\iota(c,x)$ is a bijection from tagged units $\{(\mathrm{txt},x):x\in\mathcal V_{\mathrm{txt}}\}\cup\{(\mathrm{img},z):z\in\mathcal V_{\mathrm{img}}\}$ onto $\{1,\dots,|\mathcal V|\}$, because the two ranges $\{1,\dots,|\mathcal V_{\mathrm{txt}}|\}$ and $\{|\mathcal V_{\mathrm{txt}}|+1,\dots,|\mathcal V_{\mathrm{txt}}|+K\}$ are disjoint and cover $\mathcal V$. Define $\mathbf E[\iota(c,x),:]\defeq\mathbf E_c[x,:]+\mathbf m_c$; then the embedding of <XRef id="def-modality-embedding" /> is $\mathbf x_t=\mathbf E[\iota(c_t,x_t),:]+\mathbf P[t,:]$, a single table lookup, which is <XRef id="def-token-embedding" /> over $\mathcal V$. For the head, set the columns of $\mathbf W^{\mathrm{out}}$ on the text block equal to $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}$ and on the image block to $\mathbf W^{\mathrm{out}}_{\mathrm{img}}$; the single softmax $\softmax(\mathbf h_t\mathbf W^{\mathrm{out}})$ is then a categorical distribution over all $|\mathcal V|$ symbols, i.e. the next-token distribution of <XRef id="def-autoregressive-lm" /> with vocabulary $\mathcal V$. The body between embedding and head is the decoder-only stack (<XRef id="def-decoder-only" />), unchanged. Every component therefore coincides with the training-chapter autoregressive transformer over a vocabulary of size $|\mathcal V_{\mathrm{txt}}|+K$, and the cross-entropy training objective (<XRef id="def-ce-loss" />) and all its properties transfer verbatim. The routed-head model of <XRef id="def-routed-heads" /> is the special case that, knowing the next modality, evaluates only the corresponding block of $\mathbf W^{\mathrm{out}}$ — a computational shortcut that agrees with the shared head when off-modality probability is driven to zero. $\qquad\blacksquare$
+The map $\iota:(c,x)\mapsto\iota(c,x)$ is a bijection from tagged units $\{(\mathrm{txt},x):x\in\mathcal V_{\mathrm{txt}}\}\cup\{(\mathrm{img},z):z\in\mathcal V_{\mathrm{img}}\}$ onto $\{1,\dots,|\mathcal V|\}$, because the two ranges $\{1,\dots,|\mathcal V_{\mathrm{txt}}|\}$ and $\{|\mathcal V_{\mathrm{txt}}|+1,\dots,|\mathcal V_{\mathrm{txt}}|+K\}$ are disjoint and cover $\mathcal V$. Define $\mathbf E[\iota(c,x),:]\defeq\mathbf E_c[x,:]+\mathbf m_c$; then the embedding of <XRef id="def-modality-embedding" /> is $\mathbf x_t=\mathbf E[\iota(c_t,x_t),:]+\mathbf P[t,:]$, a single table lookup, which is <XRef id="def-token-embedding" /> over $\mathcal V$. For the head, set the columns of $\mathbf W^{\mathrm{out}}$ on the text block equal to $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}$ and on the image block to $\mathbf W^{\mathrm{out}}_{\mathrm{img}}$; the single softmax $\softmax(\mathbf h_t\mathbf W^{\mathrm{out}})$ is then a categorical distribution over all $|\mathcal V|$ symbols, i.e. the next-token distribution of <XRef id="def-autoregressive-lm" /> with vocabulary $\mathcal V$. The body between embedding and head is the decoder-only stack (<XRef id="def-decoder-only" />), unchanged. Every component therefore coincides with <XRef id="def-autoregressive-lm" /> over a vocabulary of size $|\mathcal V_{\mathrm{txt}}|+K$; cross-entropy training uses <XRef id="def-ce-loss" /> on that merged alphabet.
+
+The relationship to routing is exact but requires the route probability. Write $o_{c,x}$ for the merged logit of symbol $x$ in modality block $c$ and $Z_c\defeq\sum_{x\in\mathcal V_c}e^{o_{c,x}}$. The merged softmax factors as
+$$
+p(c\mid\mathbf h_t)=\frac{Z_c}{\sum_{c'}Z_{c'}},
+\qquad
+p(x\mid\mathbf h_t,c)=\frac{e^{o_{c,x}}}{Z_c}.
+$$
+Thus it has the routed form of <XRef id="def-routed-heads" /> when the tag factor is the block-mass probability. If a task serialization externally fixes $c$, evaluating only that block computes the merged model's conditional distribution $p(x\mid\mathbf h_t,c)$; it is computational routing, not an approximation that requires off-modality mass to vanish. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="tip" label="Why this is the punchline">If a single softmax over a merged vocabulary *is* the text transformer, then "training a multimodal generator" and "training a language model" are the same optimization — the dual-footing thesis at full strength.</MarginNote>
 
 ## Why finite-vector categorical generation is discretized but conditioning need not be
 
-The merged-vocabulary picture needs both modalities discrete because its standard generation head is a finite vector followed by softmax. A categorical law can exist on a countably infinite alphabet, but representing it exactly requires infinitely many logits and normalizing an infinite series; it is not the finite-vector head implemented by a transformer. A continuous output instead requires a density (or another continuous generative mechanism), not a categorical softmax indexed by every point. Conditioning is different: a modality the model merely *reads* is never normalized over, so it can stay continuous. This asymmetry is the formal reason behind models that condition on continuous image features (Ch 20) yet generate finite-codebook image tokens (Ch 21).
+The merged-vocabulary picture needs both modalities discrete because its standard generation head is a finite vector followed by softmax. A categorical law can exist on a countably infinite alphabet, but representing it exactly requires infinitely many logits and normalizing an infinite series; it is not the finite-vector head implemented by a transformer. A continuous output instead requires a density (or another continuous generative mechanism), not a categorical softmax indexed by every point. Conditioning is different: a modality the model merely *reads* is never normalized over, so it can stay continuous. This asymmetry supports continuous visual inputs from <XRef id="def-connector" /> alongside finite-codebook outputs from <XRef id="def-codebook" />.
 
 <Theorem kind="proposition" name="A finite-vector categorical head forces a finite output alphabet; conditioning does not" id="prop-why-discrete">
-Let $\mathcal A$ be an output alphabet. For finite $\mathcal A$, the standard autoregressive head emits one logit vector $\mathbf o\in\R^{|\mathcal A|}$ and applies softmax (<XRef id="def-autoregressive-lm" />), with partition function $Z=\sum_{x\in\mathcal A}\exp(o_x)$. A categorical law can also exist on a countably infinite alphabet when $\sum_{i=1}^{\infty}\exp(o_i)<\infty$, but exact evaluation then requires an infinite logit sequence and an infinite-series normalizer, not a finite output vector or finite matrix head. On a continuous domain, a categorical vector is the wrong object: an energy model needs a density $p(\mathbf v)=\exp(f(\mathbf v))/\int\exp(f(\mathbf z))\,d\mathbf z$, whose integral must be finite and tractable (or it needs a different mechanism such as diffusion). Hence a modality generated by the transformer's **standard finite-vector categorical head** must use a finite discrete alphabet (the visual codebook of <XRef id="def-codebook" />); a continuous-output density, normalizing flow, or diffusion head, as in Transfusion <Cite key="zhou2024transfusion" />, escapes discretization by replacing that head and its ordinary categorical cross-entropy. A modality that is only **conditioned on** enters as keys/values in attention (<XRef id="def-cross-attention" />) or as prepended embeddings (<XRef id="def-connector" />) and is never normalized over its domain, so it may remain continuous. Modality routing (<XRef id="def-routed-heads" />) is the hard, tag-determined analogue of the soft learned gate of mixture-of-experts (<XRef id="def-moe" />): both select a sub-module per position, by a tag here and a top-$k$ gate there.
+Let $\mathcal A$ be an output alphabet. For finite $\mathcal A$, the standard autoregressive head emits one logit vector $\mathbf o\in\R^{|\mathcal A|}$ and applies softmax (<XRef id="def-autoregressive-lm" />), with partition function $Z=\sum_{x\in\mathcal A}\exp(o_x)$. A categorical law can also exist on a countably infinite alphabet when $\sum_{i=1}^{\infty}\exp(o_i)<\infty$, but exact evaluation then requires an infinite logit sequence and an infinite-series normalizer, not a finite output vector or finite matrix head. On a continuous domain, a categorical vector is the wrong object: an energy model needs a density $p(\mathbf v)=\exp(f(\mathbf v))/\int\exp(f(\mathbf z))\,d\mathbf z$, whose integral must be finite and tractable (or it needs a different mechanism such as diffusion). Hence a modality generated by the transformer's **standard finite-vector categorical head** must use a finite discrete alphabet (the visual codebook of <XRef id="def-codebook" />); a continuous-output density, normalizing flow, or diffusion head, as in Transfusion <Cite key="zhou2024transfusion" />, escapes discretization by replacing that head and its ordinary categorical cross-entropy. A modality that is only **conditioned on** enters as keys and values in attention (<XRef id="def-cross-attention" />) or as prepended embeddings (<XRef id="def-connector" />) and is never normalized over its domain, so it may remain continuous. Modality routing (<XRef id="def-routed-heads" />) is the hard, tag-determined analogue of the soft learned gate of mixture-of-experts (<XRef id="def-moe" />): both select a sub-module per position, by a tag here and a top-$k$ gate there.
 </Theorem>
 
 <Theorem kind="proof">
 **Proof.**
-For finite $\mathcal A$, a logit vector $\mathbf o\in\R^{|\mathcal A|}$ has finitely many entries and $Z=\sum_{x\in\mathcal A}\exp(o_x)$ is finite and strictly positive, so $p(x)=\exp(o_x)/Z$ is normalized and the categorical cross-entropy of <XRef id="def-ce-loss" /> is directly computable. For $\mathcal A=\mathbb N$, the same formula defines a categorical law whenever the series $Z=\sum_{i=1}^{\infty}\exp(o_i)$ converges; mathematical existence therefore does **not** force finiteness. But exact representation needs one logit per $i$ and exact normalization needs the infinite sum, so it is not a finite-vector softmax $\softmax(\mathbf h\mathbf W^{\mathrm{out}})$. For $\mathcal A=\R^d$, a probability assigning mass through a finite categorical vector cannot cover the continuum; a density-based energy model instead uses $Z=\int_{\R^d}\exp(f(\mathbf v))\,d\mathbf v$, which defines a density only when the integral converges and is usable exactly only when that normalizer can be computed or otherwise handled. Thus the ordinary transformer head directly supports a finite discrete output, while a continuous generator must replace it with a suitable density or implicit mechanism — establishing the scoped output claim. For conditioning, the model uses given embeddings only through inner products in attention scores and convex value averages (<XRef id="def-cross-attention" />, <XRef id="prop-row-stochastic-convex" />); no step normalizes a probability over the conditioned modality's domain, so continuous inputs are admissible — the input claim. Finally, write the modality tag $c_{t+1}$ as a one-hot gate over the two heads; the routed head $\mathbf W^{\mathrm{out}}_{c_{t+1}}$ is the gate-selected expert. Mixture-of-experts (<XRef id="def-moe" />) selects expert FFNs by a learned top-$k$ gate; replacing the learned top-$k$ gate by the hard one-hot modality tag gives modality routing, so the two share the select-a-sub-module structure with a learned versus prescribed gate. $\qquad\blacksquare$
+
+**Finite alphabet.** For finite $\mathcal A$, a logit vector $\mathbf o\in\R^{|\mathcal A|}$ has finitely many entries and $Z=\sum_{x\in\mathcal A}\exp(o_x)$ is finite and strictly positive, so $p(x)=\exp(o_x)/Z$ is normalized and the categorical cross-entropy of <XRef id="def-ce-loss" /> is directly computable.
+
+**Countably infinite alphabet.** For $\mathcal A=\N$, the same formula defines a categorical law whenever the series $Z=\sum_{i=1}^{\infty}\exp(o_i)$ converges; mathematical existence therefore does **not** force finiteness. But exact representation needs one logit per $i$ and exact normalization needs the infinite sum, so it is not a finite-vector softmax $\softmax(\mathbf h\mathbf W^{\mathrm{out}})$.
+
+**Continuous domain.** For $\mathcal A=\R^d$, a probability assigning mass through a finite categorical vector cannot cover the continuum; a density-based energy model instead uses $Z=\int_{\R^d}\exp(f(\mathbf v))\,d\mathbf v$, which defines a density only when the integral converges and is usable exactly only when that normalizer can be computed or otherwise handled. Thus the ordinary transformer head directly supports a finite discrete output, while a continuous generator must replace it with a suitable density or implicit mechanism — establishing the scoped output claim.
+
+**Conditioning and routing.** For conditioning, a continuous observation is first mapped to finitely many vectors. Projections, attention, residual paths, normalization, and feed-forward layers then process those vectors through deterministic finite-dimensional maps; no step defines a probability normalized over all possible input observations. Continuous inputs are therefore admissible — the input claim. Finally, write the modality tag $c_{t+1}$ as a one-hot gate over the two heads; the routed head $\mathbf W^{\mathrm{out}}_{c_{t+1}}$ is the gate-selected expert. Mixture-of-experts (<XRef id="def-moe" />) selects expert FFNs by a learned top-$k$ gate; replacing the learned top-$k$ gate by the hard one-hot modality tag gives modality routing, so the two share the select-a-sub-module structure with a learned versus prescribed gate. $\qquad\blacksquare$
 </Theorem>
 
 ## The mixed block-causal mask
 
-A tokenwise autoregressive unified model is causal at every generated position — each target token may use only observed context and earlier target tokens. An image span that is **fully supplied as context**, however, has no unknown token to leak, so its positions may attend to one another in both directions. The mixed mask combines these regimes without granting a generated image token access to later target image codes.
+A token-wise autoregressive unified model is causal at every generated position — each target token may use only observed context and earlier target tokens. An image span that is **fully supplied as context**, however, has no unknown token to leak, so its positions may attend to one another in both directions. The mixed mask combines these regimes without granting a generated image token access to later target image codes.
 
 <Theorem kind="definition" name="Mixed block-causal mask" id="def-mixed-mask">
-For a particular conditional-generation example, partition the interleaved sequence into contiguous **segments** (maximal same-modality spans), and let $\mathcal B_{\mathrm{ctx}}$ be the image segments whose entire contents are supplied as observed context rather than predicted by the tokenwise autoregressive objective. The **mixed block-causal mask** allows position $i$ to attend to position $j$ iff
+For a particular conditional-generation example, partition the interleaved sequence into contiguous **segments** (maximal same-modality spans), and let $\mathcal B_{\mathrm{ctx}}$ be the image segments whose entire contents are supplied as observed context rather than predicted by the token-wise autoregressive objective. The **mixed block-causal mask** allows position $i$ to attend to position $j$ iff
 $$
 M_{ij}=1 \iff \underbrace{j\le i}_{\text{causal}} \ \ \text{or}\ \ \underbrace{\text{$i,j\in B$ for some $B\in\mathcal B_{\mathrm{ctx}}$}}_{\text{fully observed image context}}.
 $$
-Causality is enforced across segments. Positions inside a fully observed context image may attend bidirectionally, because all of them are already given; positions in a target image segment use only the first clause and remain causal in raster/token order. When the stream is all text, $\mathcal B_{\mathrm{ctx}}$ is empty, so $M$ is the causal mask of the attention chapter (<XRef id="def-causal-mask" />); the unified model then reduces to the text decoder-only transformer.
+Causality is enforced across segments. Positions inside a fully observed context image may attend bidirectionally, because all of them are already given; positions in a target image segment use only the first clause and remain causal in rasterized token order. When the stream is all text, $\mathcal B_{\mathrm{ctx}}$ is empty, so $M$ is the causal mask of <XRef id="def-causal-mask" />; the unified model then reduces to the text decoder-only transformer.
 </Theorem>
 
 <Figure
   src="/figures/mixed-mask.svg"
-  caption="The mixed block-causal mask. Attention is lower-triangular except for full bidirectional blocks belonging to image spans supplied entirely as observed context. Image spans generated token by token remain causal, and the all-text limit recovers the causal mask of the attention chapter. Rendered from TikZ via the figures pipeline."
+  alt="Block-causal attention matrix with a bidirectional observed-image block inside a causal lower triangle."
+  desc="A lower-triangular attention matrix covers the full interleaved sequence. One square image segment is filled on both sides of its local diagonal, showing bidirectional attention only within a fully observed image block."
+  caption="The mixed mask is causal except within image spans supplied as observed context, where attention can be bidirectional. Generated image spans remain causal, and an all-text stream recovers ordinary causal attention."
   id="fig-mixed-mask"
   width="58%"
 />
 
 <Figure
   src="/figures/design-space.svg"
-  caption="The unified-model design space. Merged-vocabulary single-stream (Chameleon: discrete in and out), two-path with separate connector and head (modality-specific ends), and the hybrid continuous-in/discrete-out (condition on soft visual tokens, generate discrete codes). All share the modality-blind body. Rendered from TikZ via the figures pipeline."
+  alt="Three unified multimodal architectures arranged by how they encode inputs and generate outputs."
+  desc="Three parallel pipelines compare a merged discrete vocabulary, separate modality-specific connector and output paths, and continuous visual conditioning with discrete image generation. Each pipeline shares a central decoder body."
+  caption="Three designs share a common decoder body: a merged discrete vocabulary, modality-specific input and output paths, or continuous visual conditioning paired with discrete image generation."
   id="fig-design-space"
   width="74%"
 />
 
 <Theorem kind="remark" name="The body is the proof of the thesis" id="rem-body-unchanged">
-Across all three designs of the figure — merged single-stream, two-path, and continuous-in/discrete-out — the transformer body uses the same decoder-only block ingredients and stacking as the text model (<XRef id="def-decoder-only" />). What differs is the embedding, the head, and the mask. This architectural reuse does **not** automatically transfer an unmasked universal-approximation theorem such as <XRef id="thm-universal-approx" />: causal and mixed masks restrict information flow, so an approximation guarantee for those models requires a separate mask-compatible theorem. The dual-footing claim here is therefore architectural and algebraic, not an unproved universality transfer: the same sequence-processing blocks accept image and text representations in $\R^{n\times d}$.
+Across all three designs of the figure — merged single-stream, two-path, and continuous-input, discrete-output — the transformer body uses the same decoder-only block ingredients and stacking as the text model (<XRef id="def-decoder-only" />). What differs is the embedding, the head, and the mask. This architectural reuse does **not** automatically transfer an unmasked universal-approximation theorem such as <XRef id="thm-universal-approx" />: causal and mixed masks restrict information flow, so an approximation guarantee for those models requires a separate mask-compatible theorem. The dual-footing claim here is therefore architectural and algebraic, not an unproved universality transfer: the same sequence-processing blocks accept image and text representations in $\R^{n\times d}$.
 </Theorem>
 
 ## Exercises
@@ -177,7 +198,7 @@ Attempt each before expanding its solution.
 
 **Exercise 22.1 (Prove).** Prove the any-to-any factorization (<XRef id="thm-any-to-any" />) for the special case of image captioning: with the observed prefix the image codes $u_{\le s}$ and the generated suffix the caption tokens $u_{>s}$, show the conditional is the trailing product of next-token factors, and identify the modality-dependent components — and why there are exactly two.
 
-<SolutionBox>
+<SolutionBox exercise="22.1">
 
 By the chain rule and $u_t=(c_t,x_t)$,
 $$
@@ -188,38 +209,38 @@ $$
 p_\theta(u_{>s}\mid u_{\le s})
 =\prod_{t=s+1}^{n}p_\theta(c_t\mid u_{<t})p_\theta(x_t\mid u_{<t},c_t),
 $$
-the caption generated left to right conditioned on the image codes. At each caption position the first factor predicts (or, under a fixed caption serialization, deterministically supplies) the text tag, and the second comes from the routed text head $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}$ over $\mathcal V_{\mathrm{txt}}$ (<XRef id="def-routed-heads" />). The body's weights remain modality-blind. There are still exactly two modality-dependent **interfaces**: the input embedding reads the image-tagged prefix, while the output interface contains both tag prediction/routing and the selected symbol head; the tag factor is part of that output interface, not a third place where modality enters the body. $\qquad\blacksquare$
+the caption generated left to right conditioned on the image codes. At each caption position the first factor predicts (or, under a fixed caption serialization, deterministically supplies) the text tag, and the second comes from the routed text head $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}$ over $\mathcal V_{\mathrm{txt}}$ (<XRef id="def-routed-heads" />). The body uses shared weights across modalities. There are still exactly two modality-dependent **interfaces**: the input embedding reads the image-tagged prefix, while the output interface contains tag prediction, routing, and the selected symbol head; the tag factor is part of that output interface, not a third place where modality enters the body. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 22.2 (Prove).** Prove the merged-vocabulary reduction (<XRef id="prop-merged-vocab" />) by exhibiting the bijection between tagged units and merged indices and checking that the stacked embedding and head reproduce <XRef id="def-token-embedding" /> and <XRef id="def-autoregressive-lm" />.
 
-<SolutionBox>
+<SolutionBox exercise="22.2">
 
-Define $\iota(\mathrm{txt},x)=x$ for $x\in\{1,\dots,|\mathcal V_{\mathrm{txt}}|\}$ and $\iota(\mathrm{img},z)=|\mathcal V_{\mathrm{txt}}|+z$ for $z\in\{1,\dots,K\}$. The two image and text ranges are disjoint and their union is $\{1,\dots,|\mathcal V_{\mathrm{txt}}|+K\}=\mathcal V$, so $\iota$ is a bijection. Set $\mathbf E[\iota(c,x),:]\defeq\mathbf E_c[x,:]+\mathbf m_c$: then the modality embedding $\mathbf E_{c_t}[x_t,:]+\mathbf m_{c_t}+\mathbf P[t,:]$ equals $\mathbf E[\iota(c_t,x_t),:]+\mathbf P[t,:]$, one lookup in $\mathbf E$ — precisely <XRef id="def-token-embedding" /> over $\mathcal V$. Set $\mathbf W^{\mathrm{out}}$'s text and image column blocks to $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}$ and $\mathbf W^{\mathrm{out}}_{\mathrm{img}}$; then $\softmax(\mathbf h_t\mathbf W^{\mathrm{out}})$ is a categorical over $\mathcal V$, the next-token head of <XRef id="def-autoregressive-lm" />. The body is unchanged, so the unified model is the training-chapter transformer with $|\mathcal V|=|\mathcal V_{\mathrm{txt}}|+K$. $\qquad\blacksquare$
+Define $\iota(\mathrm{txt},x)=x$ for $x\in\{1,\dots,|\mathcal V_{\mathrm{txt}}|\}$ and $\iota(\mathrm{img},z)=|\mathcal V_{\mathrm{txt}}|+z$ for $z\in\{1,\dots,K\}$. The two image and text ranges are disjoint and their union is $\{1,\dots,|\mathcal V_{\mathrm{txt}}|+K\}=\mathcal V$, so $\iota$ is a bijection. Set $\mathbf E[\iota(c,x),:]\defeq\mathbf E_c[x,:]+\mathbf m_c$: then the modality embedding $\mathbf E_{c_t}[x_t,:]+\mathbf m_{c_t}+\mathbf P[t,:]$ equals $\mathbf E[\iota(c_t,x_t),:]+\mathbf P[t,:]$, one lookup in $\mathbf E$ — precisely <XRef id="def-token-embedding" /> over $\mathcal V$. Set $\mathbf W^{\mathrm{out}}$'s text and image column blocks to $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}$ and $\mathbf W^{\mathrm{out}}_{\mathrm{img}}$; then $\softmax(\mathbf h_t\mathbf W^{\mathrm{out}})$ is a categorical over $\mathcal V$, the next-token head of <XRef id="def-autoregressive-lm" />. The body is unchanged, so the unified model is <XRef id="def-autoregressive-lm" /> with $|\mathcal V|=|\mathcal V_{\mathrm{txt}}|+K$. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 22.3 (Prove).** Prove the scoped output claim of <XRef id="prop-why-discrete" /> by comparing (i) a finite alphabet, (ii) a countably infinite alphabet, and (iii) a continuous domain. Give each normalizer and distinguish mathematical existence from what a finite-vector transformer head can represent and normalize exactly.
 
-<SolutionBox>
+<SolutionBox exercise="22.3">
 
-A categorical head sets $p(x)=\exp(o_x)/Z$. For finite $\mathcal A$, $Z=\sum_{x\in\mathcal A}\exp(o_x)$ is a finite, strictly positive sum, so a finite logit vector gives a normalized distribution and $-\log p(x)$ (categorical cross-entropy, <XRef id="def-ce-loss" />) is directly computable. For $\mathcal A=\mathbb N$, $Z=\sum_{i=1}^{\infty}\exp(o_i)$ may converge — for example, logits $o_i=-i$ give a geometric series — so a countably infinite categorical distribution can exist. It nevertheless requires infinitely many logits and exact evaluation of an infinite sum, neither of which is a finite matrix readout followed by vector softmax. For $\mathcal A=\R^d$, a continuous model needs a density with $Z=\int_{\R^d}\exp(f(\mathbf v))\,d\mathbf v$; this is not a categorical vector, and it is valid only when the integral is finite (with exact likelihood additionally requiring a tractable normalizer). Thus the standard finite-vector categorical transformer head requires a finite discrete alphabet, exactly what the visual codebook supplies (<XRef id="def-codebook" />); the broader mathematical class of categorical distributions need not have finite support. $\qquad\blacksquare$
-
-</SolutionBox>
-
-**Exercise 22.4 (Construct).** Describe a continuous-in/discrete-out unified model: which interface (Ch 20 connector or Ch 21 codebook) handles the conditioned image and which handles the generated image, and justify each choice using <XRef id="prop-why-discrete" />.
-
-<SolutionBox>
-
-Conditioned images enter through a **connector** (<XRef id="def-connector" />) as continuous soft tokens: they are only read — used as prepended embeddings or cross-attention keys/values — and never normalized over, so by the input half of <XRef id="prop-why-discrete" /> they may stay continuous, avoiding the lossy quantization of <XRef id="prop-rate" />. Generated images use the **discrete codebook** (<XRef id="def-codebook" />): generation runs through the transformer's standard finite-vector categorical head, which by the output half of <XRef id="prop-why-discrete" /> directly supports a finite alphabet, so the image is emitted as code indices and decoded by $\Psi$. A countably infinite categorical law is mathematically possible but is not this finite head, while continuous generation would require replacing it with a density or implicit generator. The design therefore conditions with the higher-fidelity continuous representation and generates with the finite discrete representation the chosen head supports. $\qquad\blacksquare$
+A categorical head sets $p(x)=\exp(o_x)/Z$. For finite $\mathcal A$, $Z=\sum_{x\in\mathcal A}\exp(o_x)$ is a finite, strictly positive sum, so a finite logit vector gives a normalized distribution and $-\log p(x)$ (categorical cross-entropy, <XRef id="def-ce-loss" />) is directly computable. For $\mathcal A=\N$, $Z=\sum_{i=1}^{\infty}\exp(o_i)$ may converge — for example, logits $o_i=-i$ give a geometric series — so a countably infinite categorical distribution can exist. It nevertheless requires infinitely many logits and exact evaluation of an infinite sum, neither of which is a finite matrix readout followed by vector softmax. For $\mathcal A=\R^d$, a continuous model needs a density with $Z=\int_{\R^d}\exp(f(\mathbf v))\,d\mathbf v$; this is not a categorical vector, and it is valid only when the integral is finite (with exact likelihood additionally requiring a tractable normalizer). Thus the standard finite-vector categorical transformer head requires a finite discrete alphabet, exactly what the visual codebook supplies (<XRef id="def-codebook" />); the broader mathematical class of categorical distributions need not have finite support. $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 22.5 (Prove).** Show the mixed block-causal mask (<XRef id="def-mixed-mask" />) reduces to the causal mask of <XRef id="def-causal-mask" /> when the stream contains no observed context image segments. Explain why bidirectionality inside a fully observed image context does not leak a target, and why an image segment generated by the chapter's tokenwise autoregressive factorization must remain causal.
+**Exercise 22.4 (Construct).** Describe a continuous-input, discrete-output unified model: which interface (Ch 20 connector or Ch 21 codebook) handles the conditioned image and which handles the generated image, and justify each choice using <XRef id="prop-why-discrete" />.
 
-<SolutionBox>
+<SolutionBox exercise="22.4">
 
-If there are no fully observed context image segments, $\mathcal B_{\mathrm{ctx}}=\varnothing$, so the second clause is never satisfied and $M_{ij}=1\iff j\le i$, exactly the lower-triangular causal mask of <XRef id="def-causal-mask" />. If $B\in\mathcal B_{\mathrm{ctx}}$, every token in $B$ is supplied before target scoring, so letting rows in $B$ see all other columns in $B$ reveals no unknown target; the clause also adds no edge from $B$ into a later segment. By contrast, for a generated image segment the tokenwise factorization contains factors $p_\theta(u_t\mid u_{<t})$. Allowing its row $t$ to see a later target $u_j$, $j>t$, would condition that factor on the answer and invalidate the factorization. Such a segment is therefore excluded from $\mathcal B_{\mathrm{ctx}}$ and remains causal. $\qquad\blacksquare$
+Conditioned images enter through a **connector** (<XRef id="def-connector" />) as continuous soft tokens: they are only read — used as prepended embeddings or cross-attention keys and values — and never normalized over, so by the input half of <XRef id="prop-why-discrete" /> they may stay continuous, avoiding the lossy quantization of <XRef id="prop-rate" />. Generated images use the **discrete codebook** (<XRef id="def-codebook" />): generation runs through the transformer's standard finite-vector categorical head, which by the output half of <XRef id="prop-why-discrete" /> directly supports a finite alphabet, so the image is emitted as code indices and decoded by $\Psi$. A countably infinite categorical law is mathematically possible but is not this finite head, while continuous generation would require replacing it with a density or implicit generator. The design therefore conditions with the higher-fidelity continuous representation and generates with the finite discrete representation the chosen head supports. $\qquad\blacksquare$
+
+</SolutionBox>
+
+**Exercise 22.5 (Prove).** Show the mixed block-causal mask (<XRef id="def-mixed-mask" />) reduces to the causal mask of <XRef id="def-causal-mask" /> when the stream contains no observed context image segments. Explain why bidirectionality inside a fully observed image context does not leak a target, and why an image segment generated by the chapter's token-wise autoregressive factorization must remain causal.
+
+<SolutionBox exercise="22.5">
+
+If there are no fully observed context image segments, $\mathcal B_{\mathrm{ctx}}=\varnothing$, so the second clause is never satisfied and $M_{ij}=1\iff j\le i$, exactly the lower-triangular causal mask of <XRef id="def-causal-mask" />. If $B\in\mathcal B_{\mathrm{ctx}}$, every token in $B$ is supplied before target scoring, so letting rows in $B$ see all other columns in $B$ reveals no unknown target; the clause also adds no edge from $B$ into a later segment. By contrast, for a generated image segment the token-wise factorization contains factors $p_\theta(u_t\mid u_{<t})$. Allowing its row $t$ to see a later target $u_j$, $j>t$, would condition that factor on the answer and invalidate the factorization. Such a segment is therefore excluded from $\mathcal B_{\mathrm{ctx}}$ and remains causal. $\qquad\blacksquare$
 
 </SolutionBox>

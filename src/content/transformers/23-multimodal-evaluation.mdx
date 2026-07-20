@@ -3,7 +3,7 @@ title: "Multimodal Evaluation"
 slug: multimodal-evaluation
 chapter: 23
 part: 6
-description: "A compact capstone showing every vision-language metric reduces to a ranking statistic or a likelihood already in hand: retrieval recall and reciprocal rank, with recall@1 equal to in-batch contrastive accuracy and the tie-adjusted pairwise hit equal to the AUROC rank statistic; corpus perplexity as the exponential of expected conditional cross-entropy, preserving the strictly proper log-loss minimizer, against surface-overlap metrics that do not; and zero-shot classification as a softmax classifier whose weights are class-name text embeddings, with transfer accuracy depending empirically on contrastive geometry."
+description: "Reduces retrieval, captioning perplexity, and zero-shot classification to ranking, likelihood, and shared-embedding geometry while stating what each metric can and cannot establish."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, input-representations, training, detection-encoders]
@@ -17,21 +17,19 @@ los:
   - id: lo-zero-shot-classification
     statement: "Define zero-shot classification, prove it is an encoder-only softmax classifier whose head is the class-name text embeddings, and state the empirical alignment condition on which its transfer accuracy depends."
   - id: lo-multimodal-metric-reductions
-    statement: "Identify every metric in the chapter as a reduction to a ranking statistic of the detection chapter or a likelihood of the training chapter."
+    statement: "Identify every metric in the chapter as a reduction to a ranking statistic from the Detection chapter or a likelihood from the Training chapter."
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import Figure from '../../components/Figure.astro';
 import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Multimodal Evaluation
-
-**Where we are.** This short capstone makes good on the dual-footing thesis one last time, now for *measurement*. The metrics that score vision-language models look modality-specific — image–text retrieval recall, captioning perplexity, zero-shot classification accuracy — but each is a quantity we already defined for text or for detection, evaluated on cross-modal inputs. Retrieval is a ranking problem, and its headline number, recall@1, is exactly the in-batch accuracy of the contrastive objective (<XRef id="def-contrastive" />); its tie-adjusted pairwise form is the AUROC rank statistic (<XRef id="prop-auroc-rank" />). Captioning quality is reported by corpus perplexity, the exponential of expected conditional cross-entropy from the training chapter (<XRef id="def-ce-loss" />); it preserves the conditional-KL minimizer of the strictly proper log-loss, while the surface-overlap metrics (BLEU, CIDEr, SPICE) do not. Zero-shot classification is an encoder-only softmax classifier (<XRef id="def-encoder-classifier" />) whose weight columns are supplied, with no label training, by the text encoder; its transfer succeeds to the extent that contrastive training places novel images near appropriate class-name prompts on the shared sphere (<XRef id="prop-contrastive-alignment" />), an empirical condition rather than a correctness guarantee. We write $r(q)$ for a retrieval rank, $\mathrm{PPL}$ for perplexity, and $\mathbf t_c$ for a class-name text embedding.
+**Where we are.** Multimodal systems need metrics matched to the claims being made. Retrieval asks where the true match ranks; captioning perplexity evaluates conditional likelihood; zero-shot classification compares an image embedding with class-name text vectors. We formalize each using ranking, cross-entropy, and encoder-classifier results, then mark their boundaries. Recall depends on the candidate set, perplexity rewards calibrated likelihood rather than surface overlap, and zero-shot transfer depends on learned geometry rather than a theorem guaranteeing unseen classes. This capstone unifies the evaluation language without pretending that the metrics are interchangeable.
 
 ## Retrieval is a ranking statistic
 
@@ -41,8 +39,8 @@ Cross-modal retrieval ranks candidates of one modality by similarity to a query 
 $N$ is the retrieval-pool size, not the transformer block count. The letter $c$ indexes a candidate or class, not an image channel.
 </NotationOverride>
 
-<Theorem kind="definition" name="Retrieval rank, recall@k, and MRR" id="def-retrieval">
-For a query $q$ and a candidate pool $\{c_1,\dots,c_N\}$ with similarity scores $s(q,c_j)$ (e.g. the cosine of <XRef id="def-cosine-temp" />), rank the candidates in decreasing score, resolving equal scores by one fixed deterministic candidate order, and let $r(q)\in\{1,\dots,N\}$ be the rank of the true match. For $1\le k\le N$ and a finite **nonempty** query set $\mathcal Q$,
+<Theorem kind="definition" name="Retrieval rank, recall@k, and mean reciprocal rank (MRR)" id="def-retrieval">
+For a query $q$ and a candidate pool $\{c_1,\dots,c_N\}$ with similarity scores $s(q,c_j)$ (e.g. the cosine of <XRef id="def-cosine-temp" />), rank the candidates in decreasing score, resolving equal scores by one fixed deterministic candidate order, and let $r(q)\in\{1,\dots,N\}$ be the rank of the true match. For $1\le k\le N$ and a finite **nonempty** query set $\mathcal Q$, define recall at $k$ and the **mean reciprocal rank (MRR)** by
 $$
 \mathrm{recall}@k \defeq \frac{1}{|\mathcal Q|}\sum_{q\in\mathcal Q}\mathbf 1\{r(q)\le k\},
 \qquad
@@ -53,7 +51,9 @@ the fraction of queries whose true match falls in the top $k$, and the mean reci
 
 <Figure
   src="/figures/retrieval-rank.svg"
-  caption="Retrieval as ranking. Candidates are sorted by similarity to the query; recall@k fires when the true match (highlighted) lands in the top-k band, and MRR rewards a small rank. Recall@1 is the indicator that the true match tops the list. Rendered from TikZ via the figures pipeline."
+  alt="Ranked retrieval candidates with the true match inside the top-k region."
+  desc="Candidate items appear in descending similarity order beneath one query. A highlighted band marks the first k positions, and the true match is emphasized at its rank within that band."
+  caption="Retrieval sorts candidates by similarity to a query. Recall at k records whether the true match enters the highlighted top-k region; reciprocal rank gives more credit to earlier positions."
   id="fig-retrieval-rank"
   width="64%"
 />
@@ -65,7 +65,7 @@ Evaluate retrieval over a batch of $B\ge2$ matched pairs with the similarity mat
    $$
    \Pr(S^+>S^-)+\tfrac12\Pr(S^+=S^-)
    $$
-   is exactly the empirical Mann–Whitney/AUROC statistic of <XRef id="prop-auroc-rank" /> (cross-row comparisons included). It differs from recall@1: it counts every pairwise ordering with half credit for ties, not only the per-row top spot.
+   is exactly the empirical Mann–Whitney form of the AUROC statistic in <XRef id="prop-auroc-rank" /> (cross-row comparisons included). It differs from recall@1: it counts every pairwise ordering with half credit for ties, not only the per-row top spot.
 </Theorem>
 
 <Theorem kind="proof">
@@ -80,11 +80,11 @@ Evaluate retrieval over a batch of $B\ge2$ matched pairs with the similarity mat
 A caption model is an autoregressive conditional $p_\theta(\mathbf y\mid \mathbf I)$ (the captioning example of <XRef id="ex-captioning" />). The intrinsic measure of such a model is its held-out likelihood, reported as perplexity — and this is a likelihood we already understand.
 
 <Theorem kind="definition" name="Conditional perplexity" id="def-perplexity">
-For a conditional model $p_\theta(\mathbf y\mid\mathbf c)$ over a target sequence $\mathbf y=(y_1,\dots,y_T)$, the **perplexity** is the exponential of the per-token conditional cross-entropy,
+For a conditional model $p_\theta(\mathbf y\mid\mathbf c)$ over a target sequence $\mathbf y=(y_1,\dots,y_T)$, the **perplexity (PPL)** is the exponential of the per-token conditional cross-entropy,
 $$
 \mathrm{PPL}(\mathbf y\mid\mathbf c) \defeq \exp\!\Big(\!-\frac1T\sum_{t=1}^{T}\log p_\theta(y_t\mid y_{<t},\mathbf c)\Big) = \exp\big(\widehat H\big),
 $$
-where $\widehat H$ denotes the empirical cross-entropy loss — the training chapter's $\mathcal L(\theta)$ (<XRef id="def-ce-loss" />), renamed to emphasize it is an empirical entropy estimate — with conditioning enlarged from $y_{<t}$ to $(y_{<t},\mathbf c)$.
+where $\widehat H$ denotes the empirical cross-entropy of <XRef id="def-ce-loss" />, renamed to emphasize that it estimates entropy, with conditioning enlarged from $y_{<t}$ to $(y_{<t},\mathbf c)$.
 </Theorem>
 
 <Theorem kind="proposition" name="Minimizing perplexity minimizes conditional KL" id="prop-perplexity-kl">
@@ -95,6 +95,8 @@ $$
 $$
 Thus the expected per-token log-loss minimizes the conditional KL; the factor $1/T$ is exact and does not change the minimizer. If the model family realizes $P_{\mathbf c}$ and the minimum is attained, every minimizing **distribution** equals $P_{\mathbf c}$, though multiple parameters may represent it. If the family does not realize $P_{\mathbf c}$, any attained minimizer is instead a best-in-family KL projection. The log-loss is strictly proper over unrestricted predictive distributions, and corpus perplexity $\exp(\E[\widehat H])$ inherits its minimizer because $\exp$ is strictly increasing. The order matters: $\E[\exp(\widehat H)]$ is a different objective and can have a different minimizer.
 </Theorem>
+
+<MarginNote variant="tip" label="Self-explanation">Before the proof: condition on one context and expand cross-entropy as entropy plus KL. Which term ignores the model, and why must expectation come before exponentiation?</MarginNote>
 
 <Theorem kind="proof">
 **Proof.**
@@ -117,7 +119,7 @@ The standard captioning metrics — BLEU's $n$-gram precision, CIDEr's tf-idf $n
 
 ## Zero-shot classification is a softmax classifier with text weights
 
-The most striking evaluation of a contrastive model uses no training labels at all: to classify an image among $C$ named classes, embed the class *names* with the text encoder and pick the nearest. We show this is literally the encoder classifier of the detection chapter, with its head handed over by the text tower.
+The most striking evaluation of a contrastive model uses no training labels at all: to classify an image among $C$ named classes, embed the class *names* with the text encoder and pick the nearest. This is <XRef id="def-encoder-classifier" /> with its head supplied by the text tower.
 
 <Theorem kind="definition" name="Zero-shot classification" id="def-zeroshot">
 Given class names with text embeddings $\mathbf t_1,\dots,\mathbf t_C\in\R^{d}$ (each the pooled encoding of a prompt like "a photo of a $\langle$class$\rangle$", <XRef id="def-pooled-rep" />) and an image embedding $\mathbf v\in\R^d$ — all embeddings $L^2$-normalized, as in the contrastive training of <XRef id="def-contrastive" />, so inner products are cosines — the **zero-shot classifier** predicts
@@ -131,22 +133,24 @@ using no target-domain labels — the class representations come entirely from t
 
 <Figure
   src="/figures/zeroshot-sphere.svg"
-  caption="Zero-shot classification on the shared sphere. Class-name text embeddings sit on the unit sphere; an image embedding is classified as its nearest text embedding. Successful contrastive training can place a 'dog' image near the string 'a dog', but transfer to a novel class prompt is empirical. Rendered from TikZ via the figures pipeline."
+  alt="Image and class-name embeddings compared by direction on a shared unit sphere."
+  desc="Several class-name vectors and one image vector extend from the center of a circle. The image vector lies closest in angle to the dog text vector, illustrating nearest-text classification by cosine similarity."
+  caption="Zero-shot classification chooses the class-name embedding nearest to an image embedding on the shared sphere. Contrastive training can create this alignment, but transfer to unseen classes remains an empirical result."
   id="fig-zeroshot-sphere"
   width="52%"
 />
 
 <Theorem kind="proposition" name="Zero-shot is an encoder classifier with text-embedding head" id="prop-zeroshot-classifier">
-The zero-shot classifier of <XRef id="def-zeroshot" /> is the encoder-only classifier of <XRef id="def-encoder-classifier" /> applied to the image embedding $\mathbf v$, with classifier head $\mathbf W_{\mathsf{cls}}=[\mathbf t_1,\dots,\mathbf t_C]\in\R^{d\times C}$ (columns the class-name text embeddings) and zero bias. It needs no label training because the head is produced by the text encoder. Its *motivation* is the contrastive geometry: the objective supplies alignment/separation pressure on matched and mismatched training pairs (<XRef id="prop-contrastive-alignment" />), and class-name prompts inherit useful ordering only to the extent they transfer from that training geometry — a heuristic validated empirically <Cite key="radford2021clip" />, not a correctness theorem.
+The zero-shot classifier of <XRef id="def-zeroshot" /> is the encoder-only classifier of <XRef id="def-encoder-classifier" /> applied to the image embedding $\mathbf v$, with classifier head $\mathbf W_{\mathsf{cls}}=[\mathbf t_1,\dots,\mathbf t_C]\in\R^{d\times C}$ (columns the class-name text embeddings) and zero bias. It needs no label training because the head is produced by the text encoder. Its *motivation* is the contrastive geometry: the objective supplies alignment and separation pressure on matched and mismatched training pairs (<XRef id="prop-contrastive-alignment" />), and class-name prompts inherit useful ordering only to the extent they transfer from that training geometry — a heuristic validated empirically <Cite key="radford2021clip" />, not a correctness theorem.
 </Theorem>
 
 <Theorem kind="proof">
 **Proof.**
-With $\mathbf W_{\mathsf{cls}}=[\mathbf t_1,\dots,\mathbf t_C]$ and bias zero, the encoder-classifier logits of <XRef id="def-encoder-classifier" /> are $\mathbf o=\mathbf v\,\mathbf W_{\mathsf{cls}}$ with $o_c=\inner{\mathbf v}{\mathbf t_c}$, and $\hat y=\argmax_c o_c$ is exactly the zero-shot *decision* of <XRef id="def-zeroshot" /> for every $\tau>0$ (dividing logits by $\tau$ is a monotone rescaling); the probabilistic outputs coincide at $\tau=1$, the detection/readouts chapter's classifier carrying no temperature. The head columns are the text encoder's outputs on the class names, not parameters fit to target labels, so no label training occurs. For the alignment reading: during optimization the symmetric contrastive objective (<XRef id="def-contrastive" />) pushes matched *training-pair* logits up and mismatched ones down in the coordinatewise sense of <XRef id="prop-contrastive-alignment" />; insofar as a class-name prompt embeds near its class's caption cluster, $\argmax_c\inner{\mathbf v}{\mathbf t_c}$ recovers the true class. That transfer step is the zero-shot leap — empirical, not proved. $\qquad\blacksquare$
+With $\mathbf W_{\mathsf{cls}}=[\mathbf t_1,\dots,\mathbf t_C]$ and bias zero, the encoder-classifier logits of <XRef id="def-encoder-classifier" /> are $\mathbf o=\mathbf v\,\mathbf W_{\mathsf{cls}}$ with $o_c=\inner{\mathbf v}{\mathbf t_c}$, and $\hat y=\argmax_c o_c$ is exactly the zero-shot *decision* of <XRef id="def-zeroshot" /> for every $\tau>0$ (dividing logits by $\tau$ is a monotone rescaling); the probabilistic outputs coincide at $\tau=1$, where the reference classifier has no temperature. The head columns are the text encoder's outputs on the class names, not parameters fit to target labels, so no label training occurs. For the alignment reading: during optimization the symmetric contrastive objective (<XRef id="def-contrastive" />) pushes matched *training-pair* logits up and mismatched ones down in the coordinatewise sense of <XRef id="prop-contrastive-alignment" />; insofar as a class-name prompt embeds near its class's caption cluster, $\argmax_c\inner{\mathbf v}{\mathbf t_c}$ recovers the true class. That transfer step is the zero-shot leap — empirical, not proved. $\qquad\blacksquare$
 </Theorem>
 
 <Theorem kind="remark" name="Every metric reduced" id="rem-all-reduced">
-The capstone closes the loop. Retrieval recall and its pairwise form reduced to in-batch accuracy and the AUROC rank statistic of the detection chapter (<XRef id="prop-recall-accuracy" />); perplexity is the conditional cross-entropy and KL of the training chapter (<XRef id="prop-perplexity-kl" />); zero-shot accuracy is the encoder classifier of the detection chapter with a text-supplied head (<XRef id="prop-zeroshot-classifier" />). No vision-language metric needed new probability theory — only the choice of which already-proven statistic to apply to cross-modal embeddings and likelihoods. This is the evaluation-side statement of the dual-footing thesis (<XRef id="rem-modality-blind" />): the same mathematics scores the same model, whatever the modality of its inputs. The original contrastive and zero-shot constructions are CLIP's <Cite key="radford2021clip" />; the retrieval-as-ranking protocol originates with Hodosh, Young, and Hockenmaier <Cite key="hodosh2013framing" />, adopted for alignment models by <Cite key="karpathy2015deepvisual" />.
+The capstone closes the loop. Retrieval recall reduces to in-batch accuracy and pairwise ranking (<XRef id="prop-recall-accuracy" />); perplexity reduces to conditional cross-entropy and KL (<XRef id="prop-perplexity-kl" />); zero-shot accuracy reduces to an encoder classifier with a text-supplied head (<XRef id="prop-zeroshot-classifier" />). These reductions apply familiar statistics to cross-modal embeddings and likelihoods, completing the evaluation side of <XRef id="rem-modality-blind" />. The original contrastive and zero-shot constructions are CLIP's <Cite key="radford2021clip" />; the retrieval-as-ranking protocol originates with Hodosh, Young, and Hockenmaier <Cite key="hodosh2013framing" />, adopted for alignment models by <Cite key="karpathy2015deepvisual" />.
 </Theorem>
 
 ## Exercises
@@ -155,7 +159,7 @@ Attempt each before expanding its solution.
 
 **Exercise 23.1 (Prove).** Prove clause (1) of <XRef id="prop-recall-accuracy" />: in-batch retrieval recall@1 equals in-batch contrastive top-1 accuracy. Where exactly is the monotonicity of softmax used?
 
-<SolutionBox>
+<SolutionBox exercise="23.1">
 
 Recall@1 for query $i$ is $\mathbf 1\{r(i)=1\}=\mathbf 1\{\argmax_j M_{ij}=i\}$, since the top-ranked candidate is the one with the largest similarity. The in-batch classifier (<XRef id="prop-contrastive-ce" />) predicts $\hat\jmath(i)=\argmax_j\softmax(\mathbf M_{i,:})_j$. Because softmax is a strictly increasing function of each logit and shares the same normalizer across $j$, it preserves the order of the logits, so $\argmax_j\softmax(\mathbf M_{i,:})_j=\argmax_j M_{ij}$ — this is the only place monotonicity is used. Hence the recall@1 indicator equals the classifier-correct indicator $\mathbf 1\{\hat\jmath(i)=i\}$, and averaging over the batch gives recall@1 $=$ accuracy. $\qquad\blacksquare$
 
@@ -163,7 +167,7 @@ Recall@1 for query $i$ is $\mathbf 1\{r(i)=1\}=\mathbf 1\{\argmax_j M_{ij}=i\}$,
 
 **Exercise 23.2 (Compute).** A batch has $B=4$ pairs with similarity matrix rows $\mathbf M_{1,:}=(0.9,0.2,0.1,0.3)$, $\mathbf M_{2,:}=(0.4,0.8,0.2,0.1)$, $\mathbf M_{3,:}=(0.2,0.5,0.3,0.1)$, $\mathbf M_{4,:}=(0.1,0.0,0.2,0.7)$ (true match on the diagonal). Compute recall@1 and confirm it equals the in-batch top-1 accuracy.
 
-<SolutionBox>
+<SolutionBox exercise="23.2">
 
 Take the argmax of each row: row 1 $\to$ index 1 ($0.9$); row 2 $\to$ index 2 ($0.8$); row 3 $\to$ index 2 ($0.5>0.3$), but the true match is index 3 — a miss; row 4 $\to$ index 4 ($0.7$). So three of four queries rank their true match first: $\mathrm{recall}@1=3/4=0.75$. The in-batch classifier predicts each row's argmax index, and it is correct exactly for rows $1,2,4$ — top-1 accuracy $3/4=0.75$, identical to recall@1, as <XRef id="prop-recall-accuracy" /> requires. $\qquad\blacksquare$
 
@@ -171,7 +175,7 @@ Take the argmax of each row: row 1 $\to$ index 1 ($0.9$); row 2 $\to$ index 2 ($
 
 **Exercise 23.3 (Prove).** For fixed context $\mathbf c$ and length $T$, derive the exact $1/T$ conditional-entropy-plus-KL decomposition behind <XRef id="prop-perplexity-kl" />. State the minimizer both when the true conditional is realizable and attained and when the model family is restricted; distinguish uniqueness of the predictive distribution from uniqueness of its parameters. Conclude that $\exp(\E[\widehat H])$ shares the minimizer, and explain why the expectation must precede exponentiation.
 
-<SolutionBox>
+<SolutionBox exercise="23.3">
 
 Let $P(\mathbf y)=p_{\mathrm{data}}(\mathbf y\mid\mathbf c)$ and $Q_\theta(\mathbf y)=p_\theta(\mathbf y\mid\mathbf c)$ on length-$T$ sequences. Since $\widehat H(\mathbf y)=-(1/T)\log Q_\theta(\mathbf y)$,
 $$
@@ -183,7 +187,7 @@ The entropy term and positive factor $1/T$ are independent of $\theta$. If $P$ b
 
 **Exercise 23.4 (Construct).** Using <XRef id="prop-zeroshot-classifier" />, explain how to turn a trained contrastive image–text model into a $1000$-class image classifier without any labeled training images, and state the geometric condition under which it is accurate.
 
-<SolutionBox>
+<SolutionBox exercise="23.4">
 
 For each of the $1000$ classes, form a text prompt ("a photo of a $\langle$class$\rangle$") and encode it with the text tower and pooling (<XRef id="def-pooled-rep" />) to get $\mathbf t_1,\dots,\mathbf t_{1000}$; stack them as the classifier head $\mathbf W_{\mathsf{cls}}=[\mathbf t_1,\dots,\mathbf t_{1000}]$. Classify an image by its embedding $\mathbf v$ via $\hat y=\argmax_c\inner{\mathbf v}{\mathbf t_c}$ — the encoder classifier of <XRef id="def-encoder-classifier" /> with a text-supplied, zero-bias head, requiring no labeled images (<XRef id="prop-zeroshot-classifier" />). For a given image, correctness is equivalent to the geometric condition $\inner{\mathbf v}{\mathbf t_y}>\max_{c\ne y}\inner{\mathbf v}{\mathbf t_c}$ (up to the chosen tie rule): the true class-name embedding must be its closest candidate in cosine. Contrastive training encourages analogous ordering for matched **training** pairs (<XRef id="prop-contrastive-alignment" />), but does not guarantee that novel images and class-name prompts satisfy this condition; zero-shot accuracy is therefore an empirical transfer result. $\qquad\blacksquare$
 

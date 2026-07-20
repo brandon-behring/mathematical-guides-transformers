@@ -3,11 +3,11 @@ title: "Multi-Head Attention"
 slug: multi-head-attention
 chapter: 5
 part: 3
-description: "Multi-head attention as parallel scaled dot-product attention in h rank-d_k subspaces: the split-concatenate-project construction, the parameter count that is independent of h, the per-head low-rank factorization, and cache reduction by MQA/GQA head sharing or MLA latent compression."
+description: "Builds multi-head attention from parallel projected views, explains its parameter and rank structure, and previews production methods that reduce key–value cache size."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention]
-notation_introduced: ['\operatorname{MHA}', '\operatorname{Concat}', 'h', 'h_k', 'h_v', 'd_k', 'd_v', 'd_c', '\mathbf c_t^{KV}', 'W^O', 'd_{\text{cache}}', 'KV cache']
+notation_introduced: ['\operatorname{MHA}', '\operatorname{Concat}', 'h', 'h_k', 'h_v', 'd_k', 'd_v', 'd_c', '\mathbf c_t^{KV}', '\mathbf W^O', 'd_{\text{cache}}', 'KV cache']
 theorems: ['def-attention-head', 'def-mha', 'prop-mha-params', 'thm-low-rank', 'def-mqa', 'def-gqa', 'def-mla', 'prop-kv-cache']
 los:
   - id: lo-multi-head-construction
@@ -21,16 +21,14 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Multi-Head Attention
-
-**Where we are.** The Attention chapter built a single scaled dot-product head: one triple of projections — $\mathbf W^Q, \mathbf W^K$ mapping $\R^{d}\to\R^{d_k}$ and $\mathbf W^V$ mapping $\R^{d}\to\R^{d_v}$ — producing one $n\times n$ weight matrix. One head can express only one pattern of token-to-token relationships at a time. Multi-head attention runs $h$ heads in parallel, each in its own $d_k$-dimensional subspace, then concatenates and remixes their outputs. This chapter fixes the construction (the attention head, then multi-head attention), proves the parameter count is independent of $h$ (<XRef id="prop-mha-params" />), establishes the per-head rank bound that makes a single head limited and many heads complementary (<XRef id="thm-low-rank" />), and derives two distinct routes to a smaller decode cache: MQA/GQA share materialized key/value heads, while MLA persists a joint latent channel (<XRef id="prop-kv-cache" />).
+**Where we are.** The previous chapter built one attention head, which produces one pattern of token-to-token weights. Multi-head attention learns several projected views, applies attention independently in each view, concatenates the results, and remixes them at model width. We trace those dimensions immediately after defining the construction, then prove why the usual head-width choice keeps the parameter count fixed (<XRef id="prop-mha-params" />) and why each head's pre-softmax logits have limited rank (<XRef id="thm-low-rank" />). A final production preview explains two routes to smaller decoding state: sharing materialized key and value heads or storing a joint latent representation (<XRef id="prop-kv-cache" />).
 
 ## The multi-head construction
 
@@ -49,7 +47,7 @@ where $\operatorname{Attn}$ is scaled dot-product attention (<XRef id="def-atten
 Multi-head attention is then the concatenation of all heads' outputs followed by one shared linear map back to model width. The concatenation lays the $h$ output blocks side by side within each row; the output projection lets the layer mix across heads, so the heads are not forced to occupy disjoint output coordinates.
 
 <Theorem kind="definition" name="Multi-head attention" id="def-mha">
-**Multi-head attention** concatenates the $h$ heads row-wise and applies a final linear projection:<Sidenote>The split–concatenate–project construction, with $h\mid d$ and $d_k=d_v=d/h$, is the original design of <Cite key="vaswani2017attention" />.</Sidenote>
+**Multi-head attention (MHA)** concatenates the $h$ heads row-wise and applies a final linear projection:<Sidenote>The split–concatenate–project construction, with $h\mid d$ and $d_k=d_v=d/h$, is the original design of <Cite key="vaswani2017attention" />.</Sidenote>
 $$
 \operatorname{MHA}(\mathbf X) \defeq \operatorname{Concat}(\operatorname{head}_1,\dots,\operatorname{head}_h)\,\mathbf W^O \in \R^{n\times d},
 $$
@@ -58,16 +56,27 @@ where $\operatorname{Concat}$ stacks the head outputs along the feature axis (gi
 
 Schematically: the input $\mathbf X$ fans out to $h$ heads; each head runs attention in its $d_k$-dimensional subspace and returns an $n\times d_v$ block; the blocks concatenate into an $n\times h\,d_v$ matrix; and $\mathbf W^O$ maps that back to $n\times d$. The split into subspaces is what makes the heads independent; the output projection is what lets them recombine.
 
-<MarginNote variant="pattern" label="Split / attend / concat / project">Four steps: project to $h$ subspaces, attend per head, concatenate, then mix with $\mathbf W^O$.</MarginNote>
+<MarginNote variant="pattern" label="Project, attend, concatenate, mix">Four steps: project to $h$ subspaces, attend per head, concatenate, then mix with $\mathbf W^O$.</MarginNote>
 
 <Figure
   src="/figures/mha-split-concat.svg"
-  alt="Multi-head attention: input X fans out to h heads, each returning an n×d_v block; the blocks concatenate and a projection W^O maps back to n×d."
-  desc="The input X (n×d) splits at a junction into h parallel heads (shown for h=3); each head applies its own learned Q/K/V projections and returns an n×d_v block. The blocks concatenate into an n×h·d_v matrix, and the output projection W^O maps that back to n×d to give Y. Example d=6, h=3, d_k=d_v=2 (a schematic instance; the chapter's dimension trace below uses h=2)."
-  caption="Multi-head attention as split → per-head attend → concat → project (def-mha). X fans out to h heads, each attending in its own learned d_k-subspace — not a slice of X — and W^O remixes the concatenated outputs across heads back to n×d. The parameter count is independent of h (prop-mha-params)."
+  alt="An input sequence splitting into parallel attention heads, then concatenating and projecting back to model width."
+  desc="One input matrix fans out to three independently projected attention heads. Their equal-length output blocks are placed side by side, then one output projection maps the concatenation back to the original feature width."
+  caption="Multi-head attention follows four steps: project into parallel learned views, attend within each view, concatenate the head outputs, and project the combined features back to model width."
   id="fig-mha-split-concat"
   width="80%"
 />
+
+## Tracing the dimensions
+
+To see the construction concretely, take $n = 3$ tokens, $d = 4$, $h = 2$, so $d_k = d_v = d/h = 2$, with input $\mathbf X\in\R^{3\times 4}$.
+
+- **Project.** Head 1 forms $\mathbf Q_1 = \mathbf X\mathbf W_1^Q$, $\mathbf K_1 = \mathbf X\mathbf W_1^K$, $\mathbf V_1 = \mathbf X\mathbf W_1^V$, each in $\R^{3\times 2}$; head 2 likewise with its own projections.
+- **Attend.** $\operatorname{head}_1 = \softmax(\mathbf Q_1\mathbf K_1^\top/\sqrt 2)\,\mathbf V_1\in\R^{3\times 2}$, and $\operatorname{head}_2\in\R^{3\times 2}$ in the same way.
+- **Concatenate.** $\operatorname{Concat}(\operatorname{head}_1,\operatorname{head}_2)\in\R^{3\times 4}$, each row being $([\operatorname{head}_1]_{i,:},[\operatorname{head}_2]_{i,:})$.
+- **Project out.** $\operatorname{MHA}(\mathbf X) = \operatorname{Concat}(\cdots)\,\mathbf W^O\in\R^{3\times 4}$ with $\mathbf W^O\in\R^{4\times 4}$.
+
+The parameter count checks against <XRef id="prop-mha-params" />: the two heads contribute $2\times(3\ \text{matrices}\times 4\times 2) = 48$ and $\mathbf W^O$ contributes $4\times 4 = 16$, for $64 = 4d^2 = 4\cdot 16$. Each head attends in its own $2$-dimensional view of $\mathbf X$ — one might learn local adjacency, the other long-range similarity — and $\mathbf W^O$ blends the two perspectives into the $d$-dimensional output.
 
 ## Parameter count and rank structure
 
@@ -89,7 +98,7 @@ Count the four matrix families, each step naming what it sums.
 **Total.** $3d^2 + d^2 = 4d^2$, with no residual dependence on $h$ — more heads simply means narrower heads. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="formula" label="Why d_k = d/h">Total parameters $=4d^2$ and total FLOPs match a single $d$-wide head; e.g. Llama-3 uses $d=4096$, $h=32$, $d_k=128$.</MarginNote>
+<MarginNote variant="formula" label="Why d_k = d/h">Total parameters $=4d^2$ and total FLOPs match a single $d$-wide head; e.g. Llama 3 uses $d=4096$, $h=32$, $d_k=128$.</MarginNote>
 
 We now translate each head's pre-softmax logits into a single linear-algebra object — a product of two thin matrices — whose rank is bounded by their shared inner dimension $d_k$. The correspondence is exact: *head's logit matrix* ↦ *a rank-$\le d_k$ Gram-style product*, and the bound follows from the standard rank-of-a-product inequality. Where the analogy breaks: a true Gram matrix $\mathbf W\mathbf W^\top$ is symmetric positive semidefinite, while $\mathbf W_i^Q(\mathbf W_i^K)^\top$ has two distinct learned factors and is in general neither.
 
@@ -110,7 +119,7 @@ $$
 \operatorname{rank}\!\big(\mathbf W_i^Q(\mathbf W_i^K)^\top\big)\le \min\!\big(\operatorname{rank}\mathbf W_i^Q,\ \operatorname{rank}\mathbf W_i^K\big)\le d_k.
 $$
 
-**Pre/post-multiplication cannot raise rank.** Left- and right-multiplying by $\mathbf X$ and $\mathbf X^\top$ only contract column and row spaces, so $\operatorname{rank}(\mathbf X\mathbf C\mathbf X^\top)\le\operatorname{rank}\mathbf C\le d_k$. Combined with the trivial bound $\operatorname{rank}\le n$ for an $n\times n$ matrix, the logit matrix of head $i$ has rank at most $\min(d_k, n)$. $\qquad\blacksquare$
+**Pre- and post-multiplication cannot raise rank.** Left- and right-multiplying by $\mathbf X$ and $\mathbf X^\top$ only contract column and row spaces, so $\operatorname{rank}(\mathbf X\mathbf C\mathbf X^\top)\le\operatorname{rank}\mathbf C\le d_k$. Combined with the trivial bound $\operatorname{rank}\le n$ for an $n\times n$ matrix, the logit matrix of head $i$ has rank at most $\min(d_k, n)$. $\qquad\blacksquare$
 </Theorem>
 
 <MarginNote variant="pattern" label="Rank trade-off">One head with $d_k=d$: rank up to $\min(d,n)$, one pattern. Many heads with $d_k=1$: rank-1 each, very limited. Practice keeps $d_k\ge 32$.</MarginNote>
@@ -121,9 +130,9 @@ The bound is a statement about *one head's logits before softmax*, and it explai
 <XRef id="thm-low-rank" /> bounds each head's logit rank by $d_k$; it does **not** assert that the full module has logit rank $h\,d_k$. The heads are concatenated *after* their separate softmax nonlinearities and then mixed by $\mathbf W^O$, so there is no single $n\times n$ logit matrix for the module to take the rank of. The "effective rank $h\,d_k$" reading is an expressiveness heuristic, not a corollary of the displayed factorization.
 </Theorem>
 
-## Head sharing and latent compression
+## Production preview: head sharing and latent compression
 
-During autoregressive decoding the keys and values of every past token are retained in a **key/value cache** so they are not recomputed at each step. In standard multi-head attention each head keeps its own cache, so cache memory grows linearly in $h$ — and at long context lengths it can exceed the model weights themselves. Multi-Query and Grouped-Query Attention cut this cost by sharing the key and value projections across heads while keeping a separate query projection per head.
+The core multi-head construction is now complete. This section looks ahead to autoregressive serving, whose exact cache and cost model is developed in the Inference Optimizations chapter. During decoding, the keys and values of every past token are retained in a **key–value cache** so they are not recomputed at each step. Standard multi-head attention keeps one cache per head. Multi-Query and Grouped-Query Attention reduce that state by sharing key and value projections while keeping separate query projections; multi-head latent attention (MLA) instead persists a joint latent channel. Readers focused on the core construction may return to this preview when they reach that full treatment.
 
 <Theorem kind="definition" name="Multi-Query Attention (MQA)" id="def-mqa">
 In **MQA** all $h$ heads share a single key projection $\mathbf W^K\in\R^{d\times d_k}$ and a single value projection $\mathbf W^V\in\R^{d\times d_v}$; only the query projections $\mathbf W_i^Q$ differ per head:<Sidenote>Introduced as a decoding-bandwidth optimization in <Cite key="shazeer2019mqa" />.</Sidenote>
@@ -137,7 +146,7 @@ $$
 </Theorem>
 
 <Theorem kind="definition" name="MLA content compression" id="def-mla">
-Let $\mathbf x_t\in\R^d$ be the row entering an attention layer. The **content-compression core of multi-head latent attention (MLA)** first maps it to a joint key/value latent
+Let $\mathbf x_t\in\R^d$ be the row entering an attention layer. The **content-compression core of multi-head latent attention (MLA)** first maps it to a joint latent for keys and values,
 $$
 \mathbf c_t^{KV}\defeq \mathbf x_t\mathbf W^{DKV}\in\R^{d_c},
 \qquad \mathbf W^{DKV}\in\R^{d\times d_c},
@@ -151,14 +160,14 @@ $$
 \mathbf W^{UV}&\in\R^{d_c\times h d_v}.
 \end{aligned}
 $$
-The $h$ width-$d_k$ and width-$d_v$ slices supply the attention heads. At decode time the content cache persists $\mathbf c_t^{KV}$ and reconstructs—or algebraically consumes—the head content derived from it.<Sidenote>DeepSeek-V2 introduced this latent KV-compression architecture <Cite key="deepseek2024v2" />.</Sidenote> Unlike GQA, this definition does not reduce the number of materialized attention heads: it moves the persisted content representation upstream to a shared latent channel. The latent width $d_c$ is therefore a separate design axis, not a fractional number of KV groups. This is deliberately a **content-cache** definition: a full implementation may persist positional or other auxiliary state in addition to $\mathbf c_t^{KV}$, and that width must be counted separately. The definition accounts for stored scalars, not the architecture-specific arithmetic used to reconstruct or absorb the up-projections.
+The $h$ width-$d_k$ and width-$d_v$ slices supply the attention heads. At decode time the content cache persists $\mathbf c_t^{KV}$ and reconstructs — or algebraically consumes — the head content derived from it.<Sidenote>DeepSeek-V2 introduced this latent compression architecture for keys and values <Cite key="deepseek2024v2" />.</Sidenote> Unlike GQA, this definition does not reduce the number of materialized attention heads: it moves the persisted content representation upstream to a shared latent channel. The latent width $d_c$ is therefore a separate design axis, not a fractional number of key and value groups. This is deliberately a **content-cache** definition: a full implementation may persist positional or other auxiliary state in addition to $\mathbf c_t^{KV}$, and that width must be counted separately. The definition accounts for stored scalars, not the architecture-specific arithmetic used to reconstruct or absorb the up-projections.
 </Theorem>
 
 <MarginNote variant="tip" label="Self-explanation">Before the next proof: in MHA the cache stores $\mathbf K_i\in\R^{n\times d_k}$ and $\mathbf V_i\in\R^{n\times d_v}$ for each of the $h$ heads. If $g$ groups share K and V, how many distinct such matrices remain?</MarginNote>
 
-The cache cost follows by counting what is actually persisted. MHA, GQA, and MQA retain materialized key/value rows, so head sharing replaces "$h$ copies" by "$g$ copies." MLA instead retains the upstream content latent and rematerializes head slices from it.
+The cache cost follows by counting what is actually persisted. MHA, GQA, and MQA retain materialized key and value rows, so head sharing replaces "$h$ copies" by "$g$ copies." MLA instead retains the upstream content latent and rematerializes head slices from it.
 
-<Theorem kind="proposition" name="KV-cache width and memory" id="prop-kv-cache">
+<Theorem kind="proposition" name="KV cache width and memory" id="prop-kv-cache">
 Define a layer's **per-token cache width** $d_{\text{cache}}$ to be the number of scalar entries it actually persists for one token.
 
 **Materialized-head cache.** If the cache stores $h_k$ distinct key heads of width $d_k$ and $h_v$ distinct value heads of width $d_v$, then
@@ -186,26 +195,26 @@ In either case, a length-$n$ layer cache contains $n\,d_{\text{cache}}$ scalars.
 For a materialized cache, each position contributes $d_k$ scalars to every distinct key head and $d_v$ to every distinct value head, hence $h_kd_k+h_vd_v=d_{\text{cache}}$ scalars. MHA has $h_k=h_v=h$, GQA has $h_k=h_v=g$, and MQA has $h_k=h_v=1$, which gives the three displayed formulas after multiplying by $n$. Dividing the GQA and MQA totals by the MHA total cancels $n(d_k+d_v)$ and yields $g/h$ and $1/h$; setting $d_k=d_v$ gives the stated simplifications. For the joint-latent case, the hypothesis says that the only persisted content vector per position is $\mathbf c_t^{KV}\in\R^{d_c}$, so its width is $d_c$ and $n$ positions contain $nd_c$ scalars. Any other persisted vector contributes its own width by concatenation. $\qquad\blacksquare$
 </Theorem>
 
-<MarginNote variant="formula" label="Head-sharing savings">For a materialized-head cache, $d_{\text{cache}}=h_kd_k+h_vd_v$. With equal K/V head counts, $h=32$ to $g=8$ keeps $1/4$ of MHA; MQA keeps $1/32$.</MarginNote>
+<MarginNote variant="formula" label="Head-sharing savings">For a materialized-head cache, $d_{\text{cache}}=h_kd_k+h_vd_v$. With equal key and value head counts, $h=32$ to $g=8$ keeps $1/4$ of MHA; MQA keeps $1/32$.</MarginNote>
 
 <MarginNote variant="warning" label="Two axes">GQA moves along the discrete head-multiplicity axis $g$; MLA chooses a latent width $d_c$. Equating $d_c$ with a fractional group count confuses two different factorizations.</MarginNote>
 
-<MarginNote variant="pattern" label="What sharing cannot fix">MQA/GQA shrink the cache by $g/h$, but it still grows with $n$. Removing the $n$-dependence itself needs a state that does not grow — the recurrent route (<XRef id="thm-linattn-rnn" />; priced for hybrids in <XRef id="prop-decode-state" />).</MarginNote>
+<MarginNote variant="pattern" label="What sharing cannot fix">MQA and GQA shrink the cache by $g/h$, but it still grows with $n$. Removing the $n$-dependence itself needs a state that does not grow — the recurrent route (<XRef id="thm-linattn-rnn" />; priced for hybrids in <XRef id="prop-decode-state" />).</MarginNote>
 
-Two points sharpen the trade-off. First, the savings are about *bandwidth*, not chiefly parameters. Under the standard projection widths $hd_k=hd_v=d$, the query and output projections are untouched, so the projection-parameter count moves only from $4d^2$ (MHA) to $2d^2 + 2(g/h)\,d^2$, a modest change; the real win is that fewer distinct K/V heads mean fewer cache reads and writes per generated token. Second, this is why GQA is the common middle ground — it retains most of that bandwidth gain while recovering much of MHA's quality, by reading K/V groups rather than collapsing to a single shared head <Cite key="ainslie2023gqa" />.
+Two points sharpen the trade-off. First, the savings are about *bandwidth*, not chiefly parameters. Under the standard projection widths $hd_k=hd_v=d$, the query and output projections are untouched, so the projection-parameter count moves only from $4d^2$ (MHA) to $2d^2 + 2(g/h)\,d^2$, a modest change; the real win is that fewer distinct key and value heads mean fewer cache reads and writes per generated token. Second, this is why GQA is the common middle ground — it retains most of that bandwidth gain while recovering much of MHA's quality, by reading shared key and value groups rather than collapsing to a single shared pair <Cite key="ainslie2023gqa" />.
 
 <Figure
   src="/figures/kv-sharing.svg"
-  alt="MHA, GQA, and MQA compared: query heads stay fixed while the row of shared key/value heads shrinks from h to g to 1."
-  desc="Three panels — MHA, GQA with g groups, MQA — each with h=4 query heads on top mapping down to a row of distinct key/value heads below: 4 for MHA (one per query head), 2 for GQA (each shared by a group of two), 1 for MQA (shared by all). Only the number of KV heads changes; the queries stay per-head. In the illustrated d_k=d_v case, per-layer cache is 2n·h·d_k / 2n·g·d_k / 2n·d_k — 1 : ½ : ¼ of the MHA cache at h=4, g=2."
-  caption="Sharing key/value heads across MHA, GQA, and MQA (prop-kv-cache). The query projection stays per-head; only the number of distinct KV heads shrinks (h → g → 1), so $d_{\text{cache}}$ and the KV-cache traffic shrink with it. The printed $2nd_k$ formulas are the $d_k=d_v$ specialization."
+  alt="MHA, GQA, and MQA retaining the same query heads while using progressively fewer key and value heads."
+  desc="Three panels keep four query heads fixed. The first gives each query its own key and value heads, the second shares two key and value head pairs across query groups, and the third shares one pair across every query."
+  caption="MHA, GQA, and MQA keep one query projection per head while reducing the distinct key and value head pairs from all heads, to groups, to one shared pair."
   id="fig-kv-sharing"
   width="92%"
 />
 
-The three variants differ only in the number of *distinct* key/value heads; the query heads and every other projection are untouched.
+The three variants differ only in the number of *distinct* key and value head pairs; the query heads and every other projection are untouched.
 
-| Variant | Query heads | KV heads | KV cache / layer | Quality |
+| Variant | Query heads | KV heads | KV cache per layer | Quality |
 |---|---|---|---|---|
 | MHA | $h$ | $h$ | $nh(d_k+d_v)$ | baseline |
 | GQA | $h$ | $g$ ($g \mid h$) | $ng(d_k+d_v)$ — $g/h$ of MHA | near-MHA <Cite key="ainslie2023gqa" /> |
@@ -213,18 +222,7 @@ The three variants differ only in the number of *distinct* key/value heads; the 
 
 The cache column is exact (<XRef id="prop-kv-cache" />); the quality column is *empirical* — a measured trade-off, not implied by the cache formula.
 
-MLA adds a point on a different axis: under the latent-only hypothesis its content cache is $nd_c$, even though all attention-head content keys and values may be rematerialized. The full model-level byte count follows by substituting the sum of all actually persisted widths into <XRef id="prop-kv-memory" />. DeepSeek-V2 reported a 93.3% KV-cache reduction and raised maximum generation throughput to 5.76 times its baseline for the complete system <Cite key="deepseek2024v2" />; those empirical system figures are not derived from $d_c$ alone.
-
-## Tracing the dimensions
-
-To see the construction concretely, take $n = 3$ tokens, $d = 4$, $h = 2$, so $d_k = d_v = d/h = 2$, with input $\mathbf X\in\R^{3\times 4}$.
-
-- **Project.** Head 1 forms $\mathbf Q_1 = \mathbf X\mathbf W_1^Q$, $\mathbf K_1 = \mathbf X\mathbf W_1^K$, $\mathbf V_1 = \mathbf X\mathbf W_1^V$, each in $\R^{3\times 2}$; head 2 likewise with its own projections.
-- **Attend.** $\operatorname{head}_1 = \softmax(\mathbf Q_1\mathbf K_1^\top/\sqrt 2)\,\mathbf V_1\in\R^{3\times 2}$, and $\operatorname{head}_2\in\R^{3\times 2}$ in the same way.
-- **Concatenate.** $\operatorname{Concat}(\operatorname{head}_1,\operatorname{head}_2)\in\R^{3\times 4}$, each row being $([\operatorname{head}_1]_{i,:},[\operatorname{head}_2]_{i,:})$.
-- **Project out.** $\operatorname{MHA}(\mathbf X) = \operatorname{Concat}(\cdots)\,\mathbf W^O\in\R^{3\times 4}$ with $\mathbf W^O\in\R^{4\times 4}$.
-
-The parameter count checks against <XRef id="prop-mha-params" />: the two heads contribute $2\times(3\ \text{matrices}\times 4\times 2) = 48$ and $\mathbf W^O$ contributes $4\times 4 = 16$, for $64 = 4d^2 = 4\cdot 16$. Each head attends in its own $2$-dimensional view of $\mathbf X$ — one might learn local adjacency, the other long-range similarity — and $\mathbf W^O$ blends the two perspectives into the $d$-dimensional output.
+MLA adds a point on a different axis: under the latent-only hypothesis its content cache is $nd_c$, even though all attention-head content keys and values may be rematerialized. The full model-level byte count follows by substituting the sum of all actually persisted widths into <XRef id="prop-kv-memory" />. DeepSeek-V2 reported a 93.3% KV cache reduction and raised maximum generation throughput to 5.76 times its baseline for the complete system <Cite key="deepseek2024v2" />; those empirical system figures are not derived from $d_c$ alone.
 
 ## Exercises
 
@@ -232,7 +230,7 @@ Attempt each before expanding its solution.
 
 **Exercise 5.1 (Prove).** Assuming $h\mid d$ and taking $d_k = d_v = d/h$, show the multi-head attention layer has exactly $4d^2$ parameters (excluding biases) and that this count is independent of $h$; identify which $h$-dependence cancels.
 
-<SolutionBox>
+<SolutionBox exercise="5.1">
 
 Take $d_k = d_v = d/h$. Each head holds $\mathbf W_i^Q,\mathbf W_i^K,\mathbf W_i^V$, each $d\cdot(d/h)$ entries, so one head has $3d^2/h$ parameters. Summing over $h$ heads the $h$ cancels: $h\cdot 3d^2/h = 3d^2$. The output projection $\mathbf W^O\in\R^{d\times d}$ adds $d^2$. Total $4d^2$, independent of $h$: each new head is correspondingly narrower ($d_k = d/h$), so per-head cost falls exactly as fast as head count rises. $\qquad\blacksquare$
 
@@ -240,7 +238,7 @@ Take $d_k = d_v = d/h$. Each head holds $\mathbf W_i^Q,\mathbf W_i^K,\mathbf W_i
 
 **Exercise 5.2 (Prove).** Show each head's $n\times n$ logit matrix $\mathbf Q_i\mathbf K_i^\top$ has rank at most $d_k$. Explain what this implies for a single head when $n > d_k$, and why concatenating several heads relaxes the limitation.
 
-<SolutionBox>
+<SolutionBox exercise="5.2">
 
 For one head $\mathbf Q_i,\mathbf K_i\in\R^{n\times d_k}$, so $\mathbf L_i = \mathbf Q_i\mathbf K_i^\top\in\R^{n\times n}$. By the rank-of-a-product inequality, $\operatorname{rank}(\mathbf L_i)\le\min(\operatorname{rank}\mathbf Q_i,\operatorname{rank}\mathbf K_i)\le d_k$. When $n > d_k$ this is below the maximal rank $n$, so a single head cannot realize an arbitrary full-rank interaction. Concatenating $h$ heads supplies $h$ independent rank-$\le d_k$ patterns, which $\mathbf W^O$ mixes and later layers compose. $\qquad\blacksquare$
 
@@ -248,23 +246,23 @@ For one head $\mathbf Q_i,\mathbf K_i\in\R^{n\times d_k}$, so $\mathbf L_i = \ma
 
 **Exercise 5.3 (Derive).** Use <XRef id="prop-kv-cache" /> to express the per-layer cache size for MHA, GQA($g$), and MQA, and state each as a fraction of the MHA cache. Then suppose the MLA case of <XRef id="def-mla" /> persists only a latent of width $d_c$: give its content-cache size and explain why it is not a specialization of the $g$-group curve.
 
-<SolutionBox>
+<SolutionBox exercise="5.3">
 
-One position in a materialized-head cache stores $h_kd_k+h_vd_v$ scalars and $n$ positions multiply this by $n$. For equal K/V head counts, MHA has $d_{\text{cache}}=h(d_k+d_v)$, GQA has $g(d_k+d_v)$, and MQA has $d_k+d_v$; their per-layer caches are therefore $nh(d_k+d_v)$, $ng(d_k+d_v)$, and $n(d_k+d_v)$. As fractions of MHA these are $1$, $g/h$, and $1/h$; MQA saves the cache by the full factor $h$. When $d_k=d_v$, the formulas simplify to $2nhd_k$, $2ngd_k$, and $2nd_k$. Under the stated latent-only MLA hypothesis, the content cache is instead $nd_c$. GQA changes how many materialized K/V head rows persist; MLA stores a shared upstream latent and rematerializes head content, so $d_c$ is not a choice of group count $g$. $\qquad\blacksquare$
+One position in a materialized-head cache stores $h_kd_k+h_vd_v$ scalars and $n$ positions multiply this by $n$. For equal key and value head counts, MHA has $d_{\text{cache}}=h(d_k+d_v)$, GQA has $g(d_k+d_v)$, and MQA has $d_k+d_v$; their per-layer caches are therefore $nh(d_k+d_v)$, $ng(d_k+d_v)$, and $n(d_k+d_v)$. As fractions of MHA these are $1$, $g/h$, and $1/h$; MQA saves the cache by the full factor $h$. When $d_k=d_v$, the formulas simplify to $2nhd_k$, $2ngd_k$, and $2nd_k$. Under the stated latent-only MLA hypothesis, the content cache is instead $nd_c$. GQA changes how many materialized key and value head rows persist; MLA stores a shared upstream latent and rematerializes head content, so $d_c$ is not a choice of group count $g$. $\qquad\blacksquare$
 
 </SolutionBox>
 
-**Exercise 5.4 (Compute).** For $d = 512$, $h = 8$ (so $d_k = d_v = 64$), trace the tensor shape of a batched input $(B, T, 512)$ through Q/K/V projection, the per-head split, per-head attention, concatenation, and the output projection, reporting the shape at each step.
+**Exercise 5.4 (Compute).** For $d = 512$, $h = 8$ (so $d_k = d_v = 64$), trace the tensor shape of a batched input $(B, T, 512)$ through the query, key, and value projections, the per-head split, per-head attention, concatenation, and the output projection, reporting the shape at each step.
 
-<SolutionBox>
+<SolutionBox exercise="5.4">
 
-With $d=512$, $h=8$, head width $64$. From $(B,T,512)$: Q/K/V projection $\to (B,T,512)$; per-head split (reshape $512 = 8\times64$, move head axis) $\to (B,8,T,64)$; scores $\mathbf Q\mathbf K^\top/\sqrt{64}\to(B,8,T,T)$, softmax weights $(B,8,T,T)$, times values $\to (B,8,T,64)$; concatenate $\to (B,T,512)$; output projection $\to (B,T,512)$. The layer is shape-preserving. $\qquad\blacksquare$
+With $d=512$, $h=8$, head width $64$. From $(B,T,512)$: query, key, and value projections $\to (B,T,512)$; per-head split (reshape $512 = 8\times64$, move head axis) $\to (B,8,T,64)$; scores $\mathbf Q\mathbf K^\top/\sqrt{64}\to(B,8,T,T)$, softmax weights $(B,8,T,T)$, times values $\to (B,8,T,64)$; concatenate $\to (B,T,512)$; output projection $\to (B,T,512)$. The layer is shape-preserving. $\qquad\blacksquare$
 
 </SolutionBox>
 
 **Exercise 5.5 (Construct).** Under the standard-width assumption $hd_k=hd_v=d$, give the GQA parameter count for $g$ groups as a function of $d$, $h$, and $g$, and verify it interpolates between the MHA value at $g = h$ and the MQA value at $g = 1$.
 
-<SolutionBox>
+<SolutionBox exercise="5.5">
 
 Because $hd_k=hd_v=d$, query and output projections are unchanged across variants, each $d^2$. Only K,V shrink with grouping: $g$ groups give $gd_kd+gd_vd=2(g/h)d^2$. Hence $P_{\text{GQA}}(g) = d^2 + 2\tfrac{g}{h}d^2 + d^2 = 2d^2 + 2\tfrac{g}{h}d^2$. At $g=h$ this is $4d^2$ (MHA); at $g=1$ it is $2d^2 + 2d^2/h$ (MQA); affine and increasing in $g$, it interpolates monotonically. $\qquad\blacksquare$
 

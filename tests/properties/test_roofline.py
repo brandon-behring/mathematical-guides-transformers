@@ -1,4 +1,4 @@
-"""Roofline cost-per-token equation — guards ``def-cost-eq`` and
+"""Roofline cost-per-token lower bound — guards ``def-cost-eq`` and
 ``prop-memory-bound`` (ch15, Inference Optimizations).
 
 The device finishes a decode step no faster than the slower of its two clocks:
@@ -10,8 +10,8 @@ import math
 import unittest
 
 
-def t_token(phi: float, beta: float, F: float, B: float) -> float:
-    """Cost-per-token lower bound ``max(Phi/F, beta/B)`` (def-cost-eq)."""
+def t_roof(phi: float, beta: float, F: float, B: float) -> float:
+    """Ideal roofline time ``max(Phi/F, beta/B)`` (def-cost-eq)."""
     return max(phi / F, beta / B)
 
 
@@ -43,9 +43,12 @@ class RooflineTests(unittest.TestCase):
         for F in (1e14, 5e14, 2e15):
             I = intensity(phi, beta)
             self.assertLess(I, ridge(F, B))
-            self.assertTrue(math.isclose(t_token(phi, beta, F, B), beta / B, rel_tol=1e-12))
-            throughput = phi / t_token(phi, beta, F, B)
-            self.assertTrue(math.isclose(throughput, B * I, rel_tol=1e-12))
+            roof = t_roof(phi, beta, F, B)
+            self.assertTrue(math.isclose(roof, beta / B, rel_tol=1e-12))
+            actual_time = 1.25 * roof
+            self.assertGreaterEqual(actual_time, roof)
+            self.assertLessEqual(phi / actual_time, B * I)
+            self.assertTrue(math.isclose(phi / roof, B * I, rel_tol=1e-12))
 
     def test_compute_bound_saturates_at_F(self):
         """Above the ridge the step is compute-bound: T = Phi/F."""
@@ -53,8 +56,8 @@ class RooflineTests(unittest.TestCase):
         phi = 3e12
         beta = 1e6
         self.assertGreater(intensity(phi, beta), ridge(F, B))
-        self.assertTrue(math.isclose(t_token(phi, beta, F, B), phi / F, rel_tol=1e-12))
-        self.assertTrue(math.isclose(phi / t_token(phi, beta, F, B), F, rel_tol=1e-12))
+        self.assertTrue(math.isclose(t_roof(phi, beta, F, B), phi / F, rel_tol=1e-12))
+        self.assertTrue(math.isclose(phi / t_roof(phi, beta, F, B), F, rel_tol=1e-12))
 
     def test_decode_intensity_collapses_to_order_one(self):
         """rem-prefill-decode: single-query matvec intensity is O(1)."""

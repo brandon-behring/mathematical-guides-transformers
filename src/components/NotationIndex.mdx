@@ -1,13 +1,15 @@
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 
-**Standing dimensions.** These symbols keep one meaning unless a chapter displays a notation-override box.
+### Standing dimensions
+
+These symbols keep one meaning unless a chapter displays a notation-override box.
 
 | Symbol | Meaning | Scope / first definition |
 |---|---|---|
 | $d$ | model dimension (embedding width) | guide-wide |
 | $n$ | sequence length (number of sequence elements) | guide-wide |
 | $h$ | number of attention query heads | Multi-Head Attention |
-| $d_k$ | key/query dimension per head (usually $d_k=d/h$) | Attention |
+| $d_k$ | query and key dimension per head (usually $d_k=d/h$) | Attention |
 | $d_v$ | value dimension per head | Attention |
 | $d_{\text{ff}}$ | feed-forward hidden dimension (often near $4d$) | The Transformer Block |
 | $\lvert\mathcal V\rvert$ | vocabulary size | guide-wide |
@@ -15,56 +17,67 @@ import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 | $d_s$ | recurrent or state-space state dimension | Recurrent Networks |
 | $p$ | image-patch side length | Input Representations |
 | $c$ | number of image channels | Input Representations; overridden where boxed |
-| $d_{\text{cache}}$ | scalar width persisted per token by one layer; materialized K/V uses $h_kd_k+h_vd_v$, while a latent cache is defined by what it actually persists | <XRef id="prop-kv-cache" /> |
+| $d_{\text{cache}}$ | scalar width persisted per token by one layer; materialized keys and values use $h_kd_k+h_vd_v$, while a latent cache is defined by what it actually persists | <XRef id="prop-kv-cache" /> |
 
 <div className="notation-print-break" aria-hidden="true" />
 
-**Repeated glyphs.** Each row is one symbol–referent pair. A repeated glyph is local to the scope named in the last column; bold and calligraphic forms remain distinct symbols.
+### Repeated glyphs
+
+Each row is one symbol–referent pair. A repeated glyph is local to the scope named in the last column; bold and calligraphic forms remain distinct symbols.
 
 | Symbol | Meaning | Scope |
 |---|---|---|
-| $\gamma$ | global derivative bound $\sup_z\lvert\varphi'(z)\rvert$ | RNN gradient bound (<XRef id="thm-gradient-bound" />) |
+| $\gamma$ | global derivative bound $\sup_z\lvert\varphi'(z)\rvert$ | recurrent neural network (RNN) gradient bound (<XRef id="thm-gradient-bound" />) |
 | $\boldsymbol\gamma$ | learned featurewise normalization scale | LayerNorm and RMSNorm (<XRef id="def-ln" />, <XRef id="rem-rmsnorm" />) |
-| $\gamma$ | fixed scalar recurrence decay | selective-state / retention derivations (<XRef id="thm-linattn-rnn" />) |
-| $\boldsymbol\gamma$ | learned per-channel WKV decay | Modern Recurrent & Hybrid (<XRef id="def-rwkv" />) |
+| $\gamma$ | fixed scalar recurrence decay | decayed linear-attention and retention derivations (<XRef id="thm-linattn-rnn" />) |
+| $\boldsymbol\gamma$ | learned per-channel weighted key–value (WKV) decay | Modern Recurrent and Hybrid (<XRef id="def-rwkv" />) |
 | $\gamma$ | learned scalar gate initialized at zero | gated cross-attention (<XRef id="def-gated-xattn" />) |
 | $\alpha_{tj}$ | additive-attention weight on encoder position $j$ at decoder step $t$ | Recurrent Networks (<XRef id="def-additive-attention" />) |
 | $\alpha$ | label-smoothing mass | Training (<XRef id="def-label-smoothing" />) |
 | $\alpha$ | per-draft acceptance probability | speculative-decoding cost model (<XRef id="prop-spec-speedup" />) |
-| $\alpha$ | entmax family parameter ($1$ = softmax, $2$ = sparsemax) | Sparse & Sub-Quadratic Attention |
-| $\boldsymbol\alpha_t$ | cumulative coordinatewise SSM decay | Selective State Spaces |
-| $\alpha_t$ | Gated DeltaNet state-decay gate | Modern Recurrent & Hybrid (<XRef id="cor-gated-deltanet" />) |
+| $\alpha$ | entmax family parameter ($1$ = softmax, $2$ = sparsemax) | Sparse and Sub-Quadratic Attention |
+| $\boldsymbol\alpha_t$ | cumulative coordinatewise decay in a selective state-space model | Selective State Spaces |
+| $\alpha_t$ | Gated DeltaNet state-decay gate | Modern Recurrent and Hybrid (<XRef id="cor-gated-deltanet" />) |
 | $\delta_{\mathrm{ret}}$ | positive target-score margin in a finite associative lookup | In-Context Learning (<XRef id="thm-associative-lookup" />) |
 | $\eta$ | step size in the controlled one-step linear-regression construction | In-Context Learning (<XRef id="prop-linear-attention-gd" />) |
 | $\tau(s)$ | reversible tokenizer map from normalized text to token IDs | Input Representations (<XRef id="def-text-tokenizer" />) |
 | $\tau>0$ | temperature that rescales logits or similarities | softmax, contrastive learning, sampling, and zero-shot evaluation (<XRef id="rem-softmax-temperature" />, <XRef id="def-contrastive" />, <XRef id="def-token-decoding" />, <XRef id="def-zeroshot" />) |
-| $\tau_i$ | continuous forgetting timescale of SSM mode $i$ | Linear Recurrences and SSMs (<XRef id="prop-gradient-timescale" />) |
-| $\tau$ | sparsemax simplex threshold | Sparse & Sub-Quadratic Attention (<XRef id="prop-sparsemax-support" />) |
+| $\tau_i$ | continuous forgetting timescale of state-space mode $i$ | Linear Recurrences and State-Space Models (<XRef id="prop-gradient-timescale" />) |
+| $\tau$ | sparsemax simplex threshold | Sparse and Sub-Quadratic Attention (<XRef id="prop-sparsemax-support" />) |
 
 <div className="notation-print-break" aria-hidden="true" />
 
-**Repeated glyphs (continued).**
+### Repeated glyphs (continued)
 
 | Symbol | Meaning | Scope |
 |---|---|---|
 | $K$ | number of categories in a generic softmax row | Notation (<XRef id="def-softmax" />) |
-| $K$ | number of codebook entries | Input Representations / Discrete Visual Tokenization (<XRef id="def-codebook" />) |
+| $K$ | number of codebook entries | Input Representations and Discrete Visual Tokenization (<XRef id="def-codebook" />) |
 | $K$ | number of stored checkpoints | gradient checkpointing (<XRef id="thm-checkpointing" />) |
-| $K$ | number of adapted matrices | LoRA accounting (<XRef id="def-lora" />) |
+| $K$ | number of adapted matrices | low-rank adaptation (LoRA) accounting (<XRef id="def-lora" />) |
 | $K$ | number of draft tokens proposed per speculative cycle | Inference Optimizations (<XRef id="def-spec-decode" />) |
-| $K$ | number of key–value pairs in a finite recall problem | Modern Recurrent & Hybrid (<XRef id="prop-state-recall" />) |
+| $K$ | number of key–value pairs in a finite recall problem | Modern Recurrent and Hybrid (<XRef id="prop-state-recall" />) |
 | $N$ | model parameter count | Scaling Laws and Practical Training Optimizations (<XRef id="def-separable-scaling-law" />, <XRef id="def-train-memory" />) |
 | $N$ | retrieval-pool size | Multimodal Evaluation (<XRef id="def-retrieval" />) |
+| $E$ | number of experts in the routed bank | mixture-of-experts (MoE) accounting (<XRef id="def-moe" />) |
 | $c$ | chunk size | Selective State Spaces (<XRef id="prop-chunked" />) |
 | $c$ | candidate or class index | Multimodal Evaluation |
-| $u$ | scalar input signal | Linear Recurrences and SSMs (<XRef id="def-ssm" />) |
+| $b$ | bytes used to store one cache or recurrent-state element | Inference Optimizations and Modern Recurrent and Hybrid (<XRef id="prop-kv-memory" />, <XRef id="prop-decode-state" />) |
+| $b$ | bits per stored context coordinate | Recurrent Networks (<XRef id="prop-seq2seq-fixed-vector-bottleneck" />) |
+| $\beta$ | bytes read by one decode step | Inference Optimizations (<XRef id="def-cost-eq" />) |
+| $\boldsymbol\beta$ | learned featurewise normalization shift | LayerNorm (<XRef id="def-ln" />) |
+| $\beta$ | vector-quantization commitment weight | Discrete Visual Tokenization (<XRef id="def-vq-loss" />) |
+| $\beta_t$ | fast-weight write strength | Modern Recurrent and Hybrid (<XRef id="def-delta" />) |
+| $u$ | scalar input signal | Linear Recurrences and State-Space Models (<XRef id="def-ssm" />) |
 | $u_t$ | scalar channel of token row $\mathbf x_t$ | Selective State Spaces (<XRef id="def-selective-ssm" />) |
 | $\mathbf e_k$ | $k$-th standard-basis (one-hot) vector | guide-wide default; Notation |
 | $\mathbf e_k$ | learned code vector in $\R^{d_c}$ | Discrete Visual Tokenization (<XRef id="def-codebook" />) |
 
 <div className="notation-print-break" aria-hidden="true" />
 
-**Scaling-fit and allocation quantities.** These are local to the empirical surrogate and its continuous constrained optimization.
+### Scaling-fit and allocation quantities
+
+These are local to the empirical surrogate and its continuous constrained optimization.
 
 | Symbol | Meaning | Scope |
 |---|---|---|
@@ -76,50 +89,54 @@ import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 | $\widehat C(N,D)$ | symbolic dense-training compute proxy $\kappa ND$ | Scaling Laws (<XRef id="def-training-compute-proxy" />) |
 | $\kappa,C>0$ | proxy factor and fixed proxy budget | Scaling Laws (<XRef id="def-training-compute-proxy" />) |
 | $\mathcal S_C$ | positive continuous allocations satisfying $\kappa ND=C$ | Scaling Laws (<XRef id="def-training-compute-proxy" />) |
-| $N^\star,D^\star$ | unique continuous compute-optimal parameter/token allocation | Scaling Laws (<XRef id="thm-compute-optimal-allocation" />) |
+| $N^\star,D^\star$ | unique continuous compute-optimal parameter–token allocation | Scaling Laws (<XRef id="thm-compute-optimal-allocation" />) |
 | $\gamma$ | optimal excess-loss exponent $\alpha\beta/(\alpha+\beta)$ | Scaling Laws (<XRef id="prop-optimal-excess-loss-rate" />) |
 
 <div className="notation-print-break" aria-hidden="true" />
 
-**Objective-specific distributions and scores.**
+### Objective-specific distributions and scores
 
 | Symbol | Meaning | Scope |
 |---|---|---|
 | $\mathcal D_{\mathrm{pref}}$ | dataset of same-prompt winner–loser preference triples | Preference Optimization (<XRef id="def-pairwise-preference-data" />) |
 | $\pi_\theta(y\mid x)$ | trainable policy probability of the whole completion $y$; the same conditional-model role written $p_\theta$ in Chapter 10 | Preference Optimization (<XRef id="thm-dpo-objective" />) |
 | $\pi_{\mathrm{ref}}(y\mid x)$ | frozen reference-policy completion probability | Preference Optimization (<XRef id="def-kl-regularized-reward-objective" />) |
-| $\pi_r(y\mid x)$ | exact exponential-tilt optimizer of the KL-regularized reward objective | Preference Optimization (<XRef id="thm-kl-regularized-policy-optimum" />) |
-| $r_\phi(x,y)$ | learned scalar reward for response $y$ to prompt $x$ | RLHF reward model (<XRef id="def-bradley-terry-preference" />) |
-| $\beta_{\mathrm{KL}}>0$ | forward-KL penalty coefficient; also the scale multiplying DPO's policy–reference gap under the unit-scale Bradley–Terry model | Preference Optimization (<XRef id="def-kl-regularized-reward-objective" />, <XRef id="thm-dpo-objective" />) |
+| $\pi_r(y\mid x)$ | exact exponential-tilt optimizer of the reward objective with Kullback–Leibler (KL) regularization | Preference Optimization (<XRef id="thm-kl-regularized-policy-optimum" />) |
+| $r_\phi(x,y)$ | learned scalar reward for response $y$ to prompt $x$ | reinforcement learning from human feedback (RLHF) reward model (<XRef id="def-bradley-terry-preference" />) |
+| $\beta_{\mathrm{KL}}>0$ | forward-KL penalty coefficient; also the scale multiplying the policy–reference gap in Direct Preference Optimization (DPO) under the unit-scale Bradley–Terry model | Preference Optimization (<XRef id="def-kl-regularized-reward-objective" />, <XRef id="thm-dpo-objective" />) |
 | $Z_r(x)$ | partition function normalizing the reward-tilted reference policy | Preference Optimization (<XRef id="thm-kl-regularized-policy-optimum" />) |
 | $s_\theta(x,y)$ | completion-level policy–reference log-ratio score | DPO (<XRef id="thm-dpo-objective" />) |
 | $\Delta_\theta$ | winner-minus-loser gap between completion-level policy–reference log ratios | DPO (<XRef id="thm-dpo-objective" />) |
 
 <div className="notation-print-break" aria-hidden="true" />
 
-**Column-vector switches.** Rows of $\mathbf X\in\R^{n\times d}$ are the default. The following scopes temporarily use columns so left-acting matrices, Jacobians, or outer products have their conventional orientation.
+### Column-vector switches
+
+Rows of $\mathbf X\in\R^{n\times d}$ are the default. The following scopes temporarily use columns so left-acting matrices, Jacobians, or outer products have their conventional orientation.
 
 | Scope | Objects treated as columns | Reason |
 |---|---|---|
-| Softmax Jacobian | $\mathbf z,\mathbf p$ | $\mathbf J$ acts by left multiplication and $\mathbf p\mathbf p^\top$ is an outer product |
-| LayerNorm/RMSNorm Jacobians | $\mathbf x,\hat{\mathbf x},\boldsymbol\gamma,\mathbf 1$ | normalization acts on token rows, but Jacobians act on columns and use outer products |
-| Positional-rotation derivations | RoPE queries/keys and 2D rotation pairs | rotations act as $\mathbf R\mathbf x$; transpose returns to row form |
+| Softmax Jacobian and Exercises 0.1–0.2 | $\mathbf z,\mathbf p$ | $\mathbf J$ acts by left multiplication and $\mathbf p\mathbf p^\top$ is an outer product |
+| LayerNorm and RMSNorm Jacobians | $\mathbf x,\hat{\mathbf x},\boldsymbol\gamma,\mathbf 1$ | normalization acts on token rows, but Jacobians act on columns and use outer products |
+| Rotary position embedding (RoPE) and its relative-position proof | query and key vectors, and 2D rotation pairs | rotations act as $\mathbf R\mathbf x$; transpose returns to row form |
 | Recurrent Networks | inputs, hidden states, and gate states | time Jacobians act by left multiplication |
-| Linear Recurrences and SSMs | state $\statevec$ (with $\inputmat$ a column and $\outputmat$ a row) | standard control-theory orientation |
+| Linear Recurrences and State-Space Models | state $\statevec$ (with $\inputmat$ a column and $\outputmat$ a row) | standard control-theory orientation |
 | Linear-attention derivation | $\phi(\mathbf k_j),\mathbf v_j$ | $\phi(\mathbf k_j)\mathbf v_j^\top$ is a $D\times d_v$ outer product |
-| In-Context Learning regression construction | $\mathbf x_i,\mathbf x_\star,\mathbf w$ | gradients and dot-product kernel reads use the conventional column-vector orientation |
-| MoE gradient calculus | gradient vectors | $\nabla_{\mathbf W_r}\mathcal L=\mathbf x^\top(\nabla_{\mathbf s}\mathcal L)^\top$ |
-| Selective State Spaces | state/write/read vectors; feature/value vectors in the linear-attention subsection | left-acting recurrence and matrix-state outer products |
-| Modern Recurrent & Hybrid | query, key, value, and recurrent-state vectors | outer-product state updates |
+| Controlled linear-regression construction | $\mathbf x_i,\mathbf x_\star,\mathbf w$ | gradients and dot-product kernel reads use the conventional column-vector orientation |
+| Mixture-of-experts (MoE) router gradient calculus | gradient vectors | $\nabla_{\mathbf W_r}\mathcal L=\mathbf x^\top(\nabla_{\mathbf s}\mathcal L)^\top$ |
+| Selective State Spaces | state, write, and read vectors; feature and value vectors in the linear-attention subsection | left-acting recurrence and matrix-state outer products |
+| Modern Recurrent and Hybrid | query, key, value, and recurrent-state vectors | outer-product state updates |
 
 <div className="notation-print-break" aria-hidden="true" />
 
-**Standing operators.** Each is defined once, in the chapter named.
+### Standing operators
+
+Each is defined once, in the chapter named.
 
 | Operator | Meaning | Defined in |
 |---|---|---|
 | $\softmax(\mathbf z)$ | normalized exponential | Notation (<XRef id="def-softmax" />) |
-| $\Emb(u)$ | embedding map $\mathcal U\to\R^{d}$ from a raw unit to a model vector | Notation / Input Representations |
+| $\Emb(u)$ | embedding map $\mathcal U\to\R^{d}$ from a raw unit to a model vector | Notation and Input Representations |
 | $\operatorname{PE}(t)$ | positional encoding at index $t$ (or grid index $(a,b)$) | Input Representations |
 | $\operatorname{Attn}(\mathbf Q,\mathbf K,\mathbf V)$ | scaled dot-product attention | Attention |
 | $\operatorname{MHA}(\mathbf X)$ | multi-head attention after the $\mathbf W^O$ projection | Multi-Head Attention |
@@ -127,6 +144,6 @@ import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 | $\operatorname{LN}(\mathbf x)$ | layer normalization | The Transformer Block (<XRef id="def-ln" />) |
 | $\operatorname{RMSNorm}(\mathbf x)$ | root-mean-square normalization without mean subtraction | The Transformer Block (<XRef id="rem-rmsnorm" />) |
 | $\mathbf M$ | additive causal attention mask | Attention (<XRef id="def-causal-mask" />) |
-| $(\statemat,\inputmat,\outputmat,\feedmat),\Delta$ | continuous state-space quadruple and step size | Linear Recurrences and SSMs (<XRef id="def-ssm" />) |
-| $(\discA,\discB)$ | zero-order-hold discretized state matrices | Linear Recurrences and SSMs (<XRef id="thm-zoh" />) |
-| $\bullet$ | associative scan operator on affine pairs | Linear Recurrences and SSMs (<XRef id="def-scan-op" />) |
+| $(\statemat,\inputmat,\outputmat,\feedmat),\Delta$ | continuous state-space quadruple and step size | Linear Recurrences and State-Space Models (<XRef id="def-ssm" />) |
+| $(\discA,\discB)$ | zero-order-hold discretized state matrices | Linear Recurrences and State-Space Models (<XRef id="thm-zoh" />) |
+| $\bullet$ | associative scan operator on affine pairs | Linear Recurrences and State-Space Models (<XRef id="def-scan-op" />) |

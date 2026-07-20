@@ -7,8 +7,9 @@ recurrence and linear state → transformer architectures and objectives → eff
 computation → sub-quadratic and selective sequence models → multimodal models.
 
 ## Numbering contract
-The 24 chapters occupy every final display number from 00 through 23. Keep each frontmatter `slug`
-number-free: filenames and `chapter:` values carry display order, while existing URLs remain stable.
+The 24 chapters occupy every final display number from 0 through 23. Keep each frontmatter `slug`
+number-free: zero-padded filenames and unpadded `chapter:` values carry source and display order,
+while existing URLs remain stable.
 
 ## Authoring contract
 Follow `~/Claude/mathematical-guides/docs/style-guide-formal-v0.3.md`: motivated Definition–Theorem–Proof;
@@ -16,11 +17,14 @@ intuition-first; **structured proofs read inline** (appendix only for the longes
 typography conventions; disciplined notation; **faded/optional** worked examples; `<Theorem kind=...>`
 + slim margins; first-person "we"; cite primary sources.
 
-Chapter 00's shared `NotationIndex.mdx` is the notation source of truth. Put any chapter-local symbol
+Chapter 0's shared `NotationIndex.mdx` is the notation source of truth. Put any chapter-local symbol
 reuse or row-to-column orientation switch in `NotationOverride.astro`; update the shared index when a
 new recurring meaning is introduced. Add reader-facing terminology as one entry per file under
 `src/content/glossary/`. Keep the compact lookup in `QuickReference.mdx` derived from the shared index,
 not as a separately maintained notation table.
+
+The reader-facing consistency contract is `docs/notation-style-terminology.md`. Apply it to chapters,
+frontmatter, glossary entries, and quick-reference apparatus, then run `npm run test:polish`.
 
 ## Schema
 `src/content.config.ts` registers chapters with
@@ -47,9 +51,9 @@ namespaces pdftocairo's generic internal IDs before inlining, which prevents cro
 - Modify `~/course_learning/transformer_mathematics` — frozen LaTeX source.
 
 ## Family macros
-KaTeX macros (`\R \Z \N \E \Var \norm \inner \defeq`) inline-duplicated in `astro.config.mjs` from the
-hub's canonical `shared/styles/mathematical-guides-family.ts`. The SSM semantic macros
+KaTeX macros (`\R \Z \N \E \Var \norm \inner \defeq \softmax \Emb \sg`) inline-duplicated in `astro.config.mjs` from the
+hub's canonical `shared/styles/mathematical-guides-family.ts`. The state-space model (SSM) semantic macros
 (`\statevec \statemat \inputmat \outputmat \feedmat \discA \discB`, rendering as bold `h A B C D` and
 `Ā B̄`) are pinned to `\mathbf` typography as top-level consumer overrides in `astro.config.mjs` — they
 win over the scaffold-injected `ssmMacros` (forward-compatible with scaffold #177). State dimension is
-`d_s`, step size `\Delta`, scan operator `\bullet`, elementwise `\odot`; never `\seqlen/\statedim/\inputdim`.
+`d_s`, step size `\Delta`, scan operator `\bullet` (including `\scanop`), elementwise `\odot`; never `\seqlen/\statedim/\inputdim`.

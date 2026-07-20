@@ -5,4 +5,4 @@ see: [resident-parameters, activated-arithmetic]
 tags: [systems, roofline, mixture-of-experts]
 ---
 
-The ideal lower-bound weight traffic for the distinct experts used by one served batch. If $\mathcal A_B$ is the union of routed experts, $A_B=|\mathcal A_B|$, and each expert occupies $\mu_{\mathrm{FFN}}$ bytes, the once-read idealization is $A_B\mu_{\mathrm{FFN}}$. Actual traffic may be higher because of cache capacity, tiling, repeated loads, or communication.
+The ideal lower-bound weight traffic for the distinct experts that execute at least one assignment in a served batch. If $\mathcal A_B$ is that union of executed experts — when no assignment is dropped, this coincides with the routed union $\bigcup_t \mathcal S_t$ of the chapter's definition — $A_B=|\mathcal A_B|$, and each expert occupies $\mu_{\mathrm{FFN}}$ bytes, the once-read idealization is $A_B\mu_{\mathrm{FFN}}$. Actual traffic may be higher because of cache capacity, tiling, repeated loads, or communication.

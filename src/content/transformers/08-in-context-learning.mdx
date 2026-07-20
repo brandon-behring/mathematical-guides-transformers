@@ -3,7 +3,7 @@ title: "In-Context Learning"
 slug: in-context-learning
 chapter: 8
 part: 3
-description: "In-context learning as fixed-parameter forward-pass computation: a sharp softmax associative-retrieval bound, a two-stage induction construction, an exact one-step linear-regression gradient-descent construction, and the boundary between representability and learned mechanism."
+description: "Shows through constructive examples how fixed transformer parameters retrieve prompt values, approximate an induction pattern, and reproduce one linear-regression gradient step while separating capability from learned mechanism."
 last_verified: 2026-07-13
 rigor_level: rigorous
 prerequisites: [notation, attention, transformer-block, architecture-composition]
@@ -21,22 +21,20 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
+import MarginNote from '../../components/MarginNote.astro';
 import Figure from '../../components/Figure.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 import NotationOverride from '../../components/NotationOverride.astro';
 
-# In-Context Learning
-
-**Where we are.** A decoder-only transformer has no separate encoder from which to draw task information: the prompt itself is its conditioning channel (<XRef id="def-decoder-only" />). That observation raises a sharper question. How can a network whose trained parameters remain fixed use examples in the prompt to change what it predicts at a later query? We answer constructively at three scales. First, one softmax row retrieves a value from a key–value memory, with error exponentially small in a score margin. Second, two stages compose previous-token addressing with that retrieval to implement the vanilla induction pattern $[A][B]\ldots[A]\mapsto[B]$. Third, an unnormalized linear-attention layer computes exactly the prediction made by one gradient step on a controlled linear-regression prompt. The constructions prove **what the architecture can represent**; the final remarks keep that separate from **what a trained model actually learned**.
+**Where we are.** A decoder-only transformer uses the prompt itself as its conditioning channel (<XRef id="def-decoder-only" />). The resulting question is how fixed trained parameters can make different predictions after reading new examples. We answer with three constructions. A softmax row retrieves a value from key–value memory with error controlled by its score margin. A two-stage circuit combines previous-token addressing with finite-margin retrieval to approximate a basic induction pattern. Finally, unnormalized linear attention reproduces the prediction from one gradient step on a controlled linear-regression prompt. These results establish representational capability; they do not show which mechanism training discovers.
 
 <Figure
   src="/figures/induction-copy.svg"
-  alt="A two-stage induction circuit on A, B, C, A: the first stage exposes each token's predecessor, and the second stage matches the final A to the earlier A and approximately reads a B-dominated mixture."
-  desc="A unique-match trace for the sequence A, B, C, A. Stage 1 shifts predecessor identity into an auxiliary slot: the candidate carrying successor B is keyed by predecessor A, while the candidate carrying successor C is keyed by predecessor B. Stage 2 queries with the final A, assigns the A-keyed candidate the larger finite-margin softmax weight, and approximately copies B. A qualification below the circuit states that equal repeated matches mix their successor values and that finite logits do not produce an exact hard or latest-match copier."
-  caption="The induction copy construction. In the unique-match trace [A][B][C][A], a previous-token stage exposes predecessor–successor pairs and, at λ = log 9, a finite-margin softmax stage returns 0.9B + 0.1C. When several earlier occurrences match equally, vanilla induction mixes their successor values rather than selecting one. This is a representability construction, not a claim that a trained model learned this mechanism."
+  alt="A two-stage induction circuit first exposes predecessors, then uses finite-margin lookup to return a mixture dominated by the successor of an earlier matching token."
+  desc="For the sequence A, B, C, A, the first stage pairs each successor with its predecessor. The second stage queries with the final A, gives the A-keyed candidate the larger softmax weight, and returns a mixture dominated by B. A note states that equal matches mix their successors."
+  caption="A previous-token stage exposes predecessor–successor pairs; finite-margin lookup then retrieves a B-dominated mixture for the final A. Equal earlier matches mix their successors, so this is neither a hard nor latest-match copier."
   id="fig-induction-copy"
   width="92%"
 />
@@ -207,7 +205,7 @@ $$
 which is the stated bound. Since $e^{-\lambda}\to0$, $A_t\to1$ and the error tends to zero. $\qquad\blacksquare$
 </Theorem>
 
-The theorem deliberately idealizes the first stage as an exact one-position shift, then makes the second stage's finite-softmax approximation explicit. A source-level result closes that architectural gap for the finite-softmax target: Wang et al. construct a width-$2d$, two-layer, single-head transformer **without feed-forward sublayers** whose first layer uses relative positional bias to approximate the previous-token shift and whose second layer uses dot-product similarity to read the successor <Cite key="wang2024rich" />. In their error metric the approximation is bounded by $Ce^{-p}$ for positional-bias scale $p$, uniformly over sequence length. “Sequence-length-independent” describes this approximation efficiency—not constant runtime or memory, arbitrary length generalization learned from data, or robustness. The result is an existence construction, not a claim that training discovers those weights.
+The theorem deliberately idealizes the first stage as an exact one-position shift, then makes the second stage's finite-softmax approximation explicit. A source-level result closes that architectural gap for the finite-softmax target: Wang et al. construct a width-$2d$, two-layer, single-head transformer **without feed-forward sublayers** whose first layer uses relative positional bias to approximate the previous-token shift and whose second layer uses dot-product similarity to read the successor <Cite key="wang2024rich" />. In their error metric the approximation is bounded by $Ce^{-p}$ for positional-bias scale $p$, uniformly over sequence length. “Sequence-length-independent” describes this approximation efficiency — not constant runtime or memory, arbitrary length generalization learned from data, or robustness. The result is an existence construction, not a claim that training discovers those weights.
 
 ### A complete trace
 
@@ -342,9 +340,9 @@ $$
 \operatorname{LA}\bigl(\mathbf x_\star;\{(\mathbf x_1,1),(\mathbf x_2,3/2)\}\bigr)
 =0\cdot1+1\cdot\frac32=\frac32.
 $$
-The residual base prediction is $\mathbf x_\star^\top\mathbf w_0=0$, and the two routes agree exactly. Unlike the induction trace, the coefficient $0$ is an unnormalized dot product—not a softmax probability.
+The residual base prediction is $\mathbf x_\star^\top\mathbf w_0=0$, and the two routes agree exactly. Unlike the induction trace, the coefficient $0$ is an unnormalized dot product — not a softmax probability.
 
-This algebra is the one-step core of the explicit linear-self-attention construction of von Oswald et al. <Cite key="vonoswald2022gradient" />. Their exact construction is a one-head **linear** attention data transformation with block-coded $(\mathbf x,y)$ tokens and context-only key/value memory; including the query in full self-attention requires an additional zero-initialization qualification. Akyürek et al. give broader standard-transformer constructions for gradient-based and closed-form ridge-regression predictors <Cite key="akyurek2022algorithm" />. Both sources study controlled linear-model prompts; neither licenses replacing “can implement” by “every pretrained language model implements.”
+This algebra is the one-step core of the explicit linear-self-attention construction of von Oswald et al. <Cite key="vonoswald2022gradient" />. Their exact construction is a one-head **linear** attention data transformation with block-coded $(\mathbf x,y)$ tokens and context-only key–value memory; including the query in full self-attention requires an additional zero-initialization qualification. Akyürek et al. give broader standard-transformer constructions for gradient-based and closed-form ridge-regression predictors <Cite key="akyurek2022algorithm" />. Both sources study controlled linear-model prompts; neither licenses replacing “can implement” by “every pretrained language model implements.”
 
 <Theorem kind="remark" name="Construction is not learned mechanism" id="rem-construction-not-mechanism">
 The three results in this chapter answer **representability** questions:
@@ -366,7 +364,7 @@ Attempt each before expanding its solution.
 
 **Exercise 8.1 (Compare).** A model receives four labeled examples, makes a prediction, and then an optimizer applies backpropagation to change $\theta$. Which portion is in-context learning under <XRef id="def-in-context-learning" />, and which is ordinary training?
 
-<SolutionBox>
+<SolutionBox exercise="8.1">
 
 The forward pass that reads the four demonstrations and forms a prediction with $\theta$ fixed is in-context learning, provided changing the demonstrations can change that prediction. The subsequent backpropagation and optimizer step is ordinary training because it changes $\theta$. The same episode can contain both processes, but they occupy different time intervals and update different state: activations first, parameters second.
 
@@ -374,7 +372,7 @@ The forward pass that reads the four demonstrations and forms a prediction with 
 
 **Exercise 8.2 (Compute).** One target competes with four distractors, so $m=5$. Let $\delta_{\mathrm{ret}}=\log36$ and $\norm{\mathbf v_i}\le1$. Use <XRef id="thm-associative-lookup" /> to bound the target weight and retrieval error.
 
-<SolutionBox>
+<SolutionBox exercise="8.2">
 
 Here $(m-1)e^{-\delta_{\mathrm{ret}}}=4/36=1/9$. Therefore
 $$
@@ -388,7 +386,7 @@ The guarantee is worst-case: aligned distractor values may give a smaller actual
 
 **Exercise 8.3 (Derive).** Suppose $r\ge1$ of $c$ candidates tie at top score $s_\star$, every nonmatch scores at most $s_\star-\delta_{\mathrm{ret}}$, and the desired output is the uniform average of the $r$ matching values. Assuming all value norms are at most $M$, derive a retrieval-error bound.
 
-<SolutionBox>
+<SolutionBox exercise="8.3">
 
 If $r=c$, every candidate matches, so $A=1$, $\mathbf y=\mathbf u$, and the error is zero. Suppose now that $r<c$. The matching candidates have total unnormalized mass $re^{s_\star}$; the nonmatches have mass at most $(c-r)e^{s_\star-\delta_{\mathrm{ret}}}$. Thus the matching mass $A$ satisfies
 $$
@@ -406,7 +404,7 @@ This is <XRef id="thm-induction-construction" />'s estimate with $M=1$ and exact
 
 **Exercise 8.4 (Trace).** Compute $\mathcal J_7$ and $\operatorname{Ind}_7$ for $[A,B,A,C,D,A,A]$. Explain why the final $A$ is not used as its own candidate successor.
 
-<SolutionBox>
+<SolutionBox exercise="8.4">
 
 At $t=7$, the current token is $A$. Eligible successor positions are $j\in\{2,3,4,5,6\}$. Their predecessor–successor pairs are
 $$
@@ -422,7 +420,7 @@ The range ends at $t-1=6$: position $7$ is the query, not an earlier successor w
 
 **Exercise 8.5 (Derive).** First specialize <XRef id="prop-linear-attention-gd" /> to one dimension with $w_0=0$. Then take demonstrations $(x_1,y_1)=(1,2)$ and $(x_2,y_2)=(2,1)$, $\eta=1/2$, and query $x_\star=3$, and compute the one-step prediction by both routes.
 
-<SolutionBox>
+<SolutionBox exercise="8.5">
 
 In one dimension with $w_0=0$, the proposition reduces to
 $$
@@ -451,7 +449,7 @@ The two routes agree exactly.
 
 **Exercise 8.6 (Analyze).** A report states: "Because a two-layer transformer can approximate induction and a linear-attention layer can realize one regression gradient step, large pretrained transformers perform all in-context learning by gradient descent through induction heads." Identify three unsupported jumps and rewrite the conclusion at the evidence level established here.
 
-<SolutionBox>
+<SolutionBox exercise="8.6">
 
 First, **representability is not acquisition**: existence of suitable weights does not show training finds them. Second, the exact gradient-step identity is for a controlled squared-loss regression problem and unnormalized linear attention, not arbitrary softmax language modeling. Third, induction-head evidence is strong and causal only in small attention-only models in the cited study; evidence for larger MLP models is correlational, and neither source proves universality over all in-context behavior.
 

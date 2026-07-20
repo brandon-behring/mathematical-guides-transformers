@@ -1,6 +1,6 @@
 {
   "name": "mathematical-guides-transformers",
-  "description": "Transformer Mathematics: a formal Definition-Theorem-Proof treatment of sequence models, from recurrent networks and state space models through attention and transformers to hybrid architectures and vision-language. A mathematical-guides family sibling; deploys to /transformers/.",
+  "description": "Transformer Mathematics: a formal Definition–Theorem–Proof treatment of sequence models, from recurrent networks and state-space models through attention and transformers to hybrid architectures and vision–language models. A mathematical-guides family sibling; deploys to /transformers/.",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -19,6 +19,7 @@
     "update:property-coverage": "node scripts/check-property-coverage.mjs --write",
     "test:figure-svg": "node --test tests/figure_svg_ids.test.mjs",
     "test:print-html": "node --test tests/print_html_ids.test.mjs",
+    "test:polish": "node --test tests/content_polish.test.mjs",
     "test:bpe": "node --test tests/bpe.test.mjs",
     "test:properties": "python3 -m unittest discover -s tests/properties -p 'test_*.py' -v",
     "prevalidate": "npm run build:bib --if-present && npm run build:labels --if-present",
@@ -41,6 +42,7 @@
   },
   "devDependencies": {
     "pagedjs-cli": "^0.4.3",
+    "pdf-lib": "^1.17.1",
     "puppeteer": "^20.9.0",
     "start-server-and-test": "^3.0.2"
   }

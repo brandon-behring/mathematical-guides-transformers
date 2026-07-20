@@ -3,10 +3,10 @@ title: "Practical Training Optimizations"
 slug: training-optimizations
 chapter: 14
 part: 4
-description: "The algebra behind production training tools: the training-memory equation, mixed precision as a numerical dynamic-range argument, gradient checkpointing as a memory–compute tradeoff (Theta(sqrt(L)) memory for one extra forward pass), LoRA as a low-rank update with a 2r/d parameter reduction, and ZeRO/FSDP as a 1/P memory partition."
+description: "Accounts for training memory and derives how mixed precision, gradient checkpointing, low-rank adapters, and distributed sharding trade numerical range, recomputation, trainable state, and communication."
 last_verified: 2026-07-13
 rigor_level: rigorous
-prerequisites: [notation, attention, scaling-laws]
+prerequisites: [notation, attention, training, scaling-laws]
 notation_introduced: ['M_{\text{train}}', 'b_p', 'b_g', 'b_o', 'b_a', 'P', 'L', '\Delta\mathbf W']
 theorems: ['def-train-memory', 'prop-fp32-adam', 'def-mixed-precision', 'prop-mixed-precision', 'thm-checkpointing', 'def-lora', 'prop-lora-savings', 'def-zero', 'prop-zero-memory']
 los:
@@ -23,16 +23,14 @@ los:
 ---
 
 import Theorem from '@brandon_m_behring/book-scaffold-astro/components/Theorem.astro';
-import MarginNote from '@brandon_m_behring/book-scaffold-astro/components/MarginNote.astro';
-import Sidenote from '@brandon_m_behring/book-scaffold-astro/components/Sidenote.astro';
+import MarginNote from '../../components/MarginNote.astro';
+import Sidenote from '../../components/Sidenote.astro';
 import Cite from '@brandon_m_behring/book-scaffold-astro/components/Cite.astro';
 import XRef from '@brandon_m_behring/book-scaffold-astro/components/XRef.astro';
 import NotationOverride from '../../components/NotationOverride.astro';
 import SolutionBox from '../../components/SolutionBox.astro';
 
-# Practical Training Optimizations
-
-**Where we are.** Chapter 13 allocated a symbolic training-compute budget between parameter count and seen tokens. This chapter asks whether the chosen training run fits on actual devices. Every production training tool one hears named — mixed precision, gradient checkpointing, LoRA, ZeRO/FSDP — is, mathematically, an algebraic transformation of one specific term in a single equation: the memory a stochastic optimizer needs to train a model. We state that equation first, fixing the bytes-per-quantity that each term carries; then we walk each tool through it. Mixed precision shrinks the bytes per parameter and gradient by a dynamic-range argument; gradient checkpointing shrinks the activation count by trading memory for recomputation, and we prove the $\Theta(\sqrt{L})$ optimum exactly; LoRA collapses the trainable-parameter count to a low-rank adapter, with a parameter saving we state as a proposition; and ZeRO/FSDP partitions every term across $P$ workers, with per-worker memory and communication we compute term by term.
+**Where we are.** Scaling laws allocate a training-compute budget between parameters and tokens; this chapter asks whether that run fits on available devices. We begin with one memory equation separating parameters, gradients, optimizer state, and activations. Four techniques then modify distinct terms. Mixed precision changes storage width while preserving high-precision optimizer state. Gradient checkpointing trades recomputation for fewer saved activations. Low-rank adaptation (LoRA) restricts updates to small adapters, reducing trainable parameters and optimizer state. ZeRO and Fully Sharded Data Parallel (FSDP) shard state across workers but introduce communication. Reading the binding term before selecting a technique keeps these tradeoffs explicit.
 
 <NotationOverride scope="Practical Training Optimizations">
 $N$ continues to mean model **parameter count** as in Scaling Laws (<XRef id="def-separable-scaling-law" />), overriding the standing block-count meaning. Here $L$ is depth in transformer blocks.
@@ -40,7 +38,7 @@ $N$ continues to mean model **parameter count** as in Scaling Laws (<XRef id="de
 
 ## The training-memory equation
 
-A forward-only inference run needs memory only for the parameters. Training is dramatically heavier: the optimizer stores a gradient and per-parameter moments, and the backward pass must re-read the activations the forward pass cached. The first move is to collect every contribution into one equation, so that each later tool can be read as an edit to one of its terms.
+A forward-only inference run avoids gradients, optimizer state, and activations saved for backward, but it still needs transient activations, workspace, and often a KV cache in addition to the parameters. Training is dramatically heavier: the optimizer stores gradients and per-parameter moments, and the backward pass must re-read activations cached by the forward pass. The first move is to collect every training contribution into one equation, so that each later tool can be read as an edit to one of its terms.
 
 <Theorem kind="definition" name="Training-memory equation" id="def-train-memory">
 For a model of $N$ parameters trained by a stochastic optimizer, the total per-worker training memory decomposes as
@@ -81,7 +79,7 @@ The constant $16N$ is the unit of account for the rest of the chapter: a $70$B m
 The $16N$ figure covers only the master-copy block; the activation term $A\,b_a$ is separate and frequently dominates. A coarse *floor* without checkpointing is $A\,b_a \approx L\, n\, d\, b_a$ per microbatch element, so for $L = 80$, $n = d = 8192$, $b_a = 2$ (bf16) the activations already reach $\approx 11$ GB per element before the per-block scratch factor (several-fold for the feed-forward and attention intermediates). At realistic batch sizes the activation term can exceed the $16N$ baseline — which is exactly what gradient checkpointing exists to attack.
 </Theorem>
 
-## Mixed precision: smaller $b_p$ and $b_g$
+## Mixed precision and numerical range
 
 The cheapest term to attack is the bytes per element. FP32 spends $4$ bytes per scalar; the $16$-bit formats spend $2$. But halving precision naively breaks training: a $16$-bit float with too few exponent bits cannot represent the small magnitudes that gradient-moment updates produce, and they underflow to zero. Mixed precision is the construction that takes the speed of $16$-bit arithmetic while keeping a high-precision copy where the numerics demand it.
 
@@ -89,7 +87,7 @@ The cheapest term to attack is the bytes per element. FP32 spends $4$ bytes per 
 **Mixed-precision training** <Cite key="micikevicius2018mixed" /> maintains an FP32 *master copy* of the parameters, casts a $2$-byte working copy (bf16 or fp16) for every forward and backward pass, and casts gradients back to FP32 before the optimizer update. The Adam first- and second-moment buffers remain FP32 throughout.
 </Theorem>
 
-<MarginNote variant="pattern" label="bf16 vs fp16">bf16 keeps FP32's $8$-bit exponent and trades mantissa down to $7$ bits; fp16 keeps $10$ mantissa bits but only a $5$-bit exponent. Pick bf16 for dynamic range, fp16 only when the kernel ecosystem forces it.</MarginNote>
+<MarginNote variant="pattern" label="bf16 vs fp16">bf16 preserves FP32's exponent range. fp16 offers more mantissa precision but a narrower range, so bf16 is often the safer default when hardware and kernels support it; validate the choice for the workload.</MarginNote>
 
 The qualitative reason bf16 is the safer default is a statement about dynamic range — which bits a format spends on magnitude versus precision.
 
@@ -102,7 +100,7 @@ The two 16-bit formats below store the same 16 bits but allocate them differentl
 | fp16 | 1 | 5 | 10 |
 | bf16 | 1 | 8 | 7 |
 
-Normal and subnormal ranges must be distinguished. fp16's smallest positive **normal** number is $2^{-14}\approx 6.10\times10^{-5}$, while its smallest positive **subnormal** is $2^{-24}\approx5.96\times10^{-8}$. Values below the normal floor have reduced precision, and accelerator kernels may flush subnormals to zero; small gradients can therefore vanish during fp16 backward arithmetic or fp16 gradient transport before they are converted to FP32. bf16 keeps FP32's $8$-bit exponent (hence essentially FP32's dynamic range) and pays for it in mantissa precision, so this transport problem is far less acute. fp16 training therefore uses *loss scaling* — multiply the loss by a power of two before backprop, then unscale after the gradients have safely reached FP32 — to protect the backward/transport path. It does **not** protect Adam's moment buffers: under <XRef id="def-mixed-precision" /> those moments and their update already remain FP32.
+Normal and subnormal ranges must be distinguished. fp16's smallest positive **normal** number is $2^{-14}\approx 6.10\times10^{-5}$, while its smallest positive **subnormal** is $2^{-24}\approx5.96\times10^{-8}$. Values below the normal floor have reduced precision, and accelerator kernels may flush subnormals to zero; small gradients can therefore vanish during fp16 backward arithmetic or fp16 gradient transport before they are converted to FP32. bf16 keeps FP32's $8$-bit exponent (hence essentially FP32's dynamic range) and pays for it in mantissa precision, so this transport problem is far less acute. fp16 training therefore uses *loss scaling* — multiply the loss by a power of two before backprop, then unscale after the gradients have safely reached FP32 — to protect the backward and transport path. It does **not** protect Adam's moment buffers: under <XRef id="def-mixed-precision" /> those moments and their update already remain FP32.
 </Theorem>
 
 The memory consequence is quantitative, and the surprise is that it is smaller than "$16$-bit, so half the memory" suggests: the FP32 master copy and FP32 Adam state stay put.
@@ -129,8 +127,8 @@ Summing gives $6N + 2N + 8N = 16N$. Activations cast to bf16 use $b_a = 2$, half
 
 So mixed precision leaves the master-copy block at $16N$ — the working copy's extra $2N$ is exactly offset by the gradients dropping from $4N$ to $2N$ — while halving activations. Its memory win is the activation term, not the master-copy block; its decisive win is elsewhere.
 
-<Theorem kind="remark" name="The dominant gain is throughput, not memory" id="rem-throughput">
-The operational reason mixed precision is universal is hardware throughput, not the modest memory change above. Tensor-core accelerators run $16$-bit GEMMs roughly an order of magnitude faster than FP32 GEMMs, because the matrix-multiply units are $16$-bit-native. The wall-time saving frequently matters more than the memory, since it permits larger batches within a fixed token budget. The memory accounting of <XRef id="prop-mixed-precision" /> is honest, but it understates why the technique is non-optional.
+<Theorem kind="remark" name="The dominant gain is often throughput on supported hardware" id="rem-throughput">
+On accelerators with native low-precision matrix units and suitable kernels, mixed precision often delivers a larger throughput gain than its modest master-copy memory change suggests. The speedup relative to FP32 depends on the device, datatype, kernel shapes, and whether another bottleneck binds; it is not a universal order-of-magnitude factor. In supported regimes, the wall-time saving can matter more than the memory accounting of <XRef id="prop-mixed-precision" />, but mixed precision remains an engineering choice to validate rather than a mathematical necessity.
 </Theorem>
 
 ## Gradient checkpointing: trading activations for FLOPs
@@ -139,7 +137,7 @@ Mixed precision left the activation term $A\,b_a$ structurally intact (it only h
 
 <MarginNote variant="formula" label="sqrt(L) checkpointing">Store $\sqrt{L}$ of the $L$ layer activations: peak memory $\Theta(\sqrt{L})$ at the cost of one extra forward pass.</MarginNote>
 
-<MarginNote variant="tip" label="Self-explanation">Before the proof: if you store $K$ uniformly spaced checkpoints out of $L$ activations, each segment you must recompute has length about $L/K$; what is the peak memory as a function of $K$? Minimize it.</MarginNote>
+<MarginNote variant="tip" label="Self-explanation">With $K$ checkpoints, one memory term is $K$ and the longest recomputed segment is about $L/K$. Which $K$ minimizes their sum?</MarginNote>
 
 <Theorem kind="theorem" name="sqrt(L) checkpointing tradeoff" id="thm-checkpointing">
 For positive integers $L$ and $K$ with $1\le K\le L$, split a sequential network of $L$ layers into $K$ contiguous segments whose lengths differ by at most one. Storing their boundary activations and recomputing within a segment gives peak activation memory
@@ -159,13 +157,13 @@ Two steps: the memory cost of a uniform schedule, then its minimization.
 
 The exchange the theorem prices is among the best available: a $\sim\!\sqrt{L}$-fold drop in activation memory (e.g. $L = 64 \to K = 8$: peak $K + L/K = 16$ live tensors instead of $64$, a factor of four) for a single extra forward pass. Since the backward pass is already roughly twice the cost of a forward, adding one more forward raises the step time by only about a third.
 
-<Theorem kind="remark" name="Selective recomputation is the production default" id="rem-selective">
-Real training stacks rarely use uniform $\sqrt{L}$ checkpointing. *Selective recomputation* stores the cheap-to-recompute activations (layer-norm outputs, residual sums) and recomputes only the expensive ones (the $O(n^2)$ attention probabilities, the feed-forward intermediate), exploiting the asymmetry between attention's quadratic-in-$n$ activations and the network's linear ones. In practice this recovers most of the memory benefit at a far smaller wall-time overhead than a full extra forward pass. The asymptotic envelope of <XRef id="thm-checkpointing" /> still governs the tradeoff; selective recompute is a constant-factor improvement that lands closer to the floor.
+<Theorem kind="remark" name="Selective recomputation targets favorable tradeoffs" id="rem-selective">
+Real training stacks need not use uniform $\sqrt{L}$ checkpointing. *Selective recomputation* retains activations whose regeneration cost is high relative to the bytes they occupy and recomputes intermediates whose storage cost is high relative to their regeneration cost. Depending on the model and kernels, recomputed tensors may include $O(n^2)$ attention probabilities or feed-forward intermediates. This policy can recover much of the memory benefit with less wall-time overhead than re-running every operation. <XRef id="thm-checkpointing" /> remains the baseline for a uniform layer schedule, but selective policies change tensor sizes and recomputation costs, so their improvement is not universally only a constant factor.
 </Theorem>
 
-## LoRA: low-rank adapters collapse $b_g$ and $b_o$
+## LoRA and trainable state
 
-Mixed precision shrinks $b_p$ and $b_g$; checkpointing shrinks $A$. The optimizer term $N b_o$ stays the largest contributor in many configurations, because $b_o = 8$ resists compression without risking convergence. LoRA attacks a different factor entirely — the *count* of trainable parameters. It freezes the pretrained weights and trains only a small additive update, and the right way to see the saving is that gradients and optimizer state exist only for what is trainable.
+Mixed precision shrinks $b_p$ and $b_g$; checkpointing shrinks $A$. Under this chapter's FP32-Adam baseline, the optimizer term $N b_o$ remains the largest contributor in many configurations because $b_o=8$. Compressed optimizer states can change that premise, with their own numerical and implementation tradeoffs. LoRA attacks a different factor entirely — the *count* of trainable parameters. It freezes the pretrained weights and trains only a small additive update, and the right way to see the saving is that gradients and optimizer state exist only for what is trainable.
 
 <Theorem kind="definition" name="LoRA adapter" id="def-lora">
 For a pretrained weight matrix $\mathbf W_0 \in \R^{d\times d}$, a **LoRA adapter** <Cite key="hu2021lora" /> replaces $\mathbf W_0$ during fine-tuning by
@@ -175,7 +173,7 @@ $$
 with rank $r \ll d$. Only $\mathbf A$ and $\mathbf B$ are trained; $\mathbf W_0$ is frozen. The initialization is asymmetric — $\mathbf A$ a small Gaussian and $\mathbf B = \mathbf 0$ — so $\Delta\mathbf W = \mathbf 0$ at step zero and the model begins identical to the pretrained checkpoint.
 </Theorem>
 
-<MarginNote variant="formula" label="Saving factor">$r = 16$, $d = 4096$: each adapted $d\times d$ matrix drops by $2r/d = 32/4096 = 1/128$. Adapting only the attention projections of a $70$B model leaves $\approx 0.08$B trainable (worked example below).</MarginNote>
+<MarginNote variant="formula" label="Saving factor">For $r=16$ and $d=4096$, an adapted square matrix uses $1/128$ as many trainable parameters. The worked 70B example leaves about 0.08B trainable.</MarginNote>
 
 The construction yields a clean count: trainable parameters, gradients, and optimizer state all shrink by the same factor.
 
@@ -197,15 +195,15 @@ Three counts, from definitions of the three quantities.
 
 The arithmetic is dramatic at scale. Adapting the four attention projections in each of $L = 80$ layers of a $70$B model with $d = 8192$, $r = 16$ gives $K = 320$ matrices and $2Krd = 2 \cdot 320 \cdot 8192 \cdot 16 \approx 8.4 \times 10^{7}$ trainable parameters — about $0.12\%$ of the full count — and an FP32 Adam footprint of $8 \cdot 8.4 \times 10^7 \approx 0.67$ GB, against $8 \cdot 70 \times 10^9 = 560$ GB for full fine-tuning. The optimizer term, the stubbornest in the baseline, all but vanishes.
 
-LoRA is the one tool whose validity is *conditional*: it works only when the update it can express — a rank-$r$ matrix — is rich enough for the task.
+LoRA is the one tool here that explicitly restricts the trainable function class: each adapted matrix update has rank at most $r$. The memory count is exact, while whether that update class is rich enough is an empirical question.
 
-<Theorem kind="remark" name="When LoRA breaks" id="rem-lora-breaks">
-The construction restricts every update to $\operatorname{rank}(\Delta\mathbf W) \le r$. This is harmless precisely when the true fine-tuning update lies (approximately) in a low-dimensional subspace — the empirical regularity LoRA relies on. It fails when that assumption fails: (a) continued pretraining on a substantially different distribution, where the required update is full-rank; (b) tasks demanding genuinely new vocabulary or modalities; (c) ranks so small ($r \le 4$) that even narrow tasks cannot fit. In all three the low-rank class costs real expressive power. A separate, favorable fact: at inference one may merge $\mathbf W = \mathbf W_0 + \mathbf B\mathbf A$ into a single matrix, so the adapter adds *no* inference-time cost.
+<Theorem kind="remark" name="When LoRA's rank constraint matters" id="rem-lora-breaks">
+The construction proves $\operatorname{rank}(\Delta\mathbf W)\le r$ for each adapted matrix; it does not identify a unique “true” full-fine-tuning update or a universal failure regime. If the useful change cannot be approximated at the selected ranks and module placements, the restriction can cost expressive power. Continued pretraining on a large distribution shift, adding a new modality or vocabulary, and choosing a very small rank are plausible stress cases, not guaranteed failures, and no numerical rank threshold alone decides adequacy. Rank, target modules, data, and optimization must therefore be validated together. For a static adapter at inference, one may merge $\mathbf W=\mathbf W_0+\mathbf B\mathbf A$ into one matrix, removing the adapter's extra matrix multiplications.
 </Theorem>
 
-## ZeRO and FSDP: sharding every term
+## ZeRO and FSDP: sharding master-copy state
 
-The previous tools shrink individual terms. ZeRO and FSDP attack a different axis: they *partition* each term across $P$ data-parallel workers, so per-worker memory falls as $1/P$ — at the cost of communication, because a partitioned quantity must be gathered before it is used. The family is organized into three stages by how much of the master-copy block it shards.
+The previous tools shrink individual terms. ZeRO and FSDP attack a different axis: they partition selected parameter, gradient, and optimizer-state terms across $P$ data-parallel workers — at the cost of communication when partitioned state must be gathered or reduced. Activations and miscellaneous buffers are outside this stage definition. The family is organized into three stages by how much of the master-copy block it shards.
 
 <Theorem kind="definition" name="ZeRO stages" id="def-zero">
 The **ZeRO** family of memory optimizers <Cite key="rajbhandari2020zero" /> progressively partitions the master-copy block of <XRef id="def-train-memory" /> across $P$ data-parallel workers:
@@ -223,7 +221,7 @@ Let $M_P = N b_p$, $M_G = N b_g$, and $M_O = N b_o$ be the unsharded **resident-
 
 | Stage | Per-worker master copy | Communication / step |
 |---|---|---|
-| DDP (no ZeRO) | $M_P + M_G + M_O$ | $2\frac{P-1}{P}N b_w\approx2Nb_w$ |
+| Distributed Data Parallel (DDP), no ZeRO | $M_P + M_G + M_O$ | $2\frac{P-1}{P}N b_w\approx2Nb_w$ |
 | ZeRO-1 | $M_P + M_G + M_O/P$ | $2\frac{P-1}{P}N b_w\approx2Nb_w$ |
 | ZeRO-2 | $M_P + M_G/P + M_O/P$ | $2\frac{P-1}{P}N b_w\approx2Nb_w$ |
 | ZeRO-3 / FSDP | $(M_P + M_G + M_O)/P$ | $3\frac{P-1}{P}N b_w\approx3Nb_w$ |
@@ -236,12 +234,12 @@ The memory column is <XRef id="def-zero" /> applied term by term. The communicat
 
 **DDP.** Every worker replicates the full master copy; only gradients are reduced, once per step. In a ring, each reduce-scatter and all-gather moves $(P-1)N b_w/P$ payload bytes per worker. Their composition therefore makes one all-reduce cost exactly $2(P-1)N b_w/P$ payload bytes per worker.
 
-**ZeRO-1 and ZeRO-2.** Stage 1 partitions only optimizer state; whether implemented as the corresponding reduce-scatter/update/all-gather sequence or an equivalent gradient synchronization, its two ring phases total $2(P-1)N b_w/P$. Stage 2 explicitly uses a reduce-scatter of gradients plus an all-gather of updated parameters. Each phase costs $(P-1)N b_w/P$, so the exact total is again $2(P-1)N b_w/P$.
+**ZeRO-1 and ZeRO-2.** Stage 1 partitions only optimizer state; whether implemented as the corresponding reduce-scatter, update, and all-gather sequence or an equivalent gradient synchronization, its two ring phases total $2(P-1)N b_w/P$. Stage 2 explicitly uses a reduce-scatter of gradients plus an all-gather of updated parameters. Each phase costs $(P-1)N b_w/P$, so the exact total is again $2(P-1)N b_w/P$.
 
 **ZeRO-3 / FSDP.** Parameters are sharded. Under the stated reshard-after-forward schedule, each layer's full working weights are all-gathered once for its forward pass and again for its backward pass, and its gradients are reduce-scattered once. Each of these three ring phases costs $(P-1)N b_w/P$ after summing over layers, for an exact total $3(P-1)N b_w/P$. This is $1.5\times$ the DDP payload when both use the same wire width. $\qquad\blacksquare$
 </Theorem>
 
-So, under that schedule and a common $b_w$, ZeRO-3 buys full $1/P$ partitioning of the entire master-copy block for $1.5\times$ the payload of plain data parallelism. For a $70$B model in mixed precision the block is $(6 + 2 + 8)N = 16\cdot 70 \times 10^9 = 1120$ GB; on $P = 64$ workers the per-worker share is $17.5$ GB, comfortably inside an $80$ GB accelerator — whereas DDP would replicate the full $1120$ GB on every worker and not fit at all.
+So, under that schedule and a common $b_w$, ZeRO-3 buys full $1/P$ partitioning of the resident master-copy block for $1.5\times$ the payload of plain data parallelism. For a $70$B model in mixed precision the block is $(6 + 2 + 8)N = 16\cdot 70 \times 10^9 = 1120$ GB; on $P = 64$ workers its resident share is $17.5$ GB, below an $80$ GB accelerator's capacity. That figure alone does not show the full training job fits: saved activations, transient gathered layer parameters, communication buffers, and scratch space remain. DDP, by contrast, would replicate the $1120$ GB master-copy block on every worker and cannot fit it on one such device.
 
 <Theorem kind="remark" name="Communication can become the binding constraint" id="rem-fsdp-bandwidth">
 The exact $3(P-1)N b_w/P$ figure is payload bytes, not time; the time depends on interconnect bandwidth and latency, and ZeRO-3 stresses it hardest because the parameter all-gathers sit on the critical path of every layer. On a cluster with thin interconnect the all-gather latency for a layer can exceed that layer's compute time, leaving the accelerator idle. FSDP exposes a *wrapping granularity* knob — how many layers share one all-gather (per transformer block is the usual choice). Finer wrapping lowers peak memory but issues more, smaller collectives; coarser wrapping does the reverse. The right setting balances the two against the measured bandwidth, which is why ZeRO-3 is not a free lunch but a memory–bandwidth trade.
@@ -249,10 +247,10 @@ The exact $3(P-1)N b_w/P$ figure is payload bytes, not time; the time depends on
 
 ## Putting it together
 
-Each section above edits one term of <XRef id="def-train-memory" />: mixed precision the bytes $b_p, b_g$ (and halves $b_a$), checkpointing the count $A$, LoRA the trainable-parameter count (collapsing $b_g$ and $b_o$ together), and ZeRO/FSDP every term by the factor $1/P$. The engineering question — which to reach for first — reduces to diagnosing the *binding* term before naming a tool.
+Each section above edits a specific part of <XRef id="def-train-memory" />: mixed precision changes storage widths (and halves $b_a$ in the stated scheme), checkpointing changes the saved-activation count $A$, LoRA changes the trainable-parameter count and therefore gradient and optimizer state, and ZeRO and FSDP partition the parameter, gradient, and optimizer block stage by stage. ZeRO does not generally divide $A b_a$ or $B_{\text{misc}}$ by $P$. The engineering question — which to reach for first — reduces to diagnosing the *binding* term before naming a tool.
 
 <Theorem kind="remark" name="The bottleneck-first heuristic" id="rem-bottleneck">
-Read the binding term off the equation, then pick the tool that edits it. A large master-copy block ("$70$B in FP32 $=1.12$ TB") points to mixed precision plus ZeRO. A large activation term ("long context $\Rightarrow$ large $A$") points to checkpointing. A small fine-tuning dataset with a frozen base points to LoRA. The ordering in practice is: mixed precision first (near-free, and bf16 costs nothing in convergence); then ZeRO stages, escalating only as far as memory requires, since higher stages cost more communication; then checkpointing when the activation term binds (selective before uniform); and LoRA last, reserved for fine-tuning rather than pretraining or large distribution shift — it changes the optimization problem, not just its memory. Naming the bottleneck before the tool is the whole discipline.
+Read the binding term off the equation, then pick the tool that edits it. A large master-copy block ("$70$B in FP32 $=1.12$ TB") points to mixed precision plus ZeRO. A large activation term ("long context $\Rightarrow$ large $A$") points to checkpointing. A small fine-tuning dataset with a frozen base often points to LoRA. In practice, mixed precision commonly comes first because bf16 often preserves convergence in supported regimes while improving throughput. ZeRO stages follow only as far as memory requires, since higher stages cost more communication. Checkpointing enters when activations bind, with selective and uniform policies compared by measurement. LoRA is commonly used for parameter-efficient fine-tuning; whether its rank-constrained updates suffice for continued pretraining or a large distribution shift is empirical rather than excluded by the method. Naming the bottleneck before the tool is the discipline.
 </Theorem>
 
 ## Exercises
@@ -261,7 +259,7 @@ Attempt each before expanding its solution.
 
 **Exercise 14.1 (Derive).** A $13$B model is trained in FP32 with Adam. Using <XRef id="prop-fp32-adam" />, give the bytes needed for parameters, gradients, and optimizer state, and decide whether it fits on one $80$ GB accelerator.
 
-<SolutionBox>
+<SolutionBox exercise="14.1">
 
 The master-copy block is $16N$ bytes: $4$ (FP32 params) $+ 4$ (FP32 grads) $+ 8$ (two FP32 Adam moments). For $N = 13\times10^9$, $16N = 208$ GB, which overflows an $80$ GB accelerator by $2.6\times$ — before any activations. $\qquad\blacksquare$
 
@@ -269,7 +267,7 @@ The master-copy block is $16N$ bytes: $4$ (FP32 params) $+ 4$ (FP32 grads) $+ 8$
 
 **Exercise 14.2 (Compute).** A $7$B model is trained in mixed precision (bf16 working, FP32 master, FP32 Adam). Using <XRef id="prop-mixed-precision" />, give the parameter+gradient+optimizer footprint and the fraction of an $80$ GB accelerator it occupies. Contrast with the naive "$16$-bit, so half of $16N$" guess and say which term defeats it.
 
-<SolutionBox>
+<SolutionBox exercise="14.2">
 
 The mixed-precision block is $16N$: a $6N$ parameter term ($4N$ FP32 master $+ 2N$ bf16 working), a $2N$ bf16 gradient term, and an $8N$ FP32 Adam term. For $N = 7\times10^9$, $16N = 112$ GB $= 1.4\times$ an $80$ GB accelerator. The naive "16-bit halves $16N$" guess fails because the FP32 master copy persists alongside the working copy and the FP32 Adam state ($8N$, the largest term) is precision-pinned. $\qquad\blacksquare$
 
@@ -277,7 +275,7 @@ The mixed-precision block is $16N$: a $6N$ parameter term ($4N$ FP32 master $+ 2
 
 **Exercise 14.3 (Prove).** For the continuous relaxation $g(x) = x + L/x$ of a uniform checkpointing schedule, prove $x = \sqrt{L}$ minimizes it and that the optimum is $2\sqrt{L}$; then explain how <XRef id="thm-checkpointing" /> chooses a legal integer $K$. For $L = 100$, state the number of stored tensors, the memory-reduction factor, and the wall-time penalty.
 
-<SolutionBox>
+<SolutionBox exercise="14.3">
 
 Minimize the continuous relaxation $g(x)=x+L/x$. By AM–GM, $x+L/x\ge2\sqrt L$, equality iff $x=\sqrt L$ (or $g'(x)=1-L/x^2=0$, $g''>0$). For general integer $L$, choose the better legal neighbor $K\in\{\lfloor\sqrt L\rfloor,\lceil\sqrt L\rceil\}$ and use segment length at most $\lceil L/K\rceil$ as in <XRef id="thm-checkpointing" />. For $L=100$, $K=10$ is already integral: store $10$ checkpoints, with peak memory $10+100/10=20$ live tensors instead of $100$ — a $5\times$ reduction — for one extra forward pass on backward ($\approx+1/3$ step time). $\qquad\blacksquare$
 
@@ -285,7 +283,7 @@ Minimize the continuous relaxation $g(x)=x+L/x$. By AM–GM, $x+L/x\ge2\sqrt L$,
 
 **Exercise 14.4 (Derive).** A $13$B model with $d = 5120$ is fine-tuned with LoRA at rank $r = 8$, applied to the four attention projections in each of $L = 40$ layers. Using <XRef id="prop-lora-savings" />, count the trainable parameters and their fraction of the full $13$B, then distinguish the Adam-state reduction relative to all-parameter fine-tuning from the reduction relative to fully tuning only the selected matrices.
 
-<SolutionBox>
+<SolutionBox exercise="14.4">
 
 With $K = 4\cdot40 = 160$ adapted matrices, $r=8$, and $d=5120$, the exact trainable count is
 $$
@@ -295,9 +293,9 @@ Relative to all $13\times10^9$ model parameters this is $13{,}107{,}200/(13\time
 
 </SolutionBox>
 
-**Exercise 14.5 (Compare).** A $70$B model is trained on $P = 64$ workers in mixed precision (bf16 working/grad, FP32 master, FP32 Adam). Using <XRef id="prop-zero-memory" />, give the per-worker master-copy memory under ZeRO-3 and under DDP, and state the dominant communication volume of each.
+**Exercise 14.5 (Compare).** A $70$B model is trained on $P = 64$ workers in mixed precision (bf16 working weights and gradients, FP32 master weights, FP32 Adam state). Using <XRef id="prop-zero-memory" />, give the per-worker master-copy memory under ZeRO-3 and under DDP, and state the dominant communication volume of each.
 
-<SolutionBox>
+<SolutionBox exercise="14.5">
 
 The unsharded $(6+2+8)N = 16N$ block for $N=70$ B is $1120$ GB. ZeRO-3/FSDP partitions all three resident terms by $P=64$: $17.5$ GB per worker — fits — while DDP replicates the full $1120$ GB per worker and is infeasible on an $80$ GB device. With bf16 payloads, $b_w=2$ bytes, DDP communicates
 $$
