@@ -50,7 +50,7 @@ Scalars are italic ($x, d, n$), vectors are bold lowercase ($\mathbf x \in \R^{d
 The figures in this guide follow one visual grammar, so a diagram in a later chapter reads the same way as one here. Boxes are typed by role — each carrying a color, a border style, *and* a label, so the role survives in grayscale and under color-vision deficiency — while arrows carry the flow of data and a matrix's size is read off its own edges. Any color beyond these fixed roles is local to the figure that uses it, and is explained there. The legend below is the key.
 
 <Figure
-  src="/figures/figure-legend.svg"
+  src={`${import.meta.env.BASE_URL}figures/figure-legend.svg`}
   alt="A legend for query, key, value, input, output, operation, flow, merge, residual-add, and dimension symbols."
   desc="Two columns map box colors, border styles, and labels to semantic roles, then identify the arrows, junctions, residual-add node, and dimension brackets used in later diagrams."
   caption="The guide's visual vocabulary encodes each role with color, border style, and a written label, keeping the diagrams legible in grayscale and under color-vision differences."

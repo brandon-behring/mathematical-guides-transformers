@@ -75,7 +75,7 @@ Inside the surrogate optimization, $\widehat C=C$ is the exact constraint. For d
 </Theorem>
 
 <Figure
-  src="/figures/scaling-allocation.svg"
+  src={`${import.meta.env.BASE_URL}figures/scaling-allocation.svg`}
   alt="A fixed-compute line on log parameter-count and log token-count axes, with a balanced optimum between model-heavy and data-heavy allocations."
   desc="The horizontal axis is log parameter count and the vertical axis is log seen-token count. A descending fixed-compute line contains one marked balanced optimum, with arrows toward data-heavy and model-heavy alternatives. The upper-left direction is data-heavy and model-light, the lower-right direction is model-heavy and data-light, and the emphasized middle point is the fitted-loss minimum where the weighted marginal improvements balance."
   caption="A fixed compute proxy permits many model–data allocations. The fitted optimum is the point where the weighted parameter-limited and data-limited improvements balance; moving either way along the contour creates a bottleneck."

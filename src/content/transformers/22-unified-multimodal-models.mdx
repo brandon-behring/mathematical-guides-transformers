@@ -71,7 +71,7 @@ The first factor predicts the route; the second is a softmax over the selected m
 </Theorem>
 
 <Figure
-  src="/figures/unified-decoder.svg"
+  src={`${import.meta.env.BASE_URL}figures/unified-decoder.svg`}
   alt="Interleaved text and image codes passing through one shared decoder with modality-specific input and output layers."
   desc="Text tokens and image codes enter separate embedding tables, merge into one interleaved hidden sequence, traverse a shared decoder stack, and split at routed text and image prediction heads."
   caption="One decoder processes an interleaved stream of text and image codes. Modality-specific embeddings read the symbols, routed heads predict them, and the shared body operates on a common hidden representation."
@@ -171,7 +171,7 @@ Causality is enforced across segments. Positions inside a fully observed context
 </Theorem>
 
 <Figure
-  src="/figures/mixed-mask.svg"
+  src={`${import.meta.env.BASE_URL}figures/mixed-mask.svg`}
   alt="Block-causal attention matrix with a bidirectional observed-image block inside a causal lower triangle."
   desc="A lower-triangular attention matrix covers the full interleaved sequence. One square image segment is filled on both sides of its local diagonal, showing bidirectional attention only within a fully observed image block."
   caption="The mixed mask is causal except within image spans supplied as observed context, where attention can be bidirectional. Generated image spans remain causal, and an all-text stream recovers ordinary causal attention."
@@ -180,7 +180,7 @@ Causality is enforced across segments. Positions inside a fully observed context
 />
 
 <Figure
-  src="/figures/design-space.svg"
+  src={`${import.meta.env.BASE_URL}figures/design-space.svg`}
   alt="Three unified multimodal architectures arranged by how they encode inputs and generate outputs."
   desc="Three parallel pipelines compare a merged discrete vocabulary, separate modality-specific connector and output paths, and continuous visual conditioning with discrete image generation. Each pipeline shares a central decoder body."
   caption="Three designs share a common decoder body: a merged discrete vocabulary, modality-specific input and output paths, or continuous visual conditioning paired with discrete image generation."

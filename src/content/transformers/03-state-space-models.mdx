@@ -191,7 +191,7 @@ For the discrete SSM the per-step pair is $p_t = (\discA,\ \discB u_t)$: all fir
 <MarginNote variant="pattern" label="Three regimes">Recurrence: $O(1)$ state per emitted token (decode). Convolution: one FFT pass over a known input (train). Scan: $\lceil\log_2 n\rceil$ parallel rounds (train, without materializing $\kappa$).</MarginNote>
 
 <Figure
-  src="/figures/ssm-three-faces.svg"
+  src={`${import.meta.env.BASE_URL}figures/ssm-three-faces.svg`}
   alt="One state-space model evaluated as a recurrence, a convolution, or a balanced parallel scan."
   desc="Three parallel panels show a left-to-right state chain, a convolutional kernel sliding over the full input, and affine state updates combined in a balanced binary tree. All three terminate at matching output rows."
   caption="A discrete state-space model has three equivalent schedules: sequential recurrence, whole-sequence convolution, and a balanced parallel scan. They differ in execution shape, not in the outputs they compute."
@@ -392,7 +392,7 @@ So $\mathbf S = -\tfrac12\mathbf I + \mathbf T$ with $\mathbf T_{mk} = \tfrac12\
 Unitarily diagonalizing the normal part turns $-\statemat$ into a *diagonal-plus-low-rank* matrix, which is what lets S4 evaluate the kernel $\kappa$ of <XRef id="thm-conv-recurrence" /> quickly and stably; dropping the rank-one term altogether — leaving a purely diagonal $\statemat$, as in our worked example — loses little, an observation due to <Cite key="gupta2022dss" /> that S4D turns into principled diagonal parameterizations, and S5 pairs diagonal dynamics with the scan of <XRef id="prop-scan" />. In all three, the memory structure derived here is the initialization, not an accident of training.
 
 <Figure
-  src="/figures/hippo-projection.svg"
+  src={`${import.meta.env.BASE_URL}figures/hippo-projection.svg`}
   alt="A signal history projected onto a finite set of rescaled Legendre basis functions."
   desc="The observed signal over a growing time window sits above several basis curves. Projection arrows lead to a finite coefficient vector, while a boundary arrow and stretching-window arrow show how new data and rescaling update that vector online."
   caption="HiPPO stores an online projection of the observed history onto finitely many rescaled Legendre functions. New boundary data and the stretching time window together determine the coefficient dynamics."

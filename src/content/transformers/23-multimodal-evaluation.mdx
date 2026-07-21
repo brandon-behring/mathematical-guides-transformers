@@ -50,7 +50,7 @@ the fraction of queries whose true match falls in the top $k$, and the mean reci
 </Theorem>
 
 <Figure
-  src="/figures/retrieval-rank.svg"
+  src={`${import.meta.env.BASE_URL}figures/retrieval-rank.svg`}
   alt="Ranked retrieval candidates with the true match inside the top-k region."
   desc="Candidate items appear in descending similarity order beneath one query. A highlighted band marks the first k positions, and the true match is emphasized at its rank within that band."
   caption="Retrieval sorts candidates by similarity to a query. Recall at k records whether the true match enters the highlighted top-k region; reciprocal rank gives more credit to earlier positions."
@@ -132,7 +132,7 @@ using no target-domain labels — the class representations come entirely from t
 </Theorem>
 
 <Figure
-  src="/figures/zeroshot-sphere.svg"
+  src={`${import.meta.env.BASE_URL}figures/zeroshot-sphere.svg`}
   alt="Image and class-name embeddings compared by direction on a shared unit sphere."
   desc="Several class-name vectors and one image vector extend from the center of a circle. The image vector lies closest in angle to the dog text vector, illustrating nearest-text classification by cosine similarity."
   caption="Zero-shot classification chooses the class-name embedding nearest to an image embedding on the shared sphere. Contrastive training can create this alignment, but transfer to unseen classes remains an empirical result."

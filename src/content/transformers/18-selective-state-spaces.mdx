@@ -285,7 +285,7 @@ one global pair of vector sequences — columns $\outputmat_i\odot\boldsymbol\al
 A generic lower-triangular matrix has $n(n+1)/2$ free entries. Semiseparability says $\mathbf T$ can instead be applied through its $d_s$-dimensional recurrence state. With generic dense transitions that application costs $\Theta(n\,d_s^2)$; with diagonal or comparably structured transitions, it costs $\Theta(n\,d_s)$. The latter is the regime used by the selective SSM above. The recurrence *is* the rank structure, but the rank bound alone does not make a dense transition matrix cheap.
 
 <Figure
-  src="/figures/semiseparable-mask.svg"
+  src={`${import.meta.env.BASE_URL}figures/semiseparable-mask.svg`}
   alt="Block view of a causal semiseparable transfer matrix and its chunked evaluation."
   desc="An eight-by-eight lower-triangular matrix is divided into square diagonal chunks. Diagonal chunks are dense; each rectangle below them factors through a fixed-width boundary state. Arrows show within-chunk multiplication and cross-chunk state routing."
   caption="A selective SSM transfer matrix is causal and block semiseparable: diagonal chunks are dense, while each rectangle below them factors through a boundary state. Chunked evaluation uses masked matrix multiplication on the diagonal and recurrent summaries between chunks."

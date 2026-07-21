@@ -83,7 +83,7 @@ Each decoder query thereby attends over **all** $n$ encoder positions, and the e
 Because cross-attention uses scaled dot-product attention, each weight row is row-stochastic: every row of the pre-projection context $\mathbf C$ is a convex combination of the encoder value rows (<XRef id="prop-row-stochastic-convex" />). After $\mathbf W^O$, the residual-width output is equivalently a convex combination of the **projected** value rows $\mathbf v_j\mathbf W^O$. The attention core selects and averages encoded source features; the learned linear output projection then remixes their coordinates. With this operation in hand, the decoder block has three sublayers: the encoder block's self-attention *masked*, the one genuinely new sublayer — cross-attention — and the feed-forward network.
 
 <Figure
-  src="/figures/cross-attention-wiring.svg"
+  src={`${import.meta.env.BASE_URL}figures/cross-attention-wiring.svg`}
   alt="Cross-attention using decoder rows as queries and encoder rows as keys and values."
   desc="The decoder stream projects into queries while the encoder output projects into keys and values. Their rectangular score matrix produces one pre-projection context row per decoder position."
   caption="Cross-attention takes queries from the decoder and keys and values from the encoder. Its rectangular score matrix gives every decoder position a weighted read over the encoded input."
@@ -148,7 +148,7 @@ An encoder-only model typically adds a learned summary position (a $\texttt{[CLS
 </Theorem>
 
 <Figure
-  src="/figures/three-architectures.svg"
+  src={`${import.meta.env.BASE_URL}figures/three-architectures.svg`}
   alt="A two-by-two architecture grid crossing causal or bidirectional mixing with absent or present cross-attention."
   desc="The four cells contain encoder-only, decoder-only, encoder–decoder, and bidirectional two-stream fusion patterns. Mask icons distinguish full from lower-triangular self-attention, and arrows mark when a separate encoded stream supplies context."
   caption="Self-attention visibility and the presence of cross-attention form a two-switch design space. Three cells give the standard encoder-only, decoder-only, and encoder–decoder patterns; the fourth supports non-autoregressive fusion."

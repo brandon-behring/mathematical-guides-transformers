@@ -31,7 +31,7 @@ import NotationOverride from '../../components/NotationOverride.astro';
 **Where we are.** A decoder-only transformer uses the prompt itself as its conditioning channel (<XRef id="def-decoder-only" />). The resulting question is how fixed trained parameters can make different predictions after reading new examples. We answer with three constructions. A softmax row retrieves a value from key–value memory with error controlled by its score margin. A two-stage circuit combines previous-token addressing with finite-margin retrieval to approximate a basic induction pattern. Finally, unnormalized linear attention reproduces the prediction from one gradient step on a controlled linear-regression prompt. These results establish representational capability; they do not show which mechanism training discovers.
 
 <Figure
-  src="/figures/induction-copy.svg"
+  src={`${import.meta.env.BASE_URL}figures/induction-copy.svg`}
   alt="A two-stage induction circuit first exposes predecessors, then uses finite-margin lookup to return a mixture dominated by the successor of an earlier matching token."
   desc="For the sequence A, B, C, A, the first stage pairs each successor with its predecessor. The second stage queries with the final A, gives the A-keyed candidate the larger softmax weight, and returns a mixture dominated by B. A note states that equal matches mix their successors."
   caption="A previous-token stage exposes predecessor–successor pairs; finite-margin lookup then retrieves a B-dominated mixture for the final A. Equal earlier matches mix their successors, so this is neither a hard nor latest-match copier."

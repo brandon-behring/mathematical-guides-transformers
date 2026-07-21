@@ -48,7 +48,7 @@ Applied to a sequence $\mathbf X\in\R^{n\times d}$, the map acts row-wise: $[\op
 <MarginNote variant="pattern" label="Division of labor">$\operatorname{FFN}$ = per-token nonlinearity; attention = cross-token mixing. The block has no third computational operation.</MarginNote>
 
 <Figure
-  src="/figures/ffn-expansion.svg"
+  src={`${import.meta.env.BASE_URL}figures/ffn-expansion.svg`}
   alt="The feed-forward network widens a token from d to d_ff features, applies a nonlinearity, and projects back to d."
   desc="A single token x of dimension d passes through W_1, which widens it into a hidden layer drawn four times taller (d_ff = 4d features) where the nonlinearity σ is applied; W_2 then projects back to dimension d to give y. The box width is constant, so only the height — the feature dimension — changes. Applied independently to every token."
   caption="The position-wise feed-forward network widens each token, applies a nonlinearity, and projects back to model width. It processes every row independently and introduces no cross-token mixing."
@@ -221,7 +221,7 @@ $$
 The distinction is exactly whether the residual path stays *naked*. In pre-norm, $\mathbf Y = \mathbf X + (\cdots)$ is a residual layer of the form in <XRef id="thm-gradient-highway" />, so its Jacobian is $\mathbf I + \mathbf J$ and the gradient inherits the all-skip $\mathbf I$ directly. In post-norm, $\mathbf Y = \operatorname{LN}(\mathbf X + (\cdots))$ wraps the residual sum in a further map, so its Jacobian is $\mathbf J_{\operatorname{LN}}(\mathbf I + \mathbf J)$ — the layer-norm Jacobian of <XRef id="prop-ln-jacobian" /> multiplies the whole bracket, identity term included. The skip path no longer reaches the next layer untouched; even the all-skip route must pass through a normalization Jacobian at every step.
 
 <Figure
-  src="/figures/block-anatomy.svg"
+  src={`${import.meta.env.BASE_URL}figures/block-anatomy.svg`}
   alt="Pre-norm vs post-norm blocks: pre-norm puts layer-norm inside the residual branch (skip stays naked); post-norm puts it after the add (on the skip sum)."
   desc="Two aligned residual units for a sublayer f. Pre-norm: X taps off to LN then f, rejoining at the add ⊕ to give Y — the skip path from the tap to the add carries no layer-norm. Post-norm: X taps off to f, rejoins at ⊕, then passes through LN to give Y — layer-norm sits on the summed skip path. Only the position of the LN box differs; the two blocks are otherwise identical."
   caption="Pre-norm places normalization inside the residual branch and leaves the skip path untouched. Post-norm wraps the completed residual sum, so every route to the next layer passes through normalization."

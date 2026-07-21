@@ -1,7 +1,7 @@
 # mathematical-guides-transformers — AI authoring guide
 
 Per-guide sibling of the `mathematical-guides` family (formal lens). Built on
-`@brandon_m_behring/book-scaffold-astro` v4.26+; deploys to `/transformers/`. Titled
+`@brandon_m_behring/book-scaffold-astro` v5.2+; deploys to `/transformers/`. Titled
 **"Transformer Mathematics"**: 24 chapters across 6 parts carrying the full arc — foundations →
 recurrence and linear state → transformer architectures and objectives → efficient and conditional
 computation → sub-quadratic and selective sequence models → multimodal models.
@@ -33,17 +33,22 @@ frontmatter, glossary entries, and quick-reference apparatus, then run `npm run 
 `./src/content/glossary`. Minimum chapter frontmatter: `title` + `last_verified`.
 
 ## Reference routes
-The native glossary route is enabled. `/quick-reference/` is consumer-owned and listed in
-`apparatusRoutes`. The local `/print/` route deliberately replaces the scaffold route so the PDF
-contains chapters, the A–Z glossary, and the pull-out quick reference in that order. Keep
-`routes.print: false` while `src/pages/print.astro` exists.
+The native glossary route is enabled, so `apparatusRoutes: ['glossary']`. `/quick-reference/` is a
+consumer-owned page (Astro file routing): v5 restricts `apparatusRoutes` to a fixed vocabulary with no
+`quick-reference` key (its `references` slot is the `<Cite>` bibliography), so the pull-out is no longer
+sidebar-linked — it stays reachable by URL and in the print edition. The local `/print/` route
+deliberately replaces the scaffold route so the PDF contains chapters, the A–Z glossary, and the
+pull-out quick reference in that order. Keep `routes.print: false` while `src/pages/print.astro` exists.
 
 ## Figures
 TikZ source in `figures/*.tex` → PDF (pdflatex) → SVG in `public/figures/` via
-`book-scaffold build-figures` (wired into `prebuild`). Reference with
-`<Figure src="/figures/<name>.svg" ...>` through `src/components/Figure.astro`, imported from
+`book-scaffold build-figures` (wired into `prebuild`). Under the non-root base, author the figure `src`
+as a base-aware JSX expression built from `import.meta.env.BASE_URL` (a literal `/figures/…` is rejected
+by the scaffold #190 base-escape check, and a literal base-prefixed path fails its figure-existence
+check — the expression form satisfies both), through `src/components/Figure.astro`, imported from
 `../../components/Figure.astro` by chapter files. Do not import the scaffold Figure directly: the local wrapper
-namespaces pdftocairo's generic internal IDs before inlining, which prevents cross-figure corruption on `/print/`.
+`publicSvgPath`-strips the base before reading `public/figures/`, then namespaces pdftocairo's generic
+internal IDs before inlining, which prevents cross-figure corruption on `/print/`.
 `npm run test:figure-svg` enforces that boundary. The print route also scopes Markdown heading IDs per chapter;
 `npm run test:print-html` guards that transform.
 

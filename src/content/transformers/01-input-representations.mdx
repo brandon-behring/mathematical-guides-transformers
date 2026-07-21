@@ -98,7 +98,7 @@ If every pair has score $0$ — equivalently, no adjacent pair remains in the we
 <MarginNote variant="warning" label="Score is not always decrement">$c_t(a,b)$ counts adjacent positions, which may overlap. In $a,a,a$, the pair $(a,a)$ scores $2$ but only one non-overlapping replacement is possible. The accounting below therefore uses the number actually replaced.</MarginNote>
 
 <Figure
-  src="/figures/bpe-merge.svg"
+  src={`${import.meta.env.BASE_URL}figures/bpe-merge.svg`}
   caption="A BPE merge spends one vocabulary entry to replace repeated adjacent pairs, shortening the weighted training sequence by the number of non-overlapping replacements."
   id="fig-bpe-merge"
   width="100%"
@@ -223,7 +223,7 @@ By construction $\mathbf K[:,:,:,j]$ is the reshape of column $j$ of $\mathbf W_
 <MarginNote variant="tip" label="Why it's not new">Patchification is the degenerate convolution where stride equals kernel: the windows do not overlap, so the one shared linear map $\mathbf W_{\text{patch}}$ is applied to each patch independently, with no cross-patch mixing.</MarginNote>
 
 <Figure
-  src="/figures/dual-embedding.svg"
+  src={`${import.meta.env.BASE_URL}figures/dual-embedding.svg`}
   alt="Text token lookup and image patch projection converging on the same embedded-sequence interface."
   desc="Two input branches map a token index by table lookup and a flattened image patch by linear projection. Their output rows enter the same sequence matrix, receive positional information, and feed one shared transformer body."
   caption="Token lookup and patch projection both produce rows in one shared vector sequence. Position is added afterward, and the transformer body receives the same interface regardless of modality."
