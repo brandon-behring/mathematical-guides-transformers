@@ -1,0 +1,47 @@
+name: Deploy
+
+# Production deploy to Cloudflare Workers via the deploy-workflows reusable workflow
+# (brandon-behring/deploy-workflows) — the account-wide standard. This repo is the
+# "transformers" CHILD Worker of the mathematical-guides family hub; it is served at
+# mathematical.brandon-behring.dev/transformers/* through the hub's GUIDE_TRANSFORMERS
+# service binding (see wrangler.toml + _worker.js). The child has no domain of its own.
+#
+# One-time setup (manual — full runbook in docs/notes/cloudflare-deploy.md):
+#   gh secret set CLOUDFLARE_API_TOKEN && gh secret set CLOUDFLARE_ACCOUNT_ID
+#   Deploy this CHILD first so the hub's service binding resolves, then (re)deploy the
+#   hub (mathematical-guides). The custom domain is attached to the HUB, never here.
+#
+# validate-command is intentionally omitted: this guide's `prebuild` already runs
+# `book-scaffold validate` before every `npm run build` (see package.json), so passing
+# validate-command to the reusable would validate twice.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'figures/**'
+      - 'public/**'
+      - 'astro.config.mjs'
+      - 'bibliography.bib'
+      - '.env'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'wrangler.toml'
+      - '_worker.js'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+  actions: read
+  pull-requests: write   # required by the deploy-workflows reusable @v2.0.2 (preview-comment step)
+
+jobs:
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    uses: brandon-behring/deploy-workflows/.github/workflows/deploy-astro-worker.yml@v2.0.2
+    secrets: inherit
+    with:
+      working-directory: .

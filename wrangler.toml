@@ -1,7 +1,20 @@
-# Cloudflare Pages config — mathematical-guides-transformers.
-# Deploys to <family-domain>/transformers/ (base set in astro.config.mjs).
-#   Framework preset: Astro | Build: npm run build | Output: dist | Node: 22
+# Cloudflare Workers (static assets) config — mathematical-guides-transformers.
+#
+# This guide is the "transformers" CHILD Worker of the mathematical-guides family hub.
+# It is served at mathematical.brandon-behring.dev/transformers/* and is reached ONLY
+# through the hub's GUIDE_TRANSFORMERS service binding — it has no custom domain of its
+# own. The hub forwards the full /transformers/... path; because Astro emits assets at
+# the dist root, `main = _worker.js` strips the /transformers prefix before serving from
+# ASSETS (see _worker.js). Deploy this child BEFORE the hub so the binding resolves.
+#
+# Deployed via GitHub Actions + the deploy-workflows reusable workflow
+# (.github/workflows/deploy.yml). Full runbook: docs/notes/cloudflare-deploy.md.
 
-name = "mathematical-guides-transformers"
+name = "brandon-behring-mathematical-transformers"
 compatibility_date = "2026-05-27"
-pages_build_output_dir = "./dist"
+main = "_worker.js"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+run_worker_first = true
