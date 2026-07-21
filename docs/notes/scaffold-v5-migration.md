@@ -38,11 +38,15 @@ component import (`Theorem`/`Cite`/`XRef` ×24, `Base`, `ChapterHeader`, `virtua
 are unchanged in v5's exports — zero fan-out there.
 
 **Deploy note (#188, net-new since 4.27).** The build now emits a default `dist/_headers` (security
-headers + CSP; no `public/_headers` override). Benign here — this is a standalone Cloudflare Pages
-project serving at root, so the `/*` pattern matches, and every family sibling ships the same default.
-Caveat: the CSP is enforced only in production, not by `astro build` / static preview — a future CDN
-script, external web font, or cross-origin `connect`/image source would break in prod while CI stays
-green. The current build loads zero external scripts/styles/fonts, so nothing is affected today.
+headers + CSP; no `public/_headers` override). Benign here — this guide deploys as the family hub's
+`transformers` **child Worker** (Cloudflare Workers + Static Assets), served at
+`mathematical.brandon-behring.dev/transformers/*`; the child's `_worker.js` strips the base before
+serving from `ASSETS`, and the scaffold's `/*` header rule matches every served path, so the defaults
+apply as intended. Every family sibling ships the same default. Caveat: the CSP is enforced only in
+production, not by `astro build` / static preview — a future CDN script, external web font, or
+cross-origin `connect`/image source would break in prod while CI stays green. The current build loads
+zero external scripts/styles/fonts, so nothing is affected today. Full deploy runbook:
+[`cloudflare-deploy.md`](./cloudflare-deploy.md).
 
 ## Figures — the #190 base-escape check (the substantive work)
 
