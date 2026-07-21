@@ -56,6 +56,33 @@ export function shouldInline(src) {
 }
 
 /**
+ * Convert a local SVG URL into a path relative to the consumer's `public/`
+ * directory. Under a non-root Astro base (`/transformers/`) authored `src`
+ * values are base-prefixed to satisfy the scaffold's #190 base-escape check,
+ * but that prefix is a URL concern and is not present on disk. Strip it before
+ * the filesystem read. Literal root URLs (`/figures/…`) remain supported for
+ * backward compatibility. Ported from the scaffold's src/lib/figure.mjs so the
+ * local print-namespacing fork stays base-aware. Dot segments / backslashes are
+ * rejected before the filesystem boundary (author-controlled, but never let a
+ * traversal reach `set:html`).
+ */
+export function publicSvgPath(src, base = '/') {
+  if (!shouldInline(src) || src.includes('\\')) return null;
+
+  const baseSegments = typeof base === 'string' ? base.split('/').filter(Boolean) : [];
+  const normalizedBase = baseSegments.length ? `/${baseSegments.join('/')}/` : '/';
+  const withoutBase = normalizedBase !== '/' && src.startsWith(normalizedBase)
+    ? src.slice(normalizedBase.length)
+    : src.replace(/^\/+/, '');
+  const segments = withoutBase.split('/');
+
+  if (!segments.length || segments.some((s) => !s || s === '.' || s === '..')) {
+    return null;
+  }
+  return segments.join('/');
+}
+
+/**
  * Prefix every internal ID and every supported reference to it.
  *
  * References covered here are the forms emitted by the figure pipeline and

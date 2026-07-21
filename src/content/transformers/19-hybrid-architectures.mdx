@@ -249,7 +249,7 @@ Fix $N$ layers and an **attention fraction** $f\in[0,1]$ with $fN$ an integer. A
 Every constituent mixer is prefix-consistent, and causality is closed under composition, position-wise maps, and residual connections (<XRef id="prop-causal-closure" />), so the hybrid stack is causal. One forward pass therefore yields all $n$ next-token conditionals during training (<XRef id="thm-one-pass" />), whatever the value of $f$.
 
 <Figure
-  src="/figures/hybrid-interleave.svg"
+  src={`${import.meta.env.BASE_URL}figures/hybrid-interleave.svg`}
   alt="A hybrid decoder stack interleaving one sliding-window attention block among seven recurrent blocks."
   desc="Eight blocks form a vertical stack. The fourth is sliding-window attention; the other seven are recurrent. Labels beside the blocks show a windowed KV cache for attention and a fixed matrix state for each recurrent layer."
   caption="One period of a hybrid stack uses one sliding-window attention layer among seven recurrent layers. Each layer's decode-state size is independent of context length, while a full-attention cache grows with context length."

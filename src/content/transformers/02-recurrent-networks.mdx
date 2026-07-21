@@ -56,7 +56,7 @@ in which every layer shares the same parameters $(\mathbf W_h, \mathbf W_x, \mat
 <MarginNote variant="pattern" label="Tied depth">An RNN on $n$ tokens *is* an $n$-layer network whose layers are one shared map. Depth grows with the data, parameters do not.</MarginNote>
 
 <Figure
-  src="/figures/unrolled-rnn.svg"
+  src={`${import.meta.env.BASE_URL}figures/unrolled-rnn.svg`}
   alt="A recurrent cell shown as both a self-loop and an unrolled chain across sequence positions."
   desc="The left panel contains one recurrent cell with a feedback arrow. The right panel expands the same cell into a left-to-right chain whose repeated copies share parameters and pass state between adjacent positions."
   caption="Unrolling reveals a computation whose depth grows with sequence length while every step shares one parameter set. Information from the first input reaches the final state only through every intermediate state."
@@ -310,7 +310,7 @@ Here $y_0$ is a distinguished start symbol, and generation halts at a distinguis
 </Theorem>
 
 <Figure
-  src="/figures/seq2seq-bottleneck.svg"
+  src={`${import.meta.env.BASE_URL}figures/seq2seq-bottleneck.svg`}
   alt="An encoder and decoder joined through a single narrow context-vector bottleneck."
   desc="A many-step encoder narrows into one fixed-width context node, which then fans out through the decoder steps. Every path from any input position to any output position crosses that one node."
   caption="The recurrent encoder–decoder forms an hourglass: every input-to-output path crosses one fixed-width context vector, so the interface does not grow with the input sequence."

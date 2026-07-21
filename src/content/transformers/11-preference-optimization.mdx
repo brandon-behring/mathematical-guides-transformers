@@ -30,7 +30,7 @@ import SolutionBox from '../../components/SolutionBox.astro';
 **Where we are.** Cross-entropy training learns from observed target tokens. Preference data instead orders two completions for the same prompt without assigning either a numerical reward. We define these comparisons and the Bradley–Terry likelihood used to fit a reward model. We then solve a KL-regularized reward objective, invert its optimal policy into reward differences, and substitute them into the preference likelihood to derive Direct Preference Optimization (DPO). The closing result states when idealized population optima coincide. It does not equate DPO with Proximal Policy Optimization (PPO), often used in reinforcement learning from human feedback (RLHF), or guarantee that finite preference data describe desired behavior.
 
 <Figure
-  src="/figures/preference-optimization-paths.svg"
+  src={`${import.meta.env.BASE_URL}figures/preference-optimization-paths.svg`}
   alt="Preference pairs enter either a reward-model-and-PPO pipeline or a direct DPO update."
   desc="Shared preference pairs and a frozen reference policy feed two columns. The RLHF column fits a scalar reward, samples responses, and applies PPO. The DPO column compares policy changes relative to the reference and applies a binary winner–loser loss. A bottom note states that DPO is derived from the KL-regularized optimum and Bradley–Terry model, not by reducing PPO."
   caption="RLHF and DPO consume the same preference records through different training loops. DPO removes the separate reward-model and online-rollout stages, but not preference-data collection."

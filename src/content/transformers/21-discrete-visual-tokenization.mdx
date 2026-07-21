@@ -86,7 +86,7 @@ For the encoder grid $\mathbf z_e=\Phi(x)$ of <XRef id="def-autoencoder" />, the
 <MarginNote variant="pattern" label="Same lookup, both directions">Quantization produces an index; <XRef id="def-codebook-embedding" /> consumes one. The codebook is the visual analogue of a token vocabulary, and a quantized image is a sentence in it.</MarginNote>
 
 <Figure
-  src="/figures/grid-sequence.svg"
+  src={`${import.meta.env.BASE_URL}figures/grid-sequence.svg`}
   alt="A grid of visual code indices flattened into a one-dimensional token sequence."
   desc="Numbered cells form a two-dimensional code grid. A raster-order arrow visits each row from left to right and concatenates the indices into a single ordered sequence over the visual vocabulary."
   caption="Raster order turns a grid of nearest-code indices into a fixed-length sequence over the visual vocabulary. The quantizer chooses the indices before this serialization step."
@@ -128,7 +128,7 @@ The decoder receives $\mathbf z_q$; gradients are computed as if $\mathbf z_q=\m
 </Theorem>
 
 <Figure
-  src="/figures/vq-pipeline.svg"
+  src={`${import.meta.env.BASE_URL}figures/vq-pipeline.svg`}
   alt="VQ-VAE forward and backward paths through a discrete quantizer."
   desc="The solid path runs from input through encoder, nearest-code quantizer, and decoder to reconstruction. A dashed backward arrow bypasses the quantizer and carries the reconstruction gradient directly from the quantized latent to the encoder output."
   caption="The VQ-VAE forward path encodes, quantizes to the nearest code, and decodes. The dashed backward path copies the reconstruction gradient around the nondifferentiable quantizer, giving the encoder the straight-through update."
@@ -203,7 +203,7 @@ For fixed assignments $S_k$, the objective separates over $k$, and for a nonempt
 <MarginNote variant="formula" label="EMA codebooks">In practice the centroid step is often run as an exponential moving average of assigned encoder outputs — a streaming Lloyd update — rather than through the codebook-loss gradient, which is the same fixed point.</MarginNote>
 
 <Figure
-  src="/figures/voronoi-kmeans.svg"
+  src={`${import.meta.env.BASE_URL}figures/voronoi-kmeans.svg`}
   alt="Code vectors and encoder outputs partitioned into Voronoi cells."
   desc="Large dots mark code vectors and polygonal boundaries mark their Voronoi cells. Small encoder-output dots belong to the nearest cell. Arrows indicate updating each code toward the centroid of its assigned outputs."
   caption="Code vectors define Voronoi cells in latent space. Quantization assigns each encoder output to a cell, and the codebook update moves each code toward the centroid of its assigned outputs."

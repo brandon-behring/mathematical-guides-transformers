@@ -8,7 +8,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { assembleSvg, shouldInline } from '../lib/figure.mjs';
+import { assembleSvg, publicSvgPath } from '../lib/figure.mjs';
 
 interface Props {
   src: string;
@@ -21,14 +21,21 @@ interface Props {
 
 const { src, caption, width = '100%', id, alt, desc } = Astro.props;
 const altText = alt ?? caption ?? '';
-const figureKey = (id ?? `fig-${src.replace(/^\/+/, '').replace(/\.[^.]+$/, '')}`)
+// Under the non-root base, authored srcs are base-prefixed (`/transformers/figures/…`)
+// to satisfy the scaffold #190 check, but on disk they live at `public/figures/…`.
+// publicSvgPath strips BASE_URL for the read (null when non-inlinable). The <img>
+// fallback keeps the base-prefixed src, which is correct for the browser.
+const diskPath = publicSvgPath(src, import.meta.env.BASE_URL);
+// Derive the ID-namespacing key from the base-stripped path so the emitted keys
+// stay identical whether or not the src carries the base prefix.
+const figureKey = (id ?? `fig-${(diskPath ?? src).replace(/^\/+/, '').replace(/\.[^.]+$/, '')}`)
   .replace(/[^a-zA-Z0-9_-]/g, '-');
 const captionId = caption ? `${figureKey}-caption` : undefined;
 
 let inlineSvg: string | null = null;
-if (shouldInline(src)) {
+if (diskPath) {
   try {
-    const raw = readFileSync(join(process.cwd(), 'public', src), 'utf8');
+    const raw = readFileSync(join(process.cwd(), 'public', diskPath), 'utf8');
     inlineSvg = assembleSvg(raw, { caption, alt, desc, width, idBase: figureKey });
   } catch {
     inlineSvg = null;

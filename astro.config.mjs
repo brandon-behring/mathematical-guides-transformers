@@ -26,7 +26,6 @@ const mathematicalGuidesFamilyStyle = defineStyle({
   name: 'mathematical-guides-family',
   site: 'https://mathematical.brandon-behring.dev',
   routes: { frontmatter: { enabled: true, prefix: '' } },
-  deploy: 'pages',
   // \R \Z \N \E come from the scaffold-injected ssmMacros base (identical
   // definitions; exported publicly since book-scaffold-astro#177), so only
   // the family additions remain here. \norm deliberately overrides the
@@ -47,7 +46,11 @@ export default await defineBookConfig({
   extraIntegrations: [guidePolishStyles],
   markdown: { rehypePlugins: [rehypeTableCaptions] },
   routes: { glossary: true, print: false },
-  apparatusRoutes: ['glossary', 'quick-reference'],
+  // v5 restricts apparatusRoutes to a fixed vocabulary (no custom 'quick-reference' key;
+  // its 'references' slot is the bibliography that <Cite> links to). The consumer-owned
+  // /quick-reference/ page still builds via Astro file routing and stays in the print
+  // edition; only its auto sidebar link is dropped. Nav-discoverability handling: see issue #26.
+  apparatusRoutes: ['glossary'],
   base: '/transformers/',
   title: 'Transformer Mathematics',
   subtitle: 'A formal guide to sequence models',

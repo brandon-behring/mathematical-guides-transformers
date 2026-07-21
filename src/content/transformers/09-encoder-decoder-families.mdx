@@ -142,7 +142,7 @@ We verify column by column. **Attention.** Masked self-attention is causal (<XRe
 The lattice classifies an architecture, not its pretraining objective. UL2 makes this separation explicit: its mixture combines regular span corruption, sequential prefix-language-model denoising, and extreme span corruption without treating any one objective as synonymous with an encoder, decoder, or encoder–decoder topology <Cite key="tay2022ul2" />.
 
 <Figure
-  src="/figures/architecture-lattice.svg"
+  src={`${import.meta.env.BASE_URL}figures/architecture-lattice.svg`}
   alt="A three-by-three grid crosses three architecture patterns with three sequence-mixer families."
   desc="Rows show encoder, decoder, and encoder–decoder patterns. Columns show attention, recurrent, and state-space mixers. Each cell names a representative model or construction, demonstrating that pattern and mixer family vary independently."
   caption="The architecture lattice crosses three conditioning patterns with three mixer families. Each model occupies one cell, so architecture pattern and mixer choice are independent design axes."

@@ -93,7 +93,7 @@ Here $\mathbf W^Q\in\R^{d\times d_k}$, $\mathbf W^K\in\R^{d_{\mathrm{vis}}\times
 </Theorem>
 
 <Figure
-  src="/figures/resampler-funnel.svg"
+  src={`${import.meta.env.BASE_URL}figures/resampler-funnel.svg`}
   alt="Learned latent queries compress a variable-length visual sequence into a fixed number of language-model tokens."
   desc="A bank of visual feature rows supplies keys and values. A smaller bank of learned latent queries attends across every feature, funneling the variable-length input into a fixed number of output rows."
   caption="A single learned-query attention layer cross-attends from a fixed latent set to the visual features. It always emits the same number of soft tokens; each output is a convex combination of projected values."
@@ -182,7 +182,7 @@ with a learnable **gate** $\gamma\in\R$ (initialized $\gamma=0$) and cross-atten
 </Theorem>
 
 <Figure
-  src="/figures/gated-xattn.svg"
+  src={`${import.meta.env.BASE_URL}figures/gated-xattn.svg`}
   alt="A hyperbolic-tangent gate controls a cross-attention residual branch."
   desc="The language-model residual stream enters a visual cross-attention branch. Its output passes through a scalar gate before residual addition. A zero gate removes the entire branch while leaving a gradient path that can open it during training."
   caption="Gated cross-attention scales the visual branch before adding it to the language-model residual stream. A zero-initialized gate begins closed, preserving the base model while allowing training to open the visual path."
