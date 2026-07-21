@@ -37,6 +37,13 @@ Schemas (`researchPortfolioChapterSchema`, `glossarySchema`, `frontmatterCollect
 component import (`Theorem`/`Cite`/`XRef` ×24, `Base`, `ChapterHeader`, `virtual:book-scaffold/mdx-components`)
 are unchanged in v5's exports — zero fan-out there.
 
+**Deploy note (#188, net-new since 4.27).** The build now emits a default `dist/_headers` (security
+headers + CSP; no `public/_headers` override). Benign here — this is a standalone Cloudflare Pages
+project serving at root, so the `/*` pattern matches, and every family sibling ships the same default.
+Caveat: the CSP is enforced only in production, not by `astro build` / static preview — a future CDN
+script, external web font, or cross-origin `connect`/image source would break in prod while CI stays
+green. The current build loads zero external scripts/styles/fonts, so nothing is affected today.
+
 ## Figures — the #190 base-escape check (the substantive work)
 
 **Version correction:** issue #26 attributes the base-escape validator to scaffold 4.27; it actually

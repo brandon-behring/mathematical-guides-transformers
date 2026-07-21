@@ -63,3 +63,28 @@ test('all chapter figures use the namespacing wrapper', async () => {
     );
   }
 });
+
+test('every chapter figure src resolves to a file in public/figures/', async () => {
+  // Under the non-root base, figure srcs are base-aware JSX expressions
+  // (`${import.meta.env.BASE_URL}figures/<name>.svg`). The scaffold's own figure-existence
+  // check matches only quoted string literals (RE_FIGURE), so it silently skips expression
+  // srcs — a typo'd name would pass `validate` + `build` and then 404 as an <img> at runtime
+  // and in the PDF. This guard restores that coverage: every `figures/<name>.svg` referenced
+  // in a chapter must exist on disk.
+  const chapterDir = new URL('../src/content/transformers/', import.meta.url);
+  const publicFigDir = new URL('../public/figures/', import.meta.url);
+  const chapterFiles = (await readdir(chapterDir)).filter((name) => name.endsWith('.mdx'));
+  const available = new Set(
+    (await readdir(publicFigDir)).filter((name) => name.endsWith('.svg')),
+  );
+
+  for (const file of chapterFiles) {
+    const source = await readFile(new URL(file, chapterDir), 'utf8');
+    for (const m of source.matchAll(/figures\/([A-Za-z0-9._-]+\.svg)/g)) {
+      assert.ok(
+        available.has(m[1]),
+        `${file}: <Figure> references figures/${m[1]} but public/figures/${m[1]} does not exist`,
+      );
+    }
+  }
+});
