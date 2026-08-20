@@ -99,7 +99,6 @@ and these are the same tag and routed-symbol factors the model already computes.
 <MarginNote variant="tip" label="Self-explanation">Before the proof: split the chain-rule product at the end of the observed prefix. Which factors cancel in the conditional ratio, and which remain for generation?</MarginNote>
 
 <Theorem kind="proof">
-**Proof.**
 By the chain rule (<XRef id="def-autoregressive-lm" />) and $u_t=(c_t,x_t)$, each joint factor splits as
 $$
 p_\theta(u_t\mid u_{<t})
@@ -124,7 +123,6 @@ Let $\mathcal V = \mathcal V_{\mathrm{txt}}\sqcup\mathcal V_{\mathrm{img}}$ be t
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 The map $\iota:(c,x)\mapsto\iota(c,x)$ is a bijection from tagged units $\{(\mathrm{txt},x):x\in\mathcal V_{\mathrm{txt}}\}\cup\{(\mathrm{img},z):z\in\mathcal V_{\mathrm{img}}\}$ onto $\{1,\dots,|\mathcal V|\}$, because the two ranges $\{1,\dots,|\mathcal V_{\mathrm{txt}}|\}$ and $\{|\mathcal V_{\mathrm{txt}}|+1,\dots,|\mathcal V_{\mathrm{txt}}|+K\}$ are disjoint and cover $\mathcal V$. Define $\mathbf E[\iota(c,x),:]\defeq\mathbf E_c[x,:]+\mathbf m_c$; then the embedding of <XRef id="def-modality-embedding" /> is $\mathbf x_t=\mathbf E[\iota(c_t,x_t),:]+\mathbf P[t,:]$, a single table lookup, which is <XRef id="def-token-embedding" /> over $\mathcal V$. For the head, set the columns of $\mathbf W^{\mathrm{out}}$ on the text block equal to $\mathbf W^{\mathrm{out}}_{\mathrm{txt}}$ and on the image block to $\mathbf W^{\mathrm{out}}_{\mathrm{img}}$; the single softmax $\softmax(\mathbf h_t\mathbf W^{\mathrm{out}})$ is then a categorical distribution over all $|\mathcal V|$ symbols, i.e. the next-token distribution of <XRef id="def-autoregressive-lm" /> with vocabulary $\mathcal V$. The body between embedding and head is the decoder-only stack (<XRef id="def-decoder-only" />), unchanged. Every component therefore coincides with <XRef id="def-autoregressive-lm" /> over a vocabulary of size $|\mathcal V_{\mathrm{txt}}|+K$; cross-entropy training uses <XRef id="def-ce-loss" /> on that merged alphabet.
 
 The relationship to routing is exact but requires the route probability. Write $o_{c,x}$ for the merged logit of symbol $x$ in modality block $c$ and $Z_c\defeq\sum_{x\in\mathcal V_c}e^{o_{c,x}}$. The merged softmax factors as
@@ -147,8 +145,6 @@ Let $\mathcal A$ be an output alphabet. For finite $\mathcal A$, the standard au
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
-
 **Finite alphabet.** For finite $\mathcal A$, a logit vector $\mathbf o\in\R^{|\mathcal A|}$ has finitely many entries and $Z=\sum_{x\in\mathcal A}\exp(o_x)$ is finite and strictly positive, so $p(x)=\exp(o_x)/Z$ is normalized and the categorical cross-entropy of <XRef id="def-ce-loss" /> is directly computable.
 
 **Countably infinite alphabet.** For $\mathcal A=\N$, the same formula defines a categorical law whenever the series $Z=\sum_{i=1}^{\infty}\exp(o_i)$ converges; mathematical existence therefore does **not** force finiteness. But exact representation needs one logit per $i$ and exact normalization needs the infinite sum, so it is not a finite-vector softmax $\softmax(\mathbf h\mathbf W^{\mathrm{out}})$.

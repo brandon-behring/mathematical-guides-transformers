@@ -62,7 +62,6 @@ A workload with arithmetic intensity $I < I^*$ has ideal roofline time $T_{\text
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 When $I < I^*$, divide both sides by $F$: $\Phi/(\beta F) < 1/\mathcal B$, i.e. $\Phi/F < \beta/\mathcal B$. So the second argument of the $\max$ in <XRef id="def-cost-eq" /> dominates and $T_{\text{roof}} = \beta/\mathcal B$. Since $T_{\text{token}}\ge T_{\text{roof}}$, achieved throughput obeys
 $$
 \frac{\Phi}{T_{\text{token}}}
@@ -121,7 +120,6 @@ For the rules of <XRef id="def-token-decoding" />:
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 Write $Z_S=\sum_{j\in S}p_j>0$. The retained entries $p_i/Z_S$ are positive, omitted entries are zero, and the sum is $Z_S/Z_S=1$, proving (1). For $i,j\in S$, the common denominator cancels: $(p_i/Z_S)/(p_j/Z_S)=p_i/p_j$, proving (2).
 
 For (3), the first $r$ sorted entries have at least as much mass as any $r$-element subset: replacing any selected lower-probability index by a missing higher-probability one cannot decrease the sum. By the minimal definition of $m$, the largest possible mass of any $(m-1)$-element subset is $\sum_{j=1}^{m-1}p^{(\tau)}_{\pi_j}<p_0$, while the $m$-entry prefix reaches $p_0$. No smaller subset can qualify.
@@ -150,7 +148,6 @@ If every layer has the same persisted width $d_{\text{cache}}$, this becomes $Nn
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 Layer $\ell$ stores $n d_{\text{cache},\ell}$ persisted attention-state scalars (<XRef id="def-kv-cache" />), hence $nbd_{\text{cache},\ell}$ bytes. The layers store disjoint caches, so summing gives $nb\sum_\ell d_{\text{cache},\ell}$. Equal widths factor out as $Nnbd_{\text{cache}}$. Under the all-MHA specialization, every $d_{\text{cache},\ell}=hd_k+hd_v=2d$, giving $2Nndb$. $\qquad\blacksquare$
 </Theorem>
 
@@ -233,7 +230,6 @@ Each additional bit of precision reduces this worst-case bound by more than one 
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 Write $r \defeq w/s + z$, so by <XRef id="def-affine-quant" /> the unclamped quantized value is $Q(w)=\operatorname{nint}_{\downarrow}(r)$. Nearest-integer rounding, including the declared deterministic tie case, obeys $|\operatorname{nint}_{\downarrow}(r)-r|\le \tfrac12$. Dequantizing,
 $$
 \widehat w = s\big(\operatorname{nint}_{\downarrow}(r)-z\big),\qquad

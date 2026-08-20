@@ -106,7 +106,6 @@ Each row of $\mathbf M$ is a vector of logits over the $B$ candidate $\mathbf v$
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 Fix row $i$. By the definition of softmax (<XRef id="def-softmax" />) applied to the logit vector $\mathbf M_{i,:}$,
 $$
 p(j\mid i) \defeq \softmax(\mathbf M_{i,:})_j = \frac{e^{M_{ij}}}{\sum_{j'=1}^{B} e^{M_{ij'}}},
@@ -133,7 +132,6 @@ The normalized symmetric objective is continuous on a compact product of spheres
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 Write
 $$
 \ell_i=\log\!\left(1+\sum_{j\ne i}e^{M_{ij}-M_{ii}}\right).
@@ -211,7 +209,6 @@ the Mann–Whitney statistic. It is invariant under any strictly increasing repa
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 Estimate the probabilities in <XRef id="def-auroc" /> by their empirical frequencies over all $n_{+}n_{-}$ cross pairs $(a_p,b_q)$. The pairwise indicators share observations and therefore are not mutually independent, but their normalized count is the empirical Mann–Whitney statistic. The event $S^{+}>S^{-}$ has empirical frequency $\frac{1}{n_+n_-}\sum_{p,q}\mathbf 1\{a_p>b_q\}$, and the tie event contributes $\frac{1}{n_+n_-}\sum_{p,q}\mathbf 1\{a_p=b_q\}$ with weight $\tfrac12$ exactly as in the definition; summing gives the displayed statistic. For the invariance claim, let $\phi$ be strictly increasing. Then $a_p>b_q \iff \phi(a_p)>\phi(b_q)$ and $a_p=b_q\iff\phi(a_p)=\phi(b_q)$, so every indicator in the double sum is unchanged and so is $\widehat{\operatorname{AUROC}}$. No comparison references a cutoff, so the statistic is threshold-free. $\qquad\blacksquare$
 </Theorem>
 

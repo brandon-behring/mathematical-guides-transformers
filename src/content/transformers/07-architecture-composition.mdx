@@ -295,8 +295,6 @@ and with $d_{\text{ff}} = 4d$ this is $4d^2 + 8d^2 = 12 d^2$ per block, so $N$ b
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
-
 For queries, each of the $h$ heads has a matrix in $\R^{d\times(d/h)}$, so the family contains $h\,d(d/h)=d^2$ weights; keys and values contribute the same count, for $3d^2$ total. Concatenation has width $h(d/h)=d$, so $\mathbf W^O\in\R^{d\times d}$ adds $d^2$. The FFN matrices have shapes $d\times d_{\text{ff}}$ and $d_{\text{ff}}\times d$, adding $2dd_{\text{ff}}$. Therefore the dominant weight count is $4d^2+2dd_{\text{ff}}$; substituting $d_{\text{ff}}=4d$ and multiplying by $N$ gives $12Nd^2$. $\qquad\blacksquare$
 </Theorem>
 

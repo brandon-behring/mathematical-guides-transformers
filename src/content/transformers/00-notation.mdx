@@ -88,8 +88,6 @@ For any scalar $c\in\R$, $\softmax(\mathbf z + c\mathbf 1) = \softmax(\mathbf z)
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
-
 Multiply the numerator and denominator of entry $i$ by $e^{c}$ and cancel:
 $$
 \frac{e^{z_i + c}}{\sum_j e^{z_j + c}}
@@ -178,8 +176,6 @@ $H(\mathbf p, \mathbf q) = H(\mathbf p) + D_{\mathrm{KL}}(\mathbf p \,\|\, \math
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
-
 The identity is support-safe term by term. If $p_k=0$, the entropy, cross-entropy, and KL contributions are all $0$. If $p_k>0$ and $q_k=0$, both the cross-entropy and KL contributions are $+\infty$, while the entropy contribution is finite. Finally, if $p_k,q_k>0$, ordinary logarithm rules give
 $$
 -p_k\log q_k=-p_k\log p_k+p_k\log\frac{p_k}{q_k}.
@@ -203,8 +199,6 @@ $$
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
-
 Row $i$ of the product is $\sum_j A_{ij}\mathbf v_j$ by the definition of matrix multiplication. The coefficients $A_{ij}$ are nonnegative and sum to one (<XRef id="def-row-stochastic" />), which is exactly a convex combination. $\qquad\blacksquare$
 </Theorem>
 

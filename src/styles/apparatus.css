@@ -52,136 +52,305 @@ main [id] {
   scroll-margin-top: 5rem;
 }
 
+/* ===== Book front matter: title page + table of contents =====
+ * Rendered by src/pages/print.astro; styled here so the /print/ route and the
+ * PDF share one source. The TOC page numbers are filled by Paged.js
+ * `target-counter` at PDF-render time (see the @media print block). */
+.print-title-page {
+  text-align: center;
+}
+.print-title-page h1 {
+  margin-block: 3.4in 0.5in;
+  font-size: 2.3rem;
+  font-style: italic;
+  color: #3b6fa0;
+  line-height: 1.2;
+}
+.print-title-author {
+  font-size: 1.15rem;
+  margin-block: 0.15rem;
+}
+.print-title-edition {
+  color: #666;
+  font-style: italic;
+}
+
+.print-toc > h1 {
+  font-style: italic;
+  color: #3b6fa0;
+}
+.print-toc-list {
+  list-style: none;
+  padding: 0;
+  margin-block: 1.5rem;
+}
+.print-toc-entry {
+  margin-block: 0.35rem;
+}
+.print-toc-entry a {
+  display: flex;
+  align-items: baseline;
+  text-decoration: none;
+  color: inherit;
+}
+.print-toc-label {
+  order: 0;
+}
+.print-toc-num {
+  display: inline-block;
+  min-width: 1.8em;
+  color: #3b6fa0;
+}
+.print-toc-backmatter {
+  font-style: italic;
+  margin-block-start: 0.8rem;
+}
+
+/* Running-header margin box: the current chapter/section title, outer corner,
+ * with a thin rule beneath (Paged.js reads `string(chaptertitle)`). Page number
+ * stays in @bottom-center from the scaffold's print.css. */
+@page {
+  @top-right {
+    content: string(chaptertitle);
+    font-family: var(--font-body);
+    font-style: italic;
+    font-size: 9pt;
+    color: #555;
+    vertical-align: bottom;
+    border-bottom: 0.4pt solid #bbb;
+  }
+}
+/* Clean opening on the title page — no running head and no header rule. */
+@page :first {
+  @top-right {
+    content: none;
+    border-bottom: none;
+  }
+}
+
 @media print {
-  /* The scaffold's screen layout floats sidenotes into a negative right
-   * margin. The print edition uses the full page-content width, so keep notes
-   * in flow instead of letting them cross the MediaBox. */
-  .print-edition .sidenote {
-    display: block;
-    float: none;
-    clear: both;
-    width: auto;
-    max-width: 100%;
-    margin: 0.35em 0 0.6em 1.25em;
-    padding-left: 0.55em;
-    break-inside: avoid;
-    page-break-inside: avoid;
+  /* Hide any interactive chrome that leaks into the print container. */
+  .chrome-buttons,
+  .chapter-nav,
+  .chapter-toc,
+  .pagefind-ui,
+  .version-selector,
+  nav[aria-label="On this page"] {
+    display: none !important;
   }
 
-  /* Scroll affordances are screen-only. Their gradient shadows otherwise
-   * print as gray bars beside display equations. */
+  /* ---- Tufte page geometry: narrow measure beside a reserved right margin.
+   * Overrides the scaffold's `.prose { max-width: 100% }` (print.css:46). ---- */
+  .prose.print-edition {
+    max-width: 4.5in;
+    margin: 0 2.2in 0 0;
+    padding: 0;
+  }
+
+  /* Front matter spans the full page width: centered title, full-width TOC. */
+  .print-edition .print-frontmatter {
+    margin-right: -2.2in;
+  }
+  /* The title h1 must not inherit the scaffold's h1 { break-before: page },
+   * which would emit a blank leading page. */
+  .print-edition .print-title-page h1 {
+    break-before: avoid;
+  }
+
+  /* Justified, hyphenated, indent-not-skip paragraph rhythm. */
+  .print-edition p {
+    text-align: justify;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    text-indent: 1.2em;
+    margin-block: 0;
+  }
+  /* First paragraph after a heading / inside a box / list item is not indented. */
+  .print-edition h1 + p,
+  .print-edition h2 + p,
+  .print-edition h3 + p,
+  .print-edition h4 + p,
+  .print-edition .chapter-description,
+  .print-edition .callout p:first-child,
+  .print-edition figure p,
+  .print-edition dd > p:first-child,
+  .print-edition li > p:first-child {
+    text-indent: 0;
+  }
+
+  /* Sidenotes float into the reserved right margin (Tufte marginalia). With the
+   * narrow 4.5in column the -2.2in pull lands inside the page box, so notes no
+   * longer cross the MediaBox (the reason they were previously kept in flow). */
+  .print-edition .sidenote {
+    float: right;
+    clear: right;
+    width: 1.9in;
+    margin-right: -2.2in;
+    margin-top: 0;
+    padding-left: 0.5em;
+    border-left: 1px solid #bbb;
+    font-size: 8.5pt;
+    font-style: italic;
+    line-height: 1.35;
+    color: #333;
+    text-indent: 0;
+    text-align: left;
+    break-inside: avoid;
+  }
+  .print-edition .sidenote p {
+    text-indent: 0;
+    text-align: left;
+    margin-block: 0;
+  }
+
+  /* Wide blocks break out of the narrow measure into the margin so equations,
+   * figures, tables, and code use the full text+margin width instead of
+   * clipping at 4.5in. */
+  .print-edition .katex-display,
+  .print-edition figure.figure,
+  .print-edition .prose table,
+  .print-edition pre {
+    max-width: 6.6in;
+    margin-right: -2.1in;
+  }
+  /* Scroll affordances are screen-only; their gradient shadows print as gray
+   * bars beside display equations. */
   .print-edition .katex-display {
     overflow: visible;
     background-image: none !important;
   }
 
-  /* Keep links clickable without printing long route strings beside every
-   * in-book cross-reference or citation. */
-  .print-edition .cite::after,
-  .print-edition a[href^="/transformers/"]::after,
-  .print-edition a[href^="#"]::after {
+  /* Running-head source string: the current chapter/section title. */
+  .print-edition h1 {
+    string-set: chaptertitle content(text);
+  }
+
+  /* Warm-blue italic headings — match the LaTeX book's WarmBlue (#3B6FA0). */
+  .print-edition h1,
+  .print-edition h2,
+  .print-edition h3 {
+    color: #3b6fa0;
+    font-style: italic;
+  }
+
+  /* Links: black, undecorated, no printed URL. The scaffold appends
+   * " (https://…)" after every external link (print.css:97); `content: none`
+   * with !important wins over that non-important rule regardless of specificity.
+   * Links remain clickable in the PDF. */
+  .print-edition a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .print-edition a::after {
     content: none !important;
   }
 
-  /* The BPE figure is full-width on screens but compact and atomic in print,
-   * so its caption cannot be orphaned onto the following page. */
-  .print-edition #fig-bpe-merge {
-    break-inside: avoid;
-    page-break-inside: avoid;
+  /* Expand collapsed exercise solutions + worked examples so they PRINT (a book
+   * has no disclosure widgets). The UA hides closed-<details> children; force
+   * the bodies visible and drop the caret. */
+  .print-edition details > summary {
+    list-style: none;
+  }
+  .print-edition details > summary::-webkit-details-marker {
+    display: none;
+  }
+  .print-edition details > *:not(summary) {
+    display: block !important;
   }
 
-  .print-edition #fig-bpe-merge > svg {
-    width: 78% !important;
+  /* Chapter opener: drop the web-metadata row (Part/Chapter/Last verified/
+   * companions); keep the title + italic one-line summary, like the LaTeX
+   * chapter opener. */
+  .print-edition .chapter-header .chapter-meta {
+    display: none;
+  }
+  .print-edition .chapter-description {
+    font-style: italic;
+    color: #333;
   }
 
-  /* Paged.js clones boxes while fragmenting a document. Chromium's implicit
-   * closed-<details> layout state is not preserved on every clone, which can
-   * expose an empty fallback summary ("Details") on its own page. Make the
-   * hidden solution body explicit and keep the visible disclosure row atomic. */
-  .print-edition .solution-box details:not([open]) > .callout-body {
-    display: none !important;
-  }
-
-  .print-edition .solution-box,
-  .print-edition .solution-box details,
-  .print-edition .solution-box summary {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  /* Fallback break hints for an ungrouped prompt and collapsed answer row. */
-  .print-edition p:has(+ .solution-box) {
-    break-after: avoid;
-    page-break-after: avoid;
-  }
-
-  /* Treat every figure and its caption as one print unit. */
+  /* ---- Figures: atomic with caption, height-guarded, per-figure widths. ---- */
   .print-edition figure.figure {
     break-inside: avoid;
     page-break-inside: avoid;
   }
-
+  .print-edition figure.figure svg {
+    max-height: 8in;
+  }
+  .print-edition #fig-bpe-merge {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-edition #fig-bpe-merge > svg {
+    width: 78% !important;
+  }
   .print-edition #fig-hybrid-interleave > svg {
     width: 68% !important;
   }
 
-  /* Collapsed exercise answers are navigation rows, not full callouts. Their
-   * tighter print rhythm keeps the prompt and disclosure row from separating
-   * merely because several exercises share a page. */
+  /* ---- Exercises + expanded solutions: keep the prompt with the solution's
+   * start, but let a long (now-expanded) solution flow across pages. ---- */
   .print-edition .solution-box {
+    break-inside: auto;
     break-before: avoid;
     page-break-before: avoid;
     padding-block: 0.25em;
     margin-block: 0.3em;
   }
-
   .print-edition .solution-box .callout-title {
     margin-block: 0;
+    break-after: avoid;
   }
-
-  /* The print-HTML transform groups every exercise prompt and its collapsed
-   * answer row so Paged.js cannot strand either side of the pair. */
+  .print-edition p:has(+ .solution-box) {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
   .print-edition .exercise-solution-pair {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: auto;
   }
 
+  /* ---- Front-matter TOC: leader dots + Paged.js page numbers. ---- */
+  .print-toc-entry a::before {
+    content: "";
+    order: 1;
+    flex: 1 1 auto;
+    margin: 0 0.4em;
+    border-bottom: 1px dotted #999;
+    align-self: flex-end;
+    transform: translateY(-0.18em);
+  }
+  .print-toc-entry a::after {
+    content: target-counter(attr(href), page) !important;
+    order: 2;
+    font-variant-numeric: tabular-nums;
+    color: inherit;
+  }
+
+  /* ---- Backmatter: glossary + quick reference each start a fresh page. ---- */
   .print-backmatter {
     break-before: page;
   }
-
-  .quick-reference a::after,
-  .print-glossary a::after {
-    content: none !important;
+  .print-backmatter > h1 {
+    break-before: auto;
+    page-break-before: auto;
   }
-
   .quick-reference table {
     font-size: 8.5pt;
     break-inside: avoid;
     page-break-inside: avoid;
   }
-
-  /* The notation index contains several page-length tables. Let those tables
-   * fragment between atomic rows so their section headings and introductions
-   * are not stranded on otherwise empty pages. */
+  /* Page-length notation tables may fragment between atomic rows. */
   .quick-reference h3 + table,
   .quick-reference h3 + p + table {
     break-inside: auto;
     page-break-inside: auto;
     line-height: 1.35;
   }
-
   .quick-reference .notation-print-break {
     display: none;
   }
-
   .quick-reference p:has(+ table) {
     break-after: avoid;
     page-break-after: avoid;
-  }
-
-  .print-backmatter > h1 {
-    break-before: auto;
-    page-break-before: auto;
   }
 }

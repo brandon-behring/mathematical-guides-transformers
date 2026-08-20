@@ -28,6 +28,38 @@ const termById = new Map(renderedGlossary.map((entry) => [entry.id, entry.data.t
   showSidebar={false}
 >
   <div class="prose print-edition" data-print-chapter-count={renderedChapters.length}>
+    <section class="print-frontmatter print-title-page">
+      <h1>Mathematical Foundations of Transformers</h1>
+      <p class="print-title-author">Brandon Behring</p>
+      <p class="print-title-edition">Print Edition</p>
+    </section>
+
+    <nav class="print-frontmatter print-toc" aria-labelledby="print-toc-heading">
+      <h1 id="print-toc-heading">Contents</h1>
+      <ol class="print-toc-list">
+        {renderedChapters.map(({ entry }) => (
+          <li class="print-toc-entry">
+            <a href={`#chapter-${String(entry.data.chapter).padStart(2, '0')}`}>
+              <span class="print-toc-label">
+                <span class="print-toc-num">{entry.data.chapter}</span>
+                <span class="print-toc-title">{entry.data.title}</span>
+              </span>
+            </a>
+          </li>
+        ))}
+        <li class="print-toc-entry print-toc-backmatter">
+          <a href="#print-glossary-heading">
+            <span class="print-toc-label"><span class="print-toc-title">Glossary</span></span>
+          </a>
+        </li>
+        <li class="print-toc-entry print-toc-backmatter">
+          <a href="#print-quick-reference">
+            <span class="print-toc-label"><span class="print-toc-title">Quick Reference</span></span>
+          </a>
+        </li>
+      </ol>
+    </nav>
+
     {renderedChapters.map(({ entry, Content }) => (
       <PrintChapter prefix={`chapter-${String(entry.data.chapter).padStart(2, '0')}`}>
         <ChapterHeader data={entry.data} />
@@ -68,7 +100,7 @@ const termById = new Map(renderedGlossary.map((entry) => [entry.id, entry.data.t
       </dl>
     </section>
 
-    <section class="print-backmatter quick-reference">
+    <section class="print-backmatter quick-reference" id="print-quick-reference">
       <QuickReference />
     </section>
   </div>

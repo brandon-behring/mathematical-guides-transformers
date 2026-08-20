@@ -190,8 +190,6 @@ In either case, a length-$n$ layer cache contains $n\,d_{\text{cache}}$ scalars.
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
-
 For a materialized cache, each position contributes $d_k$ scalars to every distinct key head and $d_v$ to every distinct value head, hence $h_kd_k+h_vd_v=d_{\text{cache}}$ scalars. MHA has $h_k=h_v=h$, GQA has $h_k=h_v=g$, and MQA has $h_k=h_v=1$, which gives the three displayed formulas after multiplying by $n$. Dividing the GQA and MQA totals by the MHA total cancels $n(d_k+d_v)$ and yields $g/h$ and $1/h$; setting $d_k=d_v$ gives the stated simplifications. For the joint-latent case, the hypothesis says that the only persisted content vector per position is $\mathbf c_t^{KV}\in\R^{d_c}$, so its width is $d_c$ and $n$ positions contain $nd_c$ scalars. Any other persisted vector contributes its own width by concatenation. $\qquad\blacksquare$
 </Theorem>
 

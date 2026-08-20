@@ -111,7 +111,6 @@ For the single-layer attention output of <XRef id="def-resampler" />, with outpu
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 (1) The query matrix $\mathbf Q_{\mathrm{lat}}$ has $m$ rows, so the attention matrix $\mathbf A$ is $m\times n$ and $\mathbf A(\mathbf V\mathbf W^V)\mathbf W^O$ is $m\times d$, independent of $n$. (2) By associativity and distributivity, $\mathbf A(\mathbf V\mathbf W^V)\mathbf W^O=\mathbf A(\mathbf V\mathbf W^V\mathbf W^O)$. Each row $\mathbf A_{i,:}$ is a softmax output, hence nonnegative with $\sum_j A_{ij}=1$; therefore $g_\phi(\mathbf V)_i=\sum_j A_{ij}\tilde{\mathbf v}_j$ is a convex combination of the $\tilde{\mathbf v}_j$ and lies in their convex hull by <XRef id="prop-row-stochastic-convex" />. (3) Let $\pi$ be a permutation of $\{1,\dots,n\}$ acting on the rows of $\mathbf V$. Because the keys and values are computed row-wise, $\mathbf v_j\mapsto\mathbf v_{\pi(j)}$ sends $A_{ij}\mapsto A_{i\pi(j)}$ and $\tilde{\mathbf v}_j\mapsto\tilde{\mathbf v}_{\pi(j)}$; the score $\inner{\mathbf q_i\mathbf W^Q}{\mathbf v_{\pi(j)}\mathbf W^K}$ for fixed query $i$ depends on the patch only through its own content, so reindexing $j'=\pi(j)$ gives $\sum_{j}A_{i\pi(j)}\tilde{\mathbf v}_{\pi(j)}=\sum_{j'}A_{ij'}\tilde{\mathbf v}_{j'}$, the original row. Hence each output row is unchanged. $\qquad\blacksquare$
 </Theorem>
 
@@ -128,7 +127,6 @@ arithmetic: $\Theta(mnd)$ for scores and value aggregation, $\Theta(nd^2)$ for k
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 One resampler layer forms $\mathbf A\in\R^{m\times n}$ — an $m\times n$ array whose entries are inner products of width $d_k=\Theta(d)$ — and aggregates projected values, for $\Theta(mnd)$ work. The key and value projections of $n$ visual rows cost $\Theta(nd^2)$. Projecting the $m$ latent queries and outputs and applying the width-$\Theta(d)$ feed-forward sublayer to those $m$ rows cost $\Theta(md^2)$. Summing gives $\Theta(mnd+(m+n)d^2)$ per layer and the displayed $L_r$-layer cost; when $m=O(n)$, $(m+n)d^2=\Theta(nd^2)$, yielding $\Theta(L_rnd(m+d))$. The cache claim is <XRef id="prop-kv-memory" /> with sequence length equal to the number of visual tokens: $m$ for the resampler versus $n$ for the projector, over $N$ layers, giving $\Theta(Nmd)$ versus $\Theta(Nnd)$ and a ratio $n/m$. The per-layer and per-step token counts drop by $n-m$ identically. $\qquad\blacksquare$
 </Theorem>
 
@@ -151,7 +149,6 @@ If $C$ is fixed, this is the ordinary inequality $I(X;\hat Y)\le I(X;\mathbf S)$
 <MarginNote variant="tip" label="Self-explanation">Before the proof: draw the chain from image to connector output to prediction. Which conditional independence licenses data processing, and where does a discrete connector cap the retained entropy?</MarginNote>
 
 <Theorem kind="proof">
-**Proof.**
 Expand conditional mutual information by the chain rule two ways:
 $$
 I(X;\mathbf S,\hat Y\mid C)
@@ -197,7 +194,6 @@ Let $f_{\mathrm{aug}}$ be the language model augmented with gated cross-attentio
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 (1) Since $\tanh(0)=0$, the added term $\tanh(\gamma)\operatorname{CA}(\mathbf h,\mathbf V)=0$ at every gated layer, so each update is $\mathbf h\leftarrow\mathbf h$ and the network reduces to $f_{\mathrm{LM}}$ identically — independent of $\theta$ and of $\mathbf V$. (2) Write one gated layer's output as $\mathbf y = \mathbf h + \tanh(\gamma)\,c_\theta$ with $c_\theta\defeq\operatorname{CA}_\theta(\mathbf h,\mathbf V)$. Collect the parameters as $\theta\in\R^p$, set $\mathbf g_{\mathrm{vec}}\defeq\operatorname{vec}(\partial\mathcal L/\partial\mathbf y)\in\R^{Td}$, and define the Jacobian $\mathbf J_\theta\defeq\partial\operatorname{vec}(c_\theta)/\partial\theta^\top\in\R^{Td\times p}$ with Euclidean adjoint $\mathbf J_\theta^*=\mathbf J_\theta^\top$. The chain rule gives
 $$
 \nabla_\theta\mathcal L

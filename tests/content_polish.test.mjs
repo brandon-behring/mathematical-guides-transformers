@@ -239,10 +239,20 @@ test('accessible names, deep links, and print containment stay wired', async () 
   assert.match(marginNote, /aria-label=/);
   assert.match(sidenote, /role="note"\s+aria-label=/);
   assert.match(styles, /main \[id\][\s\S]*?scroll-margin-top:\s*5rem/);
-  assert.match(styles, /\.print-edition \.sidenote[\s\S]*?float:\s*none/);
+  // Sidenotes float into the reserved Tufte right margin (book layout), kept
+  // atomic so they cannot cross the page box; the prose reserves that margin.
+  assert.match(styles, /\.print-edition \.sidenote[\s\S]*?float:\s*right/);
+  assert.match(styles, /\.print-edition \.sidenote[\s\S]*?break-inside:\s*avoid/);
+  assert.match(styles, /\.prose\.print-edition[\s\S]*?margin:\s*0\s+2\.2in\s+0\s+0/);
   assert.match(styles, /\.print-edition \.katex-display[\s\S]*?background-image:\s*none/);
   assert.match(printPage, /title="Transformer Mathematics — Print Edition"/);
   assert.match(printPage, /data-print-chapter-count=/);
+  // Book apparatus: title page + TOC (with target-counter page numbers) +
+  // string-set running heads must stay wired into the print route + styles.
+  assert.match(printPage, /class="print-frontmatter print-title-page"/);
+  assert.match(printPage, /class="print-frontmatter print-toc"/);
+  assert.match(styles, /\.print-toc-entry a::after[\s\S]*?target-counter\(attr\(href\), page\)/);
+  assert.match(styles, /string-set:\s*chaptertitle content\(text\)/);
   assert.match(renderer, /await assertPrintRoute\(input\)/);
   assert.match(renderer, /finalizeTaggedPdf\(chromePdf, headings\)/);
   assert.match(renderer, /generateTaggedPDF:\s*true/);

@@ -10,6 +10,6 @@ const rendered = await Astro.slots.render('default');
 const namespaced = namespacePrintHeadingIds(groupPrintExerciseSolutions(rendered), prefix);
 ---
 
-<section class="chapter-print">
+<section class="chapter-print" id={prefix}>
   <Fragment set:html={namespaced} />
 </section>

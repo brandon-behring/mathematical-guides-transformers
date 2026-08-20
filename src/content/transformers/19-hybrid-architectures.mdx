@@ -203,7 +203,6 @@ equals a uniform decay $\mathbf S_{t-1}\mapsto \alpha_t\mathbf S_{t-1}$ followed
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
 Apply <XRef id="thm-delta-descent" /> with $\mathbf S_{t-1}$ replaced by $\alpha_t\mathbf S_{t-1}$: the descent step from the decayed state is $\alpha_t\mathbf S_{t-1}(\mathbf I - \beta_t\mathbf k_t\mathbf k_t^\top) + \beta_t\mathbf v_t\mathbf k_t^\top$, which is the displayed update. The two mechanisms compose without interference: the gate forgets uniformly (the mLSTM's move), the delta step revises at one key (this section's move). $\qquad\blacksquare$
 </Theorem>
 

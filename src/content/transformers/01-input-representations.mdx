@@ -135,8 +135,6 @@ shortening the sequence alone does not guarantee that inequality when the vocabu
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
-
 For each word type, every one of its $q_t(w)$ non-overlapping replacements consumes two adjacent positions and emits one. Weighting that decrement by $f_w$ and summing gives $N_{t+1}=N_t-r_t$. The round adds one fresh atomic piece and removes no existing piece, so $V_{t+1}=V_t+1$. Iterating both recurrences gives the formulas at $M$. The minimum uniform width capable of distinguishing $V_t$ binary IDs is $\lceil\log_2V_t\rceil$ bits; packing $N_t$ such IDs at that width proves the formula for $B_t$ and the displayed comparison. For the final clause, the new piece stores the ordered children it replaced. Expanding it restores $a,b$ at every replacement; induction over the merge rounds restores the initial base-symbol stream exactly. If that stream losslessly represented normalized text, $\operatorname{detok}$ still recovers it; if an upstream step had already erased distinctions, the merge invariant cannot recover them. $\qquad\blacksquare$
 </Theorem>
 
@@ -355,8 +353,6 @@ $$
 </Theorem>
 
 <Theorem kind="proof">
-**Proof.**
-
 Concatenation makes the two halves act independently. Applying <XRef id="thm-pe-rotation" /> to the row half gives $\operatorname{PE}(a+k)=\operatorname{PE}(a)\,(\mathbf M^{\text{row}}_k)^\top$ and to the column half $\operatorname{PE}(b+l)=\operatorname{PE}(b)\,(\mathbf M^{\text{col}}_l)^\top$, each $\mathbf M$ being the block-diagonal rotation of its offset. Stacking the two independent blocks yields the block-diagonal $\mathbf M_{k,l}$, which depends only on $(k,l)$. For the inner product, the corollary of <XRef id="thm-pe-rotation" /> makes each frequency pair contribute $\cos(\omega_i\cdot\text{offset})$; summing over the row half and the column half gives the stated closed form. $\qquad\blacksquare$
 </Theorem>
 
